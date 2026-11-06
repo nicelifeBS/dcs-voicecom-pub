@@ -1,0 +1,17 @@
+bin/
+obj/
+*.user
+.vs/
+.vscode/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+.venv/
+dist/
+
+# Cached transcripts from tools/eval/evaluate.py
+transcripts.csv
+
+# Real voice recordings from tools/eval/record.py (never commit, issue #12)
+private-clips/
