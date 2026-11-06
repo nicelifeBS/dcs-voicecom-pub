@@ -55,6 +55,7 @@ dist\DcsVoiceCom\DcsVoiceCom.exe
 The Whistle model and engine are bundled, so speech works offline. Full steps, settings and troubleshooting:
 [docs/windows-setup.md](docs/windows-setup.md). A tour of the window: [docs/app.md](docs/app.md).
 
+Note: Old screenshot needs to be updated.
 ![Main window with the F-14BU profile and the "gear up" command selected](docs/images/main-window.png)
 
 ## Still missing
@@ -105,7 +106,5 @@ Copyright 2026 nicelifeBS. DCS VoiceCom is free software, licensed under the
 
 The licence covers the code, not the name. "DCS VoiceCom" and its logo are not licensed under the GPL: if you
 share a changed version, give it a different name so people do not mistake it for the official app.
-
-Releases up to v0.1.0-beta.5 were published under the PolyForm Noncommercial License 1.0.0.
 
 Third-party components keep their own licences; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
