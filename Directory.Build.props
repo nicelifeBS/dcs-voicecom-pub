@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Company>DCS VoiceCom</Company>
+    <Product>DCS VoiceCom</Product>
+    <!-- Version for local builds. A release takes its version from the v* tag instead
+         (v0.1.0-beta.5 → 0.1.0-beta.5, see installer\build.ps1). -->
+    <Version>0.1.0-dev</Version>
+    <!-- Lets the Windows-only projects build on Linux CI and dev boxes. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+</Project>

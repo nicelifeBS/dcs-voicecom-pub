@@ -1,0 +1,121 @@
+file,lang,phrase,voice,speed,band_hz,peak,snr_db,seconds
+gear_up__01.wav,en,Gear up,am_michael,1.0,300-3400,0.7,31.0,2.15
+gear_up__02.wav,en,Gear up,am_adam,0.91,285-3138,0.77,32.6,2.04
+gear_up__03.wav,en,Gear up,bm_george,1.11,355-3138,0.88,33.0,2.08
+gear_up__04.wav,en,Gear up,am_eric,0.93,348-3534,0.56,25.2,1.78
+gear_down__01.wav,en,Gear down,am_michael,1.0,300-3400,0.7,31.0,2.47
+gear_down__02.wav,en,Gear down,am_adam,1.11,381-3694,0.69,34.1,2.19
+gear_down__03.wav,en,Gear down,bm_george,1.11,313-3036,0.78,32.4,2.22
+gear_down__04.wav,en,Gear down,am_eric,1.01,445-3720,0.76,34.7,1.85
+flaps_up__01.wav,en,Flaps up,am_michael,1.0,300-3400,0.7,31.0,2.14
+flaps_up__02.wav,en,Flaps up,am_adam,1.01,288-2867,0.87,33.3,2.1
+flaps_up__03.wav,en,Flaps up,bm_george,0.89,234-3503,0.84,32.6,2.31
+flaps_up__04.wav,en,Flaps up,am_eric,0.91,278-3190,0.53,39.7,1.75
+flaps_down__01.wav,en,Flaps down,am_michael,1.0,300-3400,0.7,31.0,2.34
+flaps_down__02.wav,en,Flaps down,am_adam,1.0,447-3037,0.65,22.0,2.45
+flaps_down__03.wav,en,Flaps down,bm_george,0.98,294-3615,0.63,39.5,2.47
+flaps_down__04.wav,en,Flaps down,am_eric,1.03,312-3818,0.86,25.0,1.88
+canopy_close__01.wav,en,Close canopy,am_michael,1.0,300-3400,0.7,31.0,2.63
+canopy_close__02.wav,en,Close canopy,am_adam,0.93,376-3840,0.55,29.5,2.56
+canopy_close__03.wav,en,Close canopy,bm_george,1.08,288-2829,0.79,39.7,2.54
+canopy_close__04.wav,en,Close canopy,am_eric,0.89,335-2964,0.55,26.3,1.95
+master_arm_on__01.wav,en,Master arm on,am_michael,1.0,300-3400,0.7,31.0,2.57
+master_arm_on__02.wav,en,Master arm on,am_adam,1.01,374-3034,0.74,32.3,2.55
+master_arm_on__03.wav,en,Master arm on,bm_george,1.0,420-3604,0.71,29.4,2.97
+master_arm_on__04.wav,en,Master arm on,am_eric,0.92,437-3211,0.65,35.6,2.25
+select_maverick__01.wav,en,Select Maverick,am_michael,1.0,300-3400,0.7,31.0,2.62
+select_maverick__02.wav,en,Select Maverick,am_adam,1.12,428-2893,0.89,36.0,2.5
+select_maverick__03.wav,en,Select Maverick,bm_george,1.02,341-3427,0.74,38.8,2.62
+select_maverick__04.wav,en,Select Maverick,am_eric,1.04,244-3428,0.77,34.4,2.15
+select_aim_nine__01.wav,en,Select AIM nine,am_michael,1.0,300-3400,0.7,31.0,2.85
+select_aim_nine__02.wav,en,Select AIM nine,am_adam,0.9,277-3331,0.86,26.9,2.74
+select_aim_nine__03.wav,en,Select AIM nine,bm_george,1.07,376-3672,0.88,34.6,2.86
+select_aim_nine__04.wav,en,Select AIM nine,am_eric,1.02,261-3653,0.79,23.4,2.36
+tacan_channel_73__01.wav,en,TACAN channel 73,am_michael,1.0,300-3400,0.7,31.0,3.29
+tacan_channel_73__02.wav,en,TACAN channel 73,am_adam,0.98,405-3171,0.52,23.7,3.29
+tacan_channel_73__03.wav,en,TACAN channel 73,bm_george,1.09,398-3658,0.64,23.0,3.55
+tacan_channel_73__04.wav,en,TACAN channel 73,am_eric,0.9,309-3077,0.66,29.5,3.22
+radio_251__01.wav,en,Set radio to 251 decimal 000,am_michael,1.0,300-3400,0.7,31.0,4.85
+radio_251__02.wav,en,Set radio to 251 decimal 000,am_adam,0.89,416-3273,0.59,30.0,4.67
+radio_251__03.wav,en,Set radio to 251 decimal 000,bm_george,0.94,281-2976,0.59,32.4,5.28
+radio_251__04.wav,en,Set radio to 251 decimal 000,am_eric,1.05,290-3771,0.58,34.7,4.3
+request_rearm__01.wav,en,Request rearm and refuel,am_michael,1.0,300-3400,0.7,31.0,3.2
+request_rearm__02.wav,en,Request rearm and refuel,am_adam,1.1,410-3265,0.75,34.2,2.96
+request_rearm__03.wav,en,Request rearm and refuel,bm_george,1.02,267-3666,0.55,31.1,3.63
+request_rearm__04.wav,en,Request rearm and refuel,am_eric,1.06,226-3330,0.52,34.3,2.86
+inbound_for_landing__01.wav,en,Inbound for landing,am_michael,1.0,300-3400,0.7,31.0,2.72
+inbound_for_landing__02.wav,en,Inbound for landing,am_adam,1.08,254-3337,0.51,29.5,2.71
+inbound_for_landing__03.wav,en,Inbound for landing,bm_george,1.09,341-3211,0.73,35.9,2.92
+inbound_for_landing__04.wav,en,Inbound for landing,am_eric,1.08,359-3574,0.54,30.5,2.41
+tower_request_takeoff__01.wav,en,Tower request takeoff,am_michael,1.0,300-3400,0.7,31.0,3.02
+tower_request_takeoff__02.wav,en,Tower request takeoff,am_adam,0.94,271-2898,0.75,30.4,3.08
+tower_request_takeoff__03.wav,en,Tower request takeoff,bm_george,1.14,278-3158,0.7,26.6,2.99
+tower_request_takeoff__04.wav,en,Tower request takeoff,am_eric,0.9,331-2857,0.86,33.3,2.9
+awacs_bogey_dope__01.wav,en,AWACS bogey dope,am_michael,1.0,300-3400,0.7,31.0,2.94
+awacs_bogey_dope__02.wav,en,AWACS bogey dope,am_adam,1.08,246-2978,0.78,22.9,2.66
+awacs_bogey_dope__03.wav,en,AWACS bogey dope,bm_george,0.94,229-2988,0.77,34.3,3.18
+awacs_bogey_dope__04.wav,en,AWACS bogey dope,am_eric,1.1,258-3219,0.88,39.3,2.34
+texaco_precontact__01.wav,en,Texaco precontact,am_michael,1.0,300-3400,0.7,31.0,2.94
+texaco_precontact__02.wav,en,Texaco precontact,am_adam,1.04,319-3624,0.83,31.4,2.88
+texaco_precontact__03.wav,en,Texaco precontact,bm_george,1.03,331-3454,0.73,31.4,3.03
+texaco_precontact__04.wav,en,Texaco precontact,am_eric,0.92,299-2920,0.63,36.8,2.53
+wingman_engage__01.wav,en,Two engage bandits,am_michael,1.0,300-3400,0.7,31.0,2.91
+wingman_engage__02.wav,en,Two engage bandits,am_adam,1.04,419-3878,0.53,31.1,2.69
+wingman_engage__03.wav,en,Two engage bandits,bm_george,1.12,410-2926,0.69,30.4,3.08
+wingman_engage__04.wav,en,Two engage bandits,am_eric,1.08,230-3368,0.69,33.2,2.48
+shkval_on__01.wav,en,Shkval on,am_michael,1.0,300-3400,0.7,31.0,2.88
+shkval_on__02.wav,en,Shkval on,am_adam,1.02,349-3449,0.83,22.5,2.79
+shkval_on__03.wav,en,Shkval on,bm_george,1.07,221-3877,0.48,31.5,3.09
+shkval_on__04.wav,en,Shkval on,am_eric,1.15,202-3749,0.85,35.1,2.16
+nav_lights_on__01.wav,en,Navigation lights on,am_michael,1.0,300-3400,0.7,31.0,3.07
+nav_lights_on__02.wav,en,Navigation lights on,am_adam,0.99,213-3413,0.7,24.2,2.98
+nav_lights_on__03.wav,en,Navigation lights on,bm_george,1.11,295-3785,0.59,34.5,3.17
+nav_lights_on__04.wav,en,Navigation lights on,am_eric,0.95,347-3486,0.84,27.9,2.82
+cage_uncage__01.wav,en,Cage uncage,am_michael,1.0,300-3400,0.7,31.0,2.61
+cage_uncage__02.wav,en,Cage uncage,am_adam,1.04,329-3758,0.88,22.1,2.42
+cage_uncage__03.wav,en,Cage uncage,bm_george,1.12,269-3229,0.79,25.0,2.6
+cage_uncage__04.wav,en,Cage uncage,am_eric,1.05,249-3748,0.64,29.9,2.08
+datalink_send__01.wav,en,Datalink send,am_michael,1.0,300-3400,0.7,31.0,2.74
+datalink_send__02.wav,en,Datalink send,am_adam,1.04,243-3594,0.6,31.7,2.47
+datalink_send__03.wav,en,Datalink send,bm_george,1.11,297-3220,0.53,22.9,2.63
+datalink_send__04.wav,en,Datalink send,am_eric,1.1,393-3603,0.71,38.8,2.03
+fahrwerk_ein__01.wav,de,Fahrwerk einfahren,thorsten,1.0,300-3400,0.7,31.0,1.99
+fahrwerk_ein__02.wav,de,Fahrwerk einfahren,thorsten,0.89,328-3856,0.88,30.0,2.17
+fahrwerk_ein__03.wav,de,Fahrwerk einfahren,thorsten,1.06,403-3413,0.79,24.1,1.88
+fahrwerk_ein__04.wav,de,Fahrwerk einfahren,thorsten,1.09,384-3090,0.66,34.3,1.91
+fahrwerk_aus__01.wav,de,Fahrwerk ausfahren,thorsten,1.0,300-3400,0.7,31.0,2.19
+fahrwerk_aus__02.wav,de,Fahrwerk ausfahren,thorsten,0.95,226-3600,0.77,28.3,2.12
+fahrwerk_aus__03.wav,de,Fahrwerk ausfahren,thorsten,0.98,278-3758,0.86,36.4,2.05
+fahrwerk_aus__04.wav,de,Fahrwerk ausfahren,thorsten,1.08,234-2802,0.7,24.1,2.01
+landeklappen_aus__01.wav,de,Landeklappen ausfahren,thorsten,1.0,300-3400,0.7,31.0,2.33
+landeklappen_aus__02.wav,de,Landeklappen ausfahren,thorsten,0.95,333-3138,0.82,35.3,2.36
+landeklappen_aus__03.wav,de,Landeklappen ausfahren,thorsten,1.0,412-3311,0.88,35.4,2.42
+landeklappen_aus__04.wav,de,Landeklappen ausfahren,thorsten,1.06,386-2915,0.47,28.2,2.27
+kanzel_schliessen__01.wav,de,Kanzel schließen,thorsten,1.0,300-3400,0.7,31.0,1.67
+kanzel_schliessen__02.wav,de,Kanzel schließen,thorsten,1.14,402-2974,0.47,26.8,1.78
+kanzel_schliessen__03.wav,de,Kanzel schließen,thorsten,1.05,310-3135,0.78,35.5,1.66
+kanzel_schliessen__04.wav,de,Kanzel schließen,thorsten,1.08,201-2851,0.71,28.4,1.69
+hauptschalter_waffen__01.wav,de,Hauptschalter Waffen ein,thorsten,1.0,300-3400,0.7,31.0,2.25
+hauptschalter_waffen__02.wav,de,Hauptschalter Waffen ein,thorsten,0.9,270-3057,0.72,22.3,2.23
+hauptschalter_waffen__03.wav,de,Hauptschalter Waffen ein,thorsten,1.04,315-3733,0.78,33.6,2.07
+hauptschalter_waffen__04.wav,de,Hauptschalter Waffen ein,thorsten,1.03,444-3562,0.81,34.7,2.15
+funk_kanal_5__01.wav,de,Funk Kanal 5,thorsten,1.0,300-3400,0.7,31.0,1.83
+funk_kanal_5__02.wav,de,Funk Kanal 5,thorsten,1.07,340-3461,0.72,30.2,1.81
+funk_kanal_5__03.wav,de,Funk Kanal 5,thorsten,1.01,365-3554,0.84,33.2,1.74
+funk_kanal_5__04.wav,de,Funk Kanal 5,thorsten,1.07,245-2982,0.78,27.3,1.78
+tanken_anfordern__01.wav,de,Betanken anfordern,thorsten,1.0,300-3400,0.7,31.0,2.18
+tanken_anfordern__02.wav,de,Betanken anfordern,thorsten,0.98,406-2870,0.45,29.9,2.38
+tanken_anfordern__03.wav,de,Betanken anfordern,thorsten,0.9,355-3039,0.54,35.6,2.39
+tanken_anfordern__04.wav,de,Betanken anfordern,thorsten,1.05,384-3529,0.59,34.6,2.32
+landeanflug__01.wav,de,Im Landeanflug,thorsten,1.0,300-3400,0.7,31.0,2.02
+landeanflug__02.wav,de,Im Landeanflug,thorsten,1.03,391-3450,0.43,23.9,2.07
+landeanflug__03.wav,de,Im Landeanflug,thorsten,1.11,352-3203,0.8,22.9,2.01
+landeanflug__04.wav,de,Im Landeanflug,thorsten,1.09,305-3183,0.82,25.9,2.02
+lichter_an__01.wav,de,Positionslichter an,thorsten,1.0,300-3400,0.7,31.0,2.09
+lichter_an__02.wav,de,Positionslichter an,thorsten,1.12,305-3646,0.61,32.6,2.07
+lichter_an__03.wav,de,Positionslichter an,thorsten,1.01,398-2872,0.51,30.6,2.22
+lichter_an__04.wav,de,Positionslichter an,thorsten,1.1,303-3565,0.75,28.4,2.14
+triebwerk_starten__01.wav,de,Triebwerk starten,thorsten,1.0,300-3400,0.7,31.0,2.05
+triebwerk_starten__02.wav,de,Triebwerk starten,thorsten,1.04,385-3200,0.75,37.9,1.99
+triebwerk_starten__03.wav,de,Triebwerk starten,thorsten,0.91,393-3647,0.6,32.4,1.92
+triebwerk_starten__04.wav,de,Triebwerk starten,thorsten,0.93,352-3416,0.43,31.0,2.23

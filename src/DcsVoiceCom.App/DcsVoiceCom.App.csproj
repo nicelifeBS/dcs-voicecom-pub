@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <!-- Only for the tray icon (NotifyIcon) and the folder picker. -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>DcsVoiceCom</AssemblyName>
+    <RootNamespace>DcsVoiceCom.App</RootNamespace>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- WPF and WinForms share type names (Application, MessageBox...); keep WinForms out of the implicit usings. -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\DcsVoiceCom.Core\DcsVoiceCom.Core.csproj" />
+    <ProjectReference Include="..\DcsVoiceCom.ViewModels\DcsVoiceCom.ViewModels.csproj" />
+    <ProjectReference Include="..\DcsVoiceCom.Windows\DcsVoiceCom.Windows.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assets\app.ico" />
+    <EmbeddedResource Include="Assets\app.ico" LogicalName="app.ico" />
+    <None Include="..\..\assets\cues\*.wav" Link="cues\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The bundled Whistle model and engine (Windows files), so the app needs no download. -->
+    <None Include="..\..\model\cactus-needle\**" Exclude="..\..\model\cactus-needle\**\*.so"
+          Link="model\cactus-needle\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

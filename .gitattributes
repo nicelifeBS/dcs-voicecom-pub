@@ -1,0 +1,4 @@
+# Model weights and native engines
+*.cact binary
+*.dll binary
+*.so binary

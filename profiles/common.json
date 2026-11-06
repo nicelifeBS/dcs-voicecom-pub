@@ -1,0 +1,20 @@
+{
+  "aircraft": "common",
+  "commands": [
+    {
+      "name": "F10 map",
+      "phrases": ["[show;open] [the;] map", "f ten map"],
+      "steps": [ { "type": "key", "keys": "F10" } ]
+    },
+    {
+      "name": "Cockpit view",
+      "phrases": ["cockpit view"],
+      "steps": [ { "type": "key", "keys": "F1" } ]
+    },
+    {
+      "name": "Comms menu",
+      "phrases": ["[comms;radio] menu"],
+      "steps": [ { "type": "key", "keys": "Backslash" } ]
+    }
+  ]
+}

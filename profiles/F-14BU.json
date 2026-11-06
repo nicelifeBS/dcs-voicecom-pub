@@ -1,0 +1,110 @@
+{
+  "aircraft": "F-14BU",
+  "threshold": 85,
+  "critical_threshold": 95,
+  "keywords": ["TACAN"],
+  "commands": [
+    {
+      "name": "Gear up",
+      "phrases": ["[gear;landing gear] up"],
+      "steps": [ { "type": "bios", "control": "PLT_GEAR_LEVER", "arg": "0", "skip_if_already": true } ]
+    },
+    {
+      "name": "Gear down",
+      "phrases": ["[gear;landing gear] down"],
+      "steps": [ { "type": "bios", "control": "PLT_GEAR_LEVER", "arg": "1", "skip_if_already": true } ]
+    },
+    {
+      "name": "Hook down",
+      "phrases": ["[hook;tail hook] down"],
+      "steps": [ { "type": "bios", "control": "PLT_HOOK_LEVER", "arg": "1", "skip_if_already": true } ]
+    },
+    {
+      "name": "Hook up",
+      "phrases": ["[hook;tail hook] up"],
+      "steps": [ { "type": "bios", "control": "PLT_HOOK_LEVER", "arg": "0", "skip_if_already": true } ]
+    },
+    {
+      "name": "Master arm on",
+      "description": "Opens the cover if needed, then sets ON.",
+      "phrases": ["master arm [on;hot]"],
+      "steps": [
+        { "type": "bios", "control": "PLT_MASTER_ARM_COVER", "arg": "1", "skip_if_already": true },
+        { "type": "wait", "ms": 150 },
+        { "type": "bios", "control": "PLT_MASTER_ARM_SW", "arg": "0", "skip_if_already": true }
+      ]
+    },
+    {
+      "name": "Master arm off",
+      "phrases": ["master arm [off;safe]"],
+      "steps": [
+        { "type": "bios", "control": "PLT_MASTER_ARM_SW", "arg": "1", "skip_if_already": true },
+        { "type": "wait", "ms": 150 },
+        { "type": "bios", "control": "PLT_MASTER_ARM_COVER", "arg": "0", "skip_if_already": true }
+      ]
+    },
+    {
+      "name": "Fuel dump on",
+      "critical": true,
+      "phrases": ["fuel dump on"],
+      "steps": [ { "type": "bios", "control": "PLT_FUEL_DUMP", "arg": "1", "skip_if_already": true } ]
+    },
+    {
+      "name": "Fuel dump off",
+      "phrases": ["fuel dump off"],
+      "steps": [ { "type": "bios", "control": "PLT_FUEL_DUMP", "arg": "0", "skip_if_already": true } ]
+    },
+    {
+      "name": "Parking brake",
+      "phrases": ["parking brake"],
+      "steps": [ { "type": "bios", "control": "PLT_PARK_BRAKE", "arg": "TOGGLE" } ]
+    },
+    {
+      "name": "TACAN channel",
+      "description": "Tens wheel 0-12, ones lever 0-9, X/Y toggle.",
+      "phrases": ["tacan [channel;] {channel:1-126} {band:X=0|Y=1}"],
+      "steps": [
+        { "type": "bios", "control": "PLT_TACAN_DIAL_TENS", "arg": "{channel/10}" },
+        { "type": "bios", "control": "PLT_TACAN_DIAL_ONES", "arg": "{channel%10}" },
+        { "type": "bios", "control": "PLT_TACAN_CHANNEL", "arg": "{band}", "skip_if_already": true }
+      ]
+    },
+    {
+      "name": "TACAN mode",
+      "phrases": ["tacan mode {mode:off=0|receive=1|transmit=2|air to air=3|beacon=4}"],
+      "steps": [ { "type": "bios", "control": "PLT_TACAN_MODE", "arg": "{mode}", "skip_if_already": true } ]
+    },
+    {
+      "name": "UHF frequency",
+      "description": "Manual mode, then clicks the ARC-159 wheels until the display shows the frequency.",
+      "phrases": ["uhf [frequency;] {freq}"],
+      "steps": [
+        { "type": "bios", "control": "PLT_UHF1_FREQ_MODE", "arg": "1", "skip_if_already": true },
+        {
+          "type": "enter_value", "value": "{freq}", "method": "wheels",
+          "display": "PLT_UHF_DISP", "sample": "225.025", "timeout_ms": 1500,
+          "fields": [
+            { "at": 0, "len": 2, "kind": "wheel", "control": "PLT_UHF1_110_DIAL", "range": "22-39", "mode": "click" },
+            { "at": 2, "len": 1, "kind": "wheel", "control": "PLT_UHF1_1_DIAL", "range": "0-9", "mode": "click" },
+            { "at": 3, "len": 1, "kind": "read_only" },
+            { "at": 4, "len": 1, "kind": "wheel", "control": "PLT_UHF1_01_DIAL", "range": "0-9", "mode": "click" },
+            { "at": 5, "len": 2, "kind": "wheel", "control": "PLT_UHF1_025_DIAL", "range": "00,25,50,75", "mode": "click" }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "UHF preset",
+      "description": "Preset mode, then steps the preset selector until the display shows the channel.",
+      "phrases": ["uhf [channel;preset] {channel:1-20}"],
+      "steps": [
+        { "type": "bios", "control": "PLT_UHF1_FREQ_MODE", "arg": "0", "skip_if_already": true },
+        {
+          "type": "enter_value", "value": "{channel}", "method": "wheels", "min": 1, "max": 20,
+          "wheels": [ { "control": "PLT_UHF1_PRESETS", "place": 1, "width": 2, "read": "PLT_UHF_DISP", "read_scale": 1, "mode": "step" } ],
+          "verify": { "output": "PLT_UHF_DISP", "timeout_ms": 1500 }
+        }
+      ]
+    }
+  ]
+}

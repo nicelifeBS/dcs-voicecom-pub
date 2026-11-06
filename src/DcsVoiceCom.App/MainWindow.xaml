@@ -1,0 +1,450 @@
+<Window x:Class="DcsVoiceCom.App.MainWindow" UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="ClearType"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:DcsVoiceCom.App"
+        Title="{Binding WindowTitle}" Width="1440" Height="900" MinWidth="1100" MinHeight="640"
+        WindowStartupLocation="CenterScreen" Style="{StaticResource {x:Type Window}}">
+  <Window.Resources>
+    <local:BoolToVisibility x:Key="Visible" />
+    <local:NotEmptyToVisibility x:Key="NotEmpty" />
+    <local:TagToBrush x:Key="TagBrush" />
+    <local:BoolToStatusBrush x:Key="StatusBrush" />
+  </Window.Resources>
+  <Window.InputBindings>
+    <KeyBinding Key="N" Modifiers="Control" Command="{Binding NewCommandCommand}" />
+    <KeyBinding Key="F5" Command="{Binding ReloadCommand}" />
+  </Window.InputBindings>
+
+  <Grid Margin="16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <!-- Top bar: push-to-talk, listening, DCS-BIOS and speech status, profile override, log, save, settings -->
+    <DockPanel Grid.Row="0" Margin="0,0,0,14" LastChildFill="False">
+      <TextBlock DockPanel.Dock="Left" Text="DCS VoiceCom" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,20,0" />
+      <Border DockPanel.Dock="Left" Style="{StaticResource Pill}" ToolTip="One button for every aircraft profile; set it in Settings">
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="Push-to-talk · " Foreground="{StaticResource Muted}" />
+          <TextBlock Text="{Binding PttText}" />
+        </StackPanel>
+      </Border>
+      <Border DockPanel.Dock="Left" Style="{StaticResource Pill}">
+        <StackPanel Orientation="Horizontal">
+          <Ellipse Width="8" Height="8" Margin="0,0,6,0" Fill="{Binding IsListening, Converter={StaticResource StatusBrush}}" />
+          <TextBlock Text="{Binding ListeningText}" />
+        </StackPanel>
+      </Border>
+      <Border DockPanel.Dock="Left" Style="{StaticResource Pill}">
+        <StackPanel Orientation="Horizontal">
+          <Ellipse Width="8" Height="8" Margin="0,0,6,0" Fill="{Binding DcsLive, Converter={StaticResource StatusBrush}}" />
+          <TextBlock Text="{Binding DcsStatus}" />
+        </StackPanel>
+      </Border>
+      <Border DockPanel.Dock="Left" Style="{StaticResource Pill}">
+        <TextBlock Text="{Binding SpeechStatus}" />
+      </Border>
+
+      <Button DockPanel.Dock="Right" Content="Settings" Click="Settings_Click" Margin="8,0,0,0" />
+      <ToggleButton DockPanel.Dock="Right" Content="Log" IsChecked="{Binding ShowLog}" Margin="8,0,0,0" />
+      <Button DockPanel.Dock="Right" Content="Save" Style="{StaticResource Primary}" Command="{Binding SaveCommand}"
+              ToolTip="Save this profile (Ctrl+S)" Margin="8,0,0,0" />
+      <ComboBox DockPanel.Dock="Right" Width="190" ItemsSource="{Binding OverrideOptions}" SelectedItem="{Binding SelectedOverride}"
+                ToolTip="Auto follows the aircraft DCS-BIOS reports; pick a profile to pin it" />
+      <TextBlock DockPanel.Dock="Right" Text="{Binding ActiveProfileText}" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,10,0" />
+    </DockPanel>
+
+    <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="220" />
+        <ColumnDefinition Width="14" />
+        <ColumnDefinition Width="320" />
+        <ColumnDefinition Width="14" />
+        <ColumnDefinition Width="*" MinWidth="360" />
+        <ColumnDefinition Width="14" />
+        <ColumnDefinition Width="400" />
+      </Grid.ColumnDefinitions>
+
+      <!-- Profiles -->
+      <DockPanel Grid.Column="0">
+        <TextBlock DockPanel.Dock="Top" Text="AIRFRAME PROFILES" Style="{StaticResource Heading}" />
+        <Border DockPanel.Dock="Bottom" Style="{StaticResource Card}" Margin="0,10,0,0" Padding="12"
+                Visibility="{Binding HasProfile, Converter={StaticResource Visible}}">
+          <StackPanel>
+            <TextBlock Text="MATCHING" Style="{StaticResource Heading}" />
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <StackPanel>
+                <Label Content="Threshold" />
+                <TextBox Text="{Binding Threshold, UpdateSourceTrigger=LostFocus}" ToolTip="Score a command needs (default 85)" />
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <Label Content="Critical" />
+                <TextBox Text="{Binding CriticalThreshold, UpdateSourceTrigger=LostFocus}" ToolTip="Score a critical command needs (default 95)" />
+              </StackPanel>
+            </Grid>
+            <Label Content="Keywords" Margin="0,8,0,0" />
+            <TextBox Text="{Binding KeywordsText, UpdateSourceTrigger=LostFocus}" TextWrapping="Wrap"
+                     ToolTip="Comma separated. Only words the recognizer gets wrong (e.g. TACAN, Shkval)." />
+          </StackPanel>
+        </Border>
+        <Button DockPanel.Dock="Bottom" Content="+ New profile" Command="{Binding NewProfileCommand}" Margin="0,8,0,0" />
+        <ListBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}">
+          <ListBox.InputBindings>
+            <KeyBinding Key="Delete" Command="{Binding DeleteProfileCommand}" />
+          </ListBox.InputBindings>
+          <ListBox.ContextMenu>
+            <ContextMenu>
+              <MenuItem Header="New profile…" Command="{Binding NewProfileCommand}" />
+              <MenuItem Header="Delete profile…" Command="{Binding DeleteProfileCommand}" InputGestureText="Del" />
+            </ContextMenu>
+          </ListBox.ContextMenu>
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Right" Text="{Binding CommandCount}" Foreground="{StaticResource Muted}" />
+                <Ellipse DockPanel.Dock="Left" Width="7" Height="7" Margin="0,0,8,0" Fill="{StaticResource Good}"
+                         Visibility="{Binding IsActive, Converter={StaticResource Visible}}" ToolTip="Active profile" />
+                <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" />
+              </DockPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+
+      <!-- Commands -->
+      <DockPanel Grid.Column="2">
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+          <Button DockPanel.Dock="Right" Content="+ Command" Style="{StaticResource Small}" Command="{Binding NewCommandCommand}" ToolTip="New command (Ctrl+N)" />
+          <Button DockPanel.Dock="Right" Content="Seed…" Style="{StaticResource Small}" Command="{Binding SeedCommand}" Margin="0,0,6,0"
+                  ToolTip="Generate disabled starter commands from this aircraft's DCS-BIOS definitions" />
+          <TextBlock Text="{Binding ProfileTitle}" Style="{StaticResource Heading}" VerticalAlignment="Center" Margin="0" TextTrimming="CharacterEllipsis" />
+        </DockPanel>
+        <Grid DockPanel.Dock="Top" Margin="0,0,0,4">
+          <TextBox x:Name="CommandSearch" Text="{Binding CommandFilter, UpdateSourceTrigger=PropertyChanged}" ToolTip="Voice line, alternative or step" />
+          <TextBlock Text="Filter commands…" Foreground="{StaticResource Muted}" Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                     Visibility="{Binding Text.IsEmpty, ElementName=CommandSearch, Converter={StaticResource Visible}}" />
+        </Grid>
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+          <CheckBox DockPanel.Dock="Right" Content="Hide seeded" IsChecked="{Binding HideSeeded}"
+                    ToolTip="Hide generated commands you have not edited or enabled yet" />
+          <TextBlock Text="{Binding CommandCountText}" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+        </DockPanel>
+        <ListBox x:Name="CommandList" ItemsSource="{Binding Commands}" SelectedItem="{Binding SelectedCommand}" VirtualizingPanel.IsVirtualizing="True">
+          <ListBox.ItemContainerStyle>
+            <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+              <Setter Property="Visibility" Value="{Binding IsVisible, Converter={StaticResource Visible}}" />
+            </Style>
+          </ListBox.ItemContainerStyle>
+          <ListBox.InputBindings>
+            <KeyBinding Key="Delete" Command="{Binding DeleteCommandCommand}" />
+          </ListBox.InputBindings>
+          <ListBox.ContextMenu>
+            <ContextMenu>
+              <MenuItem Header="Duplicate" Command="{Binding DuplicateCommandCommand}" />
+              <MenuItem Header="Delete…" Command="{Binding DeleteCommandCommand}" InputGestureText="Del" />
+              <Separator />
+              <MenuItem Header="Seed from DCS-BIOS…" Command="{Binding SeedCommand}" />
+              <MenuItem Header="Remove seeded commands…" Command="{Binding RemoveSeededCommand}" />
+            </ContextMenu>
+          </ListBox.ContextMenu>
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <DockPanel>
+                <CheckBox DockPanel.Dock="Left" IsChecked="{Binding Enabled}" VerticalAlignment="Top" Margin="0,2,8,0" ToolTip="Enabled" />
+<StackPanel>
+                  <TextBlock Text="{Binding Phrase, StringFormat='“{0}”'}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding Phrase}" />
+                  <DockPanel>
+                    <Border DockPanel.Dock="Right" Background="{StaticResource AccentDark}" CornerRadius="4" Padding="5,0" VerticalAlignment="Center" Margin="4,0,0,0"
+                            Visibility="{Binding Critical, Converter={StaticResource Visible}}">
+                      <TextBlock Text="critical" FontSize="11" Foreground="{StaticResource Accent}" />
+                    </Border>
+                    <Border DockPanel.Dock="Right" Background="{StaticResource Raised}" CornerRadius="4" Padding="5,0" VerticalAlignment="Center" Margin="4,0,0,0"
+                            Visibility="{Binding SkipIfAlready, Converter={StaticResource Visible}}" ToolTip="Skips a step when the switch is already in that position">
+                      <TextBlock Text="skip if already" FontSize="11" Foreground="{StaticResource Muted}" />
+                    </Border>
+                    <Border DockPanel.Dock="Right" Background="{StaticResource Raised}" CornerRadius="4" Padding="5,0" VerticalAlignment="Center" Margin="4,0,0,0"
+                            Visibility="{Binding Seeded, Converter={StaticResource Visible}}" ToolTip="Generated from DCS-BIOS; editing or enabling it makes it yours">
+                      <TextBlock Text="seeded" FontSize="11" Foreground="{StaticResource Muted}" />
+                    </Border>
+                    <TextBlock Text="{Binding Summary}" Style="{StaticResource MutedText}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                  </DockPanel>
+                </StackPanel>
+              </DockPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+
+      <!-- Command editor -->
+      <ScrollViewer Grid.Column="4" VerticalScrollBarVisibility="Auto">
+        <Grid>
+          <TextBlock Text="Select a command, or press + Command." Style="{StaticResource MutedText}" Margin="0,30,0,0" HorizontalAlignment="Center"
+                     Visibility="{Binding HasEditor, Converter={StaticResource Visible}, ConverterParameter=invert}" />
+          <StackPanel DataContext="{Binding Editor}" Visibility="{Binding DataContext.HasEditor, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource Visible}}">
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+              <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                  <TextBlock Text="VOICE LINE" Style="{StaticResource Heading}" Margin="0" VerticalAlignment="Center" />
+                  <Border x:Name="VoiceLineHelp" Width="16" Height="16" CornerRadius="8" Margin="8,0,0,0" Background="{StaticResource Raised}"
+                          BorderBrush="{StaticResource LineStrong}" BorderThickness="1" Cursor="Help" VerticalAlignment="Center">
+                    <TextBlock Text="?" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Muted}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </Border>
+                  <Popup IsOpen="{Binding IsMouseOver, ElementName=VoiceLineHelp, Mode=OneWay}" PlacementTarget="{Binding ElementName=VoiceLineHelp}"
+                         Placement="Bottom" AllowsTransparency="True" PopupAnimation="Fade" StaysOpen="True">
+                    <Border Style="{StaticResource Card}" Background="{StaticResource Raised}" Width="340" Margin="0,6,0,0" Padding="12">
+                      <StackPanel>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text}">
+                          Voice command to trigger the action. Alternatives can be built like this:
+                          <Run FontFamily="Cascadia Mono, Consolas" Foreground="{StaticResource Accent}">[gear;landing gear] up</Run>
+                          which will accept “gear up” and “landing gear up”. Using
+                          <Run FontFamily="Cascadia Mono, Consolas" Foreground="{StaticResource Accent}">;</Run>
+                          between whole phrases works too:
+                          <Run FontFamily="Cascadia Mono, Consolas" Foreground="{StaticResource Accent}">gear up;landing gear up</Run>.
+                          And <Run FontFamily="Cascadia Mono, Consolas" Foreground="{StaticResource Accent}">[please;]</Run> makes a word optional.
+                        </TextBlock>
+                        <TextBlock Text="SPOKEN VALUES (SLOTS)" Style="{StaticResource Heading}" Margin="0,12,0,4" />
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text}">
+                          <Run FontFamily="Cascadia Mono, Consolas" Foreground="{StaticResource Accent}">TACAN channel {channel:1-126}</Run>.
+                          Say “TACAN channel seventy three” and the command gets 73.
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource MutedText}" Margin="0,8,0,0">
+                          Available slots:
+                          <Run FontFamily="Cascadia Mono, Consolas">{number}</Run> (whole number),
+                          <Run FontFamily="Cascadia Mono, Consolas">{freq}</Run> (with decimals),
+                          <Run FontFamily="Cascadia Mono, Consolas">{text}</Run> (“TGT 2” → TGT2),
+                          <Run FontFamily="Cascadia Mono, Consolas">{channel:1-126}</Run>,
+                          <Run FontFamily="Cascadia Mono, Consolas">{band:X|Y}</Run>.
+                          Two of a kind: <Run FontFamily="Cascadia Mono, Consolas">{from:text}</Run>, <Run FontFamily="Cascadia Mono, Consolas">{alt:number}</Run>
+                        </TextBlock>
+                      </StackPanel>
+                    </Border>
+                  </Popup>
+                </StackPanel>
+                <TextBox Text="{Binding VoiceLine, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource MonoBox}" FontSize="15" />
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                  <CheckBox Content="Enabled" IsChecked="{Binding Enabled}" Margin="0,0,14,0" />
+                  <CheckBox Content="Critical" IsChecked="{Binding Critical}" ToolTip="Needs the profile's critical threshold (default 95)" />
+                </StackPanel>
+
+                <Label Content="Also understood (optional, one per line)" Margin="0,12,0,0" />
+                <TextBox Text="{Binding AlternativesText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" MinHeight="44"
+                         TextWrapping="Wrap" Style="{StaticResource MonoBox}" />
+                <TextBlock Style="{StaticResource MutedText}" Margin="0,6,0,0" TextWrapping="Wrap"
+                           Text="Say the voice line while holding push-to-talk; it also names the command. [gear;landing gear] up gives alternatives, {channel:1-126} or {band:X|Y} a spoken value." />
+                <ItemsControl ItemsSource="{Binding PhrasePreview}" Margin="0,8,0,0">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <WrapPanel />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Border Background="{StaticResource Field}" BorderBrush="{StaticResource Line}" BorderThickness="2" CornerRadius="4" Padding="6,2" Margin="0,0,6,6">
+                        <TextBlock Text="{Binding}" Style="{StaticResource Mono}" />
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <ItemsControl ItemsSource="{Binding Problems}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <TextBlock Text="{Binding}" Foreground="{StaticResource Bad}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Label Content="Description (optional)" Margin="0,10,0,0" />
+                <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" />
+              </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <DockPanel Margin="0,0,0,8">
+                  <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Content="+ Key" Style="{StaticResource Small}" Command="{Binding AddKeyCommand}" Margin="0,0,6,0"
+                            ToolTip="Press a key chord, e.g. RCtrl+RShift+G" />
+                    <Button Content="+ Wait" Style="{StaticResource Small}" Command="{Binding AddWaitCommand}" Margin="0,0,6,0" />
+                    <Button Content="+ Enter value" Style="{StaticResource Small}" Command="{Binding AddEnterValueCommand}" Margin="0,0,6,0"
+                            ToolTip="Put a spoken number on radio wheels, or spelled text on a keypad (Edit to set it up)" />
+                    <Button Content="Edit as JSON" Style="{StaticResource Small}" Command="{Binding ToggleJsonCommand}"
+                            ToolTip="For if/else, wait_for, bios_until and the other step types" />
+                  </StackPanel>
+                  <TextBlock Text="ACTIONS · RUN IN ORDER" Style="{StaticResource Heading}" VerticalAlignment="Center" Margin="0" TextTrimming="CharacterEllipsis" />
+                </DockPanel>
+                <TextBlock Text="No actions yet — pick a control and an argument on the right." Style="{StaticResource MutedText}"
+                           Visibility="{Binding HasNoSteps, Converter={StaticResource Visible}}" Margin="0,4" />
+                <ItemsControl ItemsSource="{Binding Steps}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Border Background="{StaticResource Field}" BorderBrush="{StaticResource Line}" BorderThickness="2" CornerRadius="6"
+                              Padding="8,6" Margin="0,0,0,6">
+                        <Border.InputBindings>
+                          <MouseBinding Gesture="LeftDoubleClick" CommandParameter="{Binding}"
+                                        Command="{Binding DataContext.EditStepCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" />
+                        </Border.InputBindings>
+                        <Grid>
+                          <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="22" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                          </Grid.ColumnDefinitions>
+                          <TextBlock Text="{Binding Number}" Foreground="{StaticResource Muted}" VerticalAlignment="Center" />
+                          <!-- The control name gets the full width and wraps; the skip box sits under it. -->
+                          <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,8,0">
+                            <TextBlock Text="{Binding Text}" Style="{StaticResource Mono}" TextWrapping="Wrap" />
+                            <StackPanel Margin="0,4,0,0" Visibility="{Binding IsBios, Converter={StaticResource Visible}}">
+                              <WrapPanel Orientation="Horizontal">
+                                <CheckBox Content="skip if already" IsChecked="{Binding SkipIfAlready}" FontSize="11" Margin="0,0,12,0"
+                                          Visibility="{Binding CanSkipIfAlready, Converter={StaticResource Visible}}"
+                                          ToolTip="Do nothing when the switch is already in this position" />
+                                <CheckBox Content="button press" IsChecked="{Binding IsPress}" FontSize="11"
+                                          ToolTip="Push the button in, hold it, then release it: one click" />
+                              </WrapPanel>
+                              <!-- A press: the in / out values and how long it is held, edited in place. -->
+                              <WrapPanel Orientation="Horizontal" Margin="0,4,0,0"
+                                         Visibility="{Binding IsPress, Converter={StaticResource Visible}}">
+                                <TextBlock Text="in" FontSize="11" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,3,0" />
+                                <TextBox Text="{Binding PressValue}" Width="30" FontSize="11" Padding="2,1" Margin="0,0,8,0"
+                                         ToolTip="Value that pushes the button in (usually 1)" />
+                                <TextBlock Text="out" FontSize="11" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,3,0" />
+                                <TextBox Text="{Binding ReleaseValue}" Width="30" FontSize="11" Padding="2,1" Margin="0,0,8,0"
+                                         ToolTip="Value that releases the button (usually 0)" />
+                                <StackPanel Orientation="Horizontal">
+                                  <TextBlock Text="hold" FontSize="11" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,3,0" />
+                                  <TextBox Text="{Binding HoldMs}" Width="40" FontSize="11" Padding="2,1" Margin="0,0,3,0"
+                                           ToolTip="How long the button is held in" />
+                                  <TextBlock Text="ms" FontSize="11" Foreground="{StaticResource Muted}" VerticalAlignment="Center" />
+                                </StackPanel>
+                              </WrapPanel>
+                            </StackPanel>
+                          </StackPanel>
+                          <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Content="↑" Style="{StaticResource Small}" Margin="0,0,4,0" ToolTip="Move up"
+                                    Command="{Binding DataContext.MoveUpCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}" />
+                            <Button Content="↓" Style="{StaticResource Small}" Margin="0,0,4,0" ToolTip="Move down"
+                                    Command="{Binding DataContext.MoveDownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}" />
+                            <Button Content="Edit" Style="{StaticResource Small}" Margin="0,0,4,0"
+                                    Command="{Binding DataContext.EditStepCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}" />
+                            <Button Content="✕" Style="{StaticResource Small}" ToolTip="Remove step"
+                                    Command="{Binding DataContext.RemoveStepCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}" />
+                          </StackPanel>
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel Visibility="{Binding ShowJson, Converter={StaticResource Visible}}" Margin="0,8,0,0">
+                  <TextBox Text="{Binding StepsJson, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" AcceptsTab="True"
+                           MinHeight="160" MaxHeight="420" VerticalScrollBarVisibility="Auto" Style="{StaticResource MonoBox}" />
+                  <TextBlock Text="{Binding JsonError}" Foreground="{StaticResource Bad}" TextWrapping="Wrap" Margin="0,4,0,0"
+                             Visibility="{Binding JsonError, Converter={StaticResource NotEmpty}}" />
+                  <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                    <Button Content="Apply JSON" Style="{StaticResource Small}" Command="{Binding ApplyJsonCommand}" Margin="0,0,6,0" />
+                    <Button Content="Close" Style="{StaticResource Small}" Command="{Binding ToggleJsonCommand}" />
+                  </StackPanel>
+                </StackPanel>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </Grid>
+      </ScrollViewer>
+
+      <!-- DCS-BIOS control browser -->
+      <Border Grid.Column="6" Style="{StaticResource Card}" DataContext="{Binding Browser}">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Style="{StaticResource Heading}"
+                     Text="{Binding DataContext.SelectedProfile.Display, RelativeSource={RelativeSource AncestorType=Window}, StringFormat='ADD DCS-BIOS COMMAND · {0}'}" />
+          <TextBox DockPanel.Dock="Top" Text="{Binding Query, UpdateSourceTrigger=PropertyChanged, Delay=150}" ToolTip="Words from the control's name, description or panel" />
+          <ComboBox DockPanel.Dock="Top" ItemsSource="{Binding Categories}" SelectedItem="{Binding Category}" Margin="0,6,0,0" />
+          <TextBlock DockPanel.Dock="Top" Text="{Binding Status}" Style="{StaticResource MutedText}" Margin="0,6,0,6" />
+          <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+            <Button DockPanel.Dock="Right" Content="Add" Style="{StaticResource Small}" Command="{Binding AddCustomCommand}" Margin="6,0,0,0" />
+            <TextBox Text="{Binding CustomArgument, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource MonoBox}"
+                     ToolTip="Another argument for the selected control: a value, +1000, or a placeholder like {deg}" />
+          </DockPanel>
+          <ListBox ItemsSource="{Binding Results}" SelectedItem="{Binding Selected}" VirtualizingPanel.IsVirtualizing="True"
+                   VirtualizingPanel.ScrollUnit="Pixel">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <StackPanel>
+                  <DockPanel>
+                    <TextBlock DockPanel.Dock="Right" Text="{Binding LiveValue}" Foreground="{StaticResource Good}" Style="{StaticResource Mono}"
+                               Visibility="{Binding LiveValue, Converter={StaticResource NotEmpty}}" ToolTip="Live value from DCS" />
+                    <TextBlock Text="{Binding Identifier}" Style="{StaticResource Mono}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                  </DockPanel>
+                  <TextBlock Style="{StaticResource MutedText}">
+                    <Run Text="{Binding Category, Mode=OneWay}" /> · <Run Text="{Binding Description, Mode=OneWay}" />
+                  </TextBlock>
+                  <ItemsControl ItemsSource="{Binding Arguments}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <WrapPanel />
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Button Content="{Binding Label}" Command="{Binding Pick}" Style="{StaticResource Arg}" ToolTip="{Binding ToolTip}" />
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </Border>
+    </Grid>
+
+    <!-- Log and test panel -->
+    <Border Grid.Row="2" Style="{StaticResource Card}" Margin="0,14,0,0" Height="230" Padding="12"
+            Visibility="{Binding ShowLog, Converter={StaticResource Visible}}">
+      <DockPanel>
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+          <TextBlock DockPanel.Dock="Left" Text="LOG" Style="{StaticResource Heading}" VerticalAlignment="Center" Margin="0,0,14,0" />
+          <Button DockPanel.Dock="Right" Content="Clear" Style="{StaticResource Small}" Command="{Binding ClearLogCommand}" Margin="6,0,0,0" />
+          <Button DockPanel.Dock="Right" Content="Test selected" Style="{StaticResource Small}" Command="{Binding TestSelectedCommand}" Margin="6,0,0,0"
+                  ToolTip="Run the selected command's first phrase through the matcher" />
+          <Button DockPanel.Dock="Right" Content="Test" Style="{StaticResource Small}" Command="{Binding TestCommand}" Margin="6,0,0,0" />
+          <CheckBox DockPanel.Dock="Right" Content="Dry run" IsChecked="{Binding DryRun}" Margin="10,0,0,0"
+                    ToolTip="List the steps without sending anything to DCS" />
+          <TextBox Text="{Binding TestText, UpdateSourceTrigger=PropertyChanged}" KeyDown="TestBox_KeyDown"
+                   ToolTip="Type a phrase as if spoken, then Enter" />
+        </DockPanel>
+        <ListBox x:Name="LogList" ItemsSource="{Binding Log.Entries}" ItemContainerStyle="{StaticResource LogItem}" SelectionMode="Extended"
+                 VirtualizingPanel.IsVirtualizing="True" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 ToolTip="Select lines (Shift/Ctrl+click, Ctrl+A) and press Ctrl+C, or right-click to copy">
+          <ListBox.CommandBindings>
+            <CommandBinding Command="ApplicationCommands.Copy" Executed="LogCopy_Executed" />
+          </ListBox.CommandBindings>
+          <ListBox.ContextMenu>
+            <ContextMenu>
+              <MenuItem Header="Copy" Command="ApplicationCommands.Copy" InputGestureText="Ctrl+C" />
+              <MenuItem Header="Copy all" Click="LogCopyAll_Click" />
+              <MenuItem Header="Select all" Command="ApplicationCommands.SelectAll" InputGestureText="Ctrl+A" />
+            </ContextMenu>
+          </ListBox.ContextMenu>
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Left" Text="{Binding TimeText}" Style="{StaticResource Mono}" Foreground="{StaticResource Muted}" Width="70" />
+                <TextBlock DockPanel.Dock="Left" Text="{Binding Tag}" Style="{StaticResource Mono}" Width="70"
+                           Foreground="{Binding Tag, Converter={StaticResource TagBrush}}" />
+                <TextBlock Text="{Binding Message}" Style="{StaticResource Mono}" TextWrapping="Wrap" />
+              </DockPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+    </Border>
+  </Grid>
+</Window>

@@ -1,0 +1,31 @@
+slug,lang,phrase
+gear_up,en,Gear up
+gear_down,en,Gear down
+flaps_up,en,Flaps up
+flaps_down,en,Flaps down
+canopy_close,en,Close canopy
+master_arm_on,en,Master arm on
+select_maverick,en,Select Maverick
+select_aim_nine,en,Select AIM nine
+tacan_channel_73,en,TACAN channel 73
+radio_251,en,Set radio to 251 decimal 000
+request_rearm,en,Request rearm and refuel
+inbound_for_landing,en,Inbound for landing
+tower_request_takeoff,en,Tower request takeoff
+awacs_bogey_dope,en,AWACS bogey dope
+texaco_precontact,en,Texaco precontact
+wingman_engage,en,Two engage bandits
+shkval_on,en,Shkval on
+nav_lights_on,en,Navigation lights on
+cage_uncage,en,Cage uncage
+datalink_send,en,Datalink send
+fahrwerk_ein,de,Fahrwerk einfahren
+fahrwerk_aus,de,Fahrwerk ausfahren
+landeklappen_aus,de,Landeklappen ausfahren
+kanzel_schliessen,de,Kanzel schließen
+hauptschalter_waffen,de,Hauptschalter Waffen ein
+funk_kanal_5,de,Funk Kanal 5
+tanken_anfordern,de,Betanken anfordern
+landeanflug,de,Im Landeanflug
+lichter_an,de,Positionslichter an
+triebwerk_starten,de,Triebwerk starten

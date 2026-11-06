@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>DcsVoiceCom</RootNamespace>
+    <!-- The needle engine binding passes pointers to native code. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="DcsVoiceCom.Core.Tests" />
+  </ItemGroup>
+</Project>

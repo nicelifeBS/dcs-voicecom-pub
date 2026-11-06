@@ -1,0 +1,11 @@
+<Window x:Class="DcsVoiceCom.App.MessageWindow" UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="ClearType"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="440" SizeToContent="Height" WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        ShowInTaskbar="False" Style="{StaticResource {x:Type Window}}">
+  <StackPanel Margin="20">
+    <TextBlock x:Name="MessageText" TextWrapping="Wrap" />
+    <StackPanel x:Name="Buttons" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0" />
+  </StackPanel>
+</Window>

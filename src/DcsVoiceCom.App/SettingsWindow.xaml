@@ -1,0 +1,124 @@
+<Window x:Class="DcsVoiceCom.App.SettingsWindow" UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="ClearType"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:DcsVoiceCom.App"
+        Title="Settings" Width="640" Height="760" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Style="{StaticResource {x:Type Window}}">
+  <Window.Resources>
+    <local:NotEmptyToVisibility x:Key="NotEmpty" />
+    <local:BoolToVisibility x:Key="Visible" />
+  </Window.Resources>
+  <DockPanel Margin="20">
+    <DockPanel DockPanel.Dock="Bottom" Margin="0,14,0,0">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+        <Button Content="Cancel" IsCancel="True" MinWidth="90" Margin="0,0,8,0" />
+        <Button Content="Save" IsDefault="True" Style="{StaticResource Primary}" MinWidth="90" Click="Save_Click" />
+      </StackPanel>
+      <TextBlock Text="{Binding Error}" Foreground="{StaticResource Bad}" TextWrapping="Wrap" VerticalAlignment="Center"
+                 Visibility="{Binding Error, Converter={StaticResource NotEmpty}}" />
+      <TextBlock Text="Saving restarts the voice engine." Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+    </DockPanel>
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <StackPanel>
+        <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+          <StackPanel>
+            <TextBlock Text="PUSH-TO-TALK" Style="{StaticResource Heading}" />
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Content="Clear" Command="{Binding ClearBindingCommand}" Margin="8,0,0,0" />
+              <Button DockPanel.Dock="Right" Content="Rebind" Command="{Binding BindCommand}" Margin="8,0,0,0" />
+              <TextBlock Text="{Binding PttText}" VerticalAlignment="Center" FontWeight="SemiBold" />
+            </DockPanel>
+            <TextBlock Text="{Binding BindStatus}" Style="{StaticResource MutedText}" Margin="0,6,0,0" />
+            <TextBlock Text="One joystick button activates listening for every airframe profile." Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+          </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+          <StackPanel>
+            <TextBlock Text="SPEECH" Style="{StaticResource Heading}" />
+            <Label Content="Microphone" />
+            <TextBlock Margin="0,0,0,6" TextWrapping="Wrap">
+              <Run Text="Using:" Foreground="{StaticResource Muted}" />
+              <Run Text="{Binding MicrophoneText, Mode=OneWay}" Foreground="{StaticResource Text}" />
+            </TextBlock>
+            <Grid>
+              <TextBox x:Name="MicSearch" Text="{Binding MicrophoneSearch, UpdateSourceTrigger=PropertyChanged}" ToolTip="Type part of a name to narrow the list" />
+              <TextBlock Text="Search microphones…" Foreground="{StaticResource Muted}" Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                         Visibility="{Binding Text.IsEmpty, ElementName=MicSearch, Converter={StaticResource Visible}}" />
+            </Grid>
+            <ListBox ItemsSource="{Binding Microphones}" SelectedItem="{Binding SelectedMicrophone}" MaxHeight="170" Margin="0,6,0,0"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding}" TextWrapping="Wrap" />
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <TextBlock Text="Search above, then pick one. The list shows the microphones Windows has active." Style="{StaticResource MutedText}" Margin="0,4,0,0" TextWrapping="Wrap" />
+            <Label Content="Language" Margin="0,10,0,0" />
+            <ComboBox ItemsSource="{x:Static local:SettingsWindow.Languages}" SelectedItem="{Binding Language}" Width="120" HorizontalAlignment="Left" />
+            <Label Content="Whistle model folder" Margin="0,10,0,0" />
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Content="Browse…" Click="BrowseModel_Click" Margin="8,0,0,0" />
+              <TextBox Text="{Binding ModelDirectory, UpdateSourceTrigger=PropertyChanged}" />
+            </DockPanel>
+            <TextBlock Text="Empty: downloaded once to %LOCALAPPDATA%\DcsVoiceCom\model, or found in WhistleAttack's model\cactus-needle beside the checkout. The log shows which one." Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+          </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+          <StackPanel>
+            <TextBlock Text="DCS-BIOS CONNECTION" Style="{StaticResource Heading}" />
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="120" />
+              </Grid.ColumnDefinitions>
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+              </Grid.RowDefinitions>
+              <StackPanel>
+                <Label Content="Command host (send)" />
+                <TextBox Text="{Binding InputHost, UpdateSourceTrigger=PropertyChanged}" />
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <Label Content="Command port" />
+                <TextBox Text="{Binding InputPort, UpdateSourceTrigger=PropertyChanged}" />
+              </StackPanel>
+              <StackPanel Grid.Row="1" Margin="0,10,0,0">
+                <Label Content="Export multicast group (receive)" />
+                <TextBox Text="{Binding ExportGroup, UpdateSourceTrigger=PropertyChanged}" />
+              </StackPanel>
+              <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,10,0,0">
+                <Label Content="Export port" />
+                <TextBox Text="{Binding ExportPort, UpdateSourceTrigger=PropertyChanged}" />
+              </StackPanel>
+            </Grid>
+            <Label Content="DCS-BIOS definitions (doc\json)" Margin="0,10,0,0" />
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Content="Browse…" Click="BrowseJson_Click" Margin="8,0,0,0" />
+              <TextBox Text="{Binding DcsBiosJsonPath, UpdateSourceTrigger=PropertyChanged}" />
+            </DockPanel>
+          </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource Card}">
+          <StackPanel>
+            <TextBlock Text="PROFILES AND KEYS" Style="{StaticResource Heading}" />
+            <Label Content="Profiles folder" />
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Content="Browse…" Click="BrowseProfiles_Click" Margin="8,0,0,0" />
+              <TextBox Text="{Binding ProfilesPath, UpdateSourceTrigger=PropertyChanged}" />
+            </DockPanel>
+            <Label Content="Key hold (ms)" Margin="0,10,0,0" />
+            <TextBox Text="{Binding KeyHoldMs, UpdateSourceTrigger=PropertyChanged}" Width="120" HorizontalAlignment="Left" />
+            <CheckBox Content="Audio cues (accepted, no match, refused)" IsChecked="{Binding CuesEnabled}" Margin="0,10,0,0" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+  </DockPanel>
+</Window>
