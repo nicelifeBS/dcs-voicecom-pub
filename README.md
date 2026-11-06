@@ -55,7 +55,7 @@ dist\DcsVoiceCom\DcsVoiceCom.exe
 The Whistle model and engine are bundled, so speech works offline. Full steps, settings and troubleshooting:
 [docs/windows-setup.md](docs/windows-setup.md). A tour of the window: [docs/app.md](docs/app.md).
 
-Note: Old screenshot needs to be updated.
+Note: Old screenshot needs to be updated
 ![Main window with the F-14BU profile and the "gear up" command selected](docs/images/main-window.png)
 
 ## Still missing
