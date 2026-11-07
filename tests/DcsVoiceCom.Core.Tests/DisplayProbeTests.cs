@@ -234,6 +234,46 @@ public class DisplayProbeTests
         Assert.Equal("05" + "3X", cockpit.Text); // all back where they started
     }
 
+    /// <summary>A dial with 16 positions: 0-9 show one digit, 10-15 two (issue #5). Padded in a fixed 2-cell field.</summary>
+    private sealed class WideDial(bool right) : Cockpit
+    {
+        public int N = 7, Other = 3;
+        public override string Text => (right ? N.ToString().PadLeft(2) : N.ToString().PadRight(2)) + $"|{Other}";
+
+        protected override void React(string control, string arg)
+        {
+            var dir = arg == "INC" ? 1 : arg == "DEC" ? -1 : 0;
+            if (control == "DIAL_A") N = (N + dir + 16) % 16;
+            else if (control == "DIAL_B") Other = (Other + dir + 10) % 10;
+        }
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Learns_a_dial_that_goes_from_one_digit_to_two(bool right)
+    {
+        var catalog = new ControlCatalog("T", [],
+        [
+            Display("RAD_DISP", "Radio", 4),
+            Input("DIAL_A", "Radio", "First dial", Step(), Set(15)),
+            Input("DIAL_B", "Radio", "Second dial", Step(), Set(9)),
+        ]);
+        var cockpit = new WideDial(right);
+        var before = cockpit.Text;
+
+        var result = await Learn(Context(catalog, cockpit), "RAD_DISP", catalog);
+
+        var a = result.Wheels.Single(w => w.Control == "DIAL_A");
+        Assert.Equal((0, 2, "0-15", WheelMode.Step), (a.At, a.Len, a.Range, a.Mode));
+        var range = DisplayLayout.RangeOf(a);
+        Assert.Equal(9, range.IndexOf(right ? " 9" : "9 "));
+        Assert.Equal(12, range.IndexOf("12"));
+        var b = result.Wheels.Single(w => w.Control == "DIAL_B");
+        Assert.Equal((3, 1, "0-9", WheelMode.Set), (b.At, b.Len, b.Range, b.Mode));
+        Assert.Equal(before, cockpit.Text);
+    }
+
     /// <summary>A scratchpad: clock cell (noise), page digit, "[" 8 entry characters "]".</summary>
     private sealed class Scratchpad(bool rightAlign = false) : Cockpit
     {

@@ -395,8 +395,9 @@ public static partial class DisplayProbe
         }
 
         private static bool SetFits(ControlDefinition control, List<string> values, (string Range, bool Flip) range) =>
-            !range.Flip && control.FindInput(InputInterface.SetState)?.MaxValue is { } max && max == values.Count - 1
-            && range.Range == $"0-{max}" && max > 2;
+            !range.Flip && control.FindInput(InputInterface.SetState)?.MaxValue is { } max && max > 2
+            && values.Count == max + 1 && range.Range == $"0-{max}"
+            && max == (int)Math.Pow(10, values.Max(v => v.Trim().Length)) - 1; // the digits are the set_state value
 
         private async Task RestoreAsync(ControlDefinition control, CancellationToken cancel)
         {
@@ -543,7 +544,7 @@ public static partial class DisplayProbe
             foreach (var item in _found.OrderByDescending(f => f.Values))
             {
                 var clash = kept.FirstOrDefault(k => item.Field.At < k.Field.At + k.Field.Len && k.Field.At < item.Field.At + item.Field.Len);
-                if (clash.Field != null) result.Dropped.Add(new ProbeDropped(item.Control.Identifier, $"changes the same characters as {clash.Control.Identifier}"));
+                if (clash.Field != null) result.Dropped.Add(new ProbeDropped(item.Control.Identifier, $"changes the same characters as {clash.Control.Identifier}; a display that shifts its text when a wheel gets wider (9 to 10) can't be learned"));
                 else kept.Add(item);
             }
             result.Wheels.AddRange(kept.Select(k => k.Field).OrderBy(f => f.At));
