@@ -42,6 +42,11 @@ public partial class MainWindow : Window
 
     private void Settings_Click(object sender, RoutedEventArgs e) => OpenSettings?.Invoke();
 
+    /// <summary>Opens (or brings forward) the Help window; set by the app.</summary>
+    public Action? OpenHelp { get; set; }
+
+    private void Help_Executed(object sender, ExecutedRoutedEventArgs e) => OpenHelp?.Invoke();
+
     /// <summary>Ctrl+C or Copy in the log: the selected lines, or all of them when none is selected.</summary>
     private void LogCopy_Executed(object sender, ExecutedRoutedEventArgs e) =>
         CopyText(_vm.Log.Format(LogList.SelectedItems.OfType<LogEntry>()));

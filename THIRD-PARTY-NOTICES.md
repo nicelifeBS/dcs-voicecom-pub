@@ -8,6 +8,7 @@ DCS VoiceCom uses the following components. Their licence texts must ship with a
 | Cactus needle engine (`libneedle.dll`, Cactus-Compute/needle3 on Hugging Face) | Apache-2.0 | Runs the Whistle model in process. Downloaded on first start from the cactus-needle 3.3.3 wheel, SHA-256 pinned. Ship the licence text. No NOTICE file is published. |
 | NAudio (NAudio.Wasapi, NAudio.Core) | MIT | Microphone capture (WASAPI) and resampling to 16 kHz. Ship the copyright notice. |
 | Vortice.DirectInput | MIT | Push-to-talk from HOTAS buttons |
+| Markdig | BSD-2-Clause | Reads the Markdown pages of the in-app help. Ship the copyright notice and licence text. |
 
 ## Not bundled
 

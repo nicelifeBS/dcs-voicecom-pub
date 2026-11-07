@@ -1,0 +1,662 @@
+{
+ "Gear": {
+  "PLT_GEAR_LEVER": {
+   "category": "Gear",
+   "control_type": "selector",
+   "description": "PILOT Landing Gear Lever",
+   "identifier": "PLT_GEAR_LEVER",
+   "inputs": [
+    {
+     "interface": "fixed_step",
+     "description": "switch to previous or next state"
+    },
+    {
+     "interface": "set_state",
+     "max_value": 1,
+     "description": "set position"
+    },
+    {
+     "interface": "action",
+     "argument": "TOGGLE",
+     "description": "toggle switch state"
+    }
+   ],
+   "outputs": [
+    {
+     "type": "integer",
+     "address": 4610,
+     "mask": 1,
+     "shift_by": 0,
+     "max_value": 1,
+     "suffix": "",
+     "description": "selector position"
+    }
+   ],
+   "positions": [
+    "UP",
+    "DOWN"
+   ]
+  },
+  "PLT_HOOK_LEVER": {
+   "category": "Gear",
+   "control_type": "selector",
+   "description": "PILOT Hook Extension Handle",
+   "identifier": "PLT_HOOK_LEVER",
+   "inputs": [
+    {
+     "interface": "fixed_step",
+     "description": "switch to previous or next state"
+    },
+    {
+     "interface": "set_state",
+     "max_value": 1,
+     "description": "set position"
+    },
+    {
+     "interface": "action",
+     "argument": "TOGGLE",
+     "description": "toggle switch state"
+    }
+   ],
+   "outputs": [
+    {
+     "type": "integer",
+     "address": 4612,
+     "mask": 1,
+     "shift_by": 0,
+     "max_value": 1,
+     "suffix": "",
+     "description": "selector position"
+    }
+   ],
+   "positions": [
+    "UP",
+    "DOWN"
+   ]
+  },
+  "PLT_LAUNCHBAR_ABORT": {
+   "category": "Gear",
+   "control_type": "selector",
+   "description": "PILOT Launch Bar Abort",
+   "identifier": "PLT_LAUNCHBAR_ABORT",
+   "inputs": [
+    {
+     "interface": "set_state",
+     "max_value": 1,
+     "description": "set position"
+    }
+   ],
+   "outputs": [
+    {
+     "type": "integer",
+     "address": 4614,
+     "mask": 1,
+     "shift_by": 0,
+     "max_value": 1,
+     "suffix": "",
+     "description": "selector position"
+    }
+   ]
+  },
+  "PLT_PARK_BRAKE": {
+   "category": "Gear",
+   "control_type": "selector",
+   "description": "PILOT Parking Brake Handle",
+   "identifier": "PLT_PARK_BRAKE",
+   "inputs": [
+    {
+     "interface": "fixed_step",
+     "description": "switch to previous or next state"
+    },
+    {
+     "interface": "set_state",
+     "max_value": 1,
+     "description": "set position"
+    },
+    {
+     "interface": "action",
+     "argument": "TOGGLE",
+     "description": "toggle switch state"
+    }
+   ],
+   "outputs": [
+    {
+     "type": "integer",
+     "address": 4616,
+     "mask": 1,
+     "shift_by": 0,
+     "max_value": 1,
+     "suffix": "",
+     "description": "selector position"
+    }
+   ]
+  }
+ },
+ "Weapons": {
+  "PLT_MASTER_ARM_COVER": {
+   "category": "Weapons",
+   "control_type": "selector",
+   "description": "PILOT Master Arm Cover",
+   "identifier": "PLT_MASTER_ARM_COVER",
+   "inputs": [
+    {
+     "interface": "fixed_step",
+     "description": "switch to previous or next state"
+    },
+    {
+     "interface": "set_state",
+     "max_value": 1,
+     "description": "set position"
+    },
+    {
+     "interface": "action",
+     "argument": "TOGGLE",
+     "description": "toggle switch state"
+    }
+   ],
+   "outputs": [
+    {
+     "type": "integer",
+     "address": 4618,
+     "mask": 1,
+     "shift_by": 0,
+     "max_value": 1,
+     "suffix": "",
+     "description": "selector position"
+    }
+   ]
+  },
+  "PLT_MASTER_ARM_SW": {
+   "category": "Weapons",
+   "control_type": "selector",
+   "description": "PILOT Master Arm Switch",
+   "identifier": "PLT_MASTER_ARM_SW",
+   "inputs": [
+    {
+     "interface": "fixed_step",
+     "description": "switch to previous or next state"
+    },
+    {
+     "interface": "set_state",
+     "max_value": 2,
+     "description": "set position"
+    },
+    {
+     "interface": "action",
+     "argument": "TOGGLE",
+     "description": "toggle switch state"
+    }
+   ],
+   "outputs": [
+    {
+     "type": "integer",
+     "address": 4620,
+     "mask": 3,
+     "shift_by": 0,
+     "max_value": 2,
+     "suffix": "",
+     "description": "selector position"
+    }
+   ],
+   "positions": [
+    "ON",
+    "OFF",
+    "TRAINING"
+   ]
+  }
+ },
+ "Fuel": {
+  "PLT_FUEL_DUMP": {
+   "category": "Fuel",
+   "control_type": "selector",
+   "description": "PILOT Fuel Dump",
+   "identifier": "PLT_FUEL_DUMP",
+   "inputs": [
+    {
+     "interface": "fixed_step",
+     "description": "switch to previous or next state"
+    },
+    {
+     "interface": "set_state",
+     "max_value": 1,
+     "description": "set position"
+    },
+    {
+     "interface": "action",
+     "argument": "TOGGLE",
+     "description": "toggle switch state"
+    }
+   ],
+   "outputs": [
+    {
+     "type": "integer",
+     "address": 4622,
+     "mask": 1,
+     "shift_by": 0,
+     "max_value": 1,
+     "suffix": "",
+     "description": "selector position"
+    }
+   ]
+  },
+  "PLT_FUEL_FEED": {
+   "category": "Fuel",
+   "control_type": "selector",
+   "description": "PILOT Fuel Feed",
+   "identifier": "PLT_FUEL_FEED",
+   "inputs": [
+    {
+     "interface": "fixed_step",
+     "description": "switch to previous or next state"
+    },
+    {
+     "interface": "set_state",
+     "max_value": 2,
+     "description": "set position"
+    },
+    {
+     "interface": "action",
+     "argument": "TOGGLE",
+     "description": "toggle switch state"
+    }
+   ],
+   "outputs": [
+    {
+     "type": "integer",
+     "address": 4624,
+     "mask": 3,
+     "shift_by": 0,
+     "max_value": 2,
+     "suffix": "",
+     "description": "selector position"
+    }
+   ],
+   "positions": [
+    "AFT",
+    "NORM",
+    "FWD"
+   ]
+  }
+ },
+ "TACAN": {
+  "PLT_TACAN_MODE": {
+   "category": "TACAN",
+   "control_type": "selector",
+   "description": "PILOT TACAN Mode",
+   "identifier": "PLT_TACAN_MODE",
+   "inputs": [
+    {
+     "interface": "fixed_step",
+     "description": "switch to previous or next state"
+    },
+    {
+     "interface": "set_state",
+     "max_value": 4,
+     "description": "set position"
+    },
+    {
+     "interface": "action",
+     "argument": "TOGGLE",
+     "description": "toggle switch state"
+    }
+   ],
+   "outputs": [
+    {
+     "type": "integer",
+     "address": 4626,
+     "mask": 7,
+     "shift_by": 0,
+     "max_value": 4,
+     "suffix": "",
+     "description": "selector position"
+    }
+   ],
+   "positions": [
+    "OFF",
+    "REC",
+    "T/R",
+    "A/A REC",
+    "A/A T/R"
+   ]
+  },
+  "PLT_TACAN_BAND": {
+   "category": "TACAN",
+   "control_type": "selector",
+   "description": "PILOT TACAN Band",
+   "identifier": "PLT_TACAN_BAND",
+   "inputs": [
+    {
+     "interface": "fixed_step",
+     "description": "switch to previous or next state"
+    },
+    {
+     "interface": "set_state",
+     "max_value": 1,
+     "description": "set position"
+    },
+    {
+     "interface": "action",
+     "argument": "TOGGLE",
+     "description": "toggle switch state"
+    }
+   ],
+   "outputs": [
+    {
+     "type": "integer",
+     "address": 4628,
+     "mask": 1,
+     "shift_by": 0,
+     "max_value": 1,
+     "suffix": "",
+     "description": "selector position"
+    }
+   ],
+   "positions": [
+    "X",
+    "Y"
+   ]
+  },
+  "PLT_TACAN_DIAL_TENS": {
+   "category": "TACAN",
+   "control_type": "selector",
+   "description": "PILOT TACAN Channel Wheel (Tens)",
+   "identifier": "PLT_TACAN_DIAL_TENS",
+   "inputs": [
+    {
+     "interface": "fixed_step",
+     "description": "switch to previous or next state"
+    },
+    {
+     "interface": "set_state",
+     "max_value": 12,
+     "description": "set position"
+    }
+   ],
+   "outputs": [
+    {
+     "type": "integer",
+     "address": 5122,
+     "mask": 255,
+     "shift_by": 0,
+     "max_value": 12,
+     "suffix": "",
+     "description": "selector position"
+    }
+   ]
+  },
+  "PLT_TACAN_DIAL_ONES": {
+   "category": "TACAN",
+   "control_type": "selector",
+   "description": "PILOT TACAN Channel Wheel (Ones)",
+   "identifier": "PLT_TACAN_DIAL_ONES",
+   "inputs": [
+    {
+     "interface": "fixed_step",
+     "description": "switch to previous or next state"
+    },
+    {
+     "interface": "set_state",
+     "max_value": 9,
+     "description": "set position"
+    }
+   ],
+   "outputs": [
+    {
+     "type": "integer",
+     "address": 5124,
+     "mask": 255,
+     "shift_by": 0,
+     "max_value": 9,
+     "suffix": "",
+     "description": "selector position"
+    }
+   ]
+  },
+  "PLT_TACAN_CHANNEL": {
+   "category": "TACAN",
+   "control_type": "display",
+   "description": "PILOT TACAN Channel",
+   "identifier": "PLT_TACAN_CHANNEL",
+   "inputs": [],
+   "outputs": [
+    {
+     "type": "string",
+     "address": 5376,
+     "max_length": 4,
+     "suffix": "",
+     "description": "text"
+    }
+   ]
+  }
+ },
+ "UHF ARC-159": {
+  "PLT_UHF1_110_DIAL": {
+   "category": "UHF ARC-159",
+   "control_type": "selector",
+   "description": "PILOT UHF ARC-159 100MHz & 10MHz Dial",
+   "identifier": "PLT_UHF1_110_DIAL",
+   "inputs": [
+    {
+     "interface": "fixed_step",
+     "description": "switch to previous or next state"
+    },
+    {
+     "interface": "set_state",
+     "max_value": 2,
+     "description": "set position"
+    }
+   ],
+   "outputs": [
+    {
+     "type": "integer",
+     "address": 4630,
+     "mask": 255,
+     "shift_by": 0,
+     "max_value": 2,
+     "suffix": "",
+     "description": "selector position"
+    }
+   ]
+  },
+  "PLT_UHF1_1_DIAL": {
+   "category": "UHF ARC-159",
+   "control_type": "selector",
+   "description": "PILOT UHF ARC-159 1MHz Dial",
+   "identifier": "PLT_UHF1_1_DIAL",
+   "inputs": [
+    {
+     "interface": "fixed_step",
+     "description": "switch to previous or next state"
+    },
+    {
+     "interface": "set_state",
+     "max_value": 2,
+     "description": "set position"
+    }
+   ],
+   "outputs": [
+    {
+     "type": "integer",
+     "address": 4632,
+     "mask": 255,
+     "shift_by": 0,
+     "max_value": 2,
+     "suffix": "",
+     "description": "selector position"
+    }
+   ]
+  },
+  "PLT_UHF1_01_DIAL": {
+   "category": "UHF ARC-159",
+   "control_type": "selector",
+   "description": "PILOT UHF ARC-159 0.1MHz Dial",
+   "identifier": "PLT_UHF1_01_DIAL",
+   "inputs": [
+    {
+     "interface": "fixed_step",
+     "description": "switch to previous or next state"
+    },
+    {
+     "interface": "set_state",
+     "max_value": 2,
+     "description": "set position"
+    }
+   ],
+   "outputs": [
+    {
+     "type": "integer",
+     "address": 4634,
+     "mask": 255,
+     "shift_by": 0,
+     "max_value": 2,
+     "suffix": "",
+     "description": "selector position"
+    }
+   ]
+  },
+  "PLT_UHF1_025_DIAL": {
+   "category": "UHF ARC-159",
+   "control_type": "selector",
+   "description": "PILOT UHF ARC-159 0.025MHz Dial",
+   "identifier": "PLT_UHF1_025_DIAL",
+   "inputs": [
+    {
+     "interface": "fixed_step",
+     "description": "switch to previous or next state"
+    },
+    {
+     "interface": "set_state",
+     "max_value": 2,
+     "description": "set position"
+    }
+   ],
+   "outputs": [
+    {
+     "type": "integer",
+     "address": 4636,
+     "mask": 255,
+     "shift_by": 0,
+     "max_value": 2,
+     "suffix": "",
+     "description": "selector position"
+    }
+   ]
+  },
+  "PLT_UHF_DISP": {
+   "category": "UHF ARC-159",
+   "control_type": "display",
+   "description": "PILOT UHF ARC-159 Frequency Display",
+   "identifier": "PLT_UHF_DISP",
+   "inputs": [],
+   "outputs": [
+    {
+     "type": "string",
+     "address": 4638,
+     "max_length": 7,
+     "suffix": "",
+     "description": "text"
+    }
+   ]
+  },
+  "PLT_UHF1_FUNC": {
+   "category": "UHF ARC-159",
+   "control_type": "selector",
+   "description": "PILOT UHF ARC-159 Function Selector",
+   "identifier": "PLT_UHF1_FUNC",
+   "inputs": [
+    {
+     "interface": "fixed_step",
+     "description": "switch to previous or next state"
+    },
+    {
+     "interface": "set_state",
+     "max_value": 3,
+     "description": "set position"
+    },
+    {
+     "interface": "action",
+     "argument": "TOGGLE",
+     "description": "toggle switch state"
+    }
+   ],
+   "outputs": [
+    {
+     "type": "integer",
+     "address": 4640,
+     "mask": 3,
+     "shift_by": 0,
+     "max_value": 3,
+     "suffix": "",
+     "description": "selector position"
+    }
+   ],
+   "positions": [
+    "OFF",
+    "MAIN",
+    "BOTH",
+    "ADF"
+   ]
+  },
+  "PLT_UHF1_FREQ_MODE": {
+   "category": "UHF ARC-159",
+   "control_type": "selector",
+   "description": "PILOT UHF ARC-159 Freq Mode",
+   "identifier": "PLT_UHF1_FREQ_MODE",
+   "inputs": [
+    {
+     "interface": "fixed_step",
+     "description": "switch to previous or next state"
+    },
+    {
+     "interface": "set_state",
+     "max_value": 2,
+     "description": "set position"
+    }
+   ],
+   "outputs": [
+    {
+     "type": "integer",
+     "address": 5126,
+     "mask": 255,
+     "shift_by": 0,
+     "max_value": 2,
+     "suffix": "",
+     "description": "selector position"
+    }
+   ],
+   "positions": [
+    "PRESET",
+    "MANUAL",
+    "GUARD"
+   ]
+  },
+  "PLT_UHF1_PRESETS": {
+   "category": "UHF ARC-159",
+   "control_type": "selector",
+   "description": "PILOT UHF ARC-159 Preset Channel Selector",
+   "identifier": "PLT_UHF1_PRESETS",
+   "inputs": [
+    {
+     "interface": "fixed_step",
+     "description": "switch to previous or next state"
+    },
+    {
+     "interface": "set_state",
+     "max_value": 19,
+     "description": "set position"
+    }
+   ],
+   "outputs": [
+    {
+     "type": "integer",
+     "address": 5128,
+     "mask": 255,
+     "shift_by": 0,
+     "max_value": 19,
+     "suffix": "",
+     "description": "selector position"
+    }
+   ]
+  }
+ }
+}

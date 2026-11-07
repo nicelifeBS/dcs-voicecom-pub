@@ -15,6 +15,9 @@
     <KeyBinding Key="N" Modifiers="Control" Command="{Binding NewCommandCommand}" />
     <KeyBinding Key="F5" Command="{Binding ReloadCommand}" />
   </Window.InputBindings>
+  <Window.CommandBindings>
+    <CommandBinding Command="{x:Static ApplicationCommands.Help}" Executed="Help_Executed" />
+  </Window.CommandBindings>
 
   <Grid Margin="16">
     <Grid.RowDefinitions>
@@ -48,6 +51,7 @@
         <TextBlock Text="{Binding SpeechStatus}" />
       </Border>
 
+      <Button DockPanel.Dock="Right" Content="Help" Command="{x:Static ApplicationCommands.Help}" ToolTip="Help (F1)" Margin="8,0,0,0" />
       <Button DockPanel.Dock="Right" Content="Settings" Click="Settings_Click" Margin="8,0,0,0" />
       <ToggleButton DockPanel.Dock="Right" Content="Log" IsChecked="{Binding ShowLog}" Margin="8,0,0,0" />
       <Button DockPanel.Dock="Right" Content="Save" Style="{StaticResource Primary}" Command="{Binding SaveCommand}"

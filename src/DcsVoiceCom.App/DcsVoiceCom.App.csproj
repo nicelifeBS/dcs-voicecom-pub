@@ -23,6 +23,9 @@
   <ItemGroup>
     <Resource Include="Assets\app.ico" />
     <EmbeddedResource Include="Assets\app.ico" LogicalName="app.ico" />
+    <!-- The help pages and their screenshots, from docs/help, read by HelpContent. -->
+    <EmbeddedResource Include="..\..\docs\help\**\*.md;..\..\docs\help\**\*.png" Link="help\%(RecursiveDir)%(Filename)%(Extension)"
+                      LogicalName="help/%(RecursiveDir)%(Filename)%(Extension)" />
     <None Include="..\..\assets\cues\*.wav" Link="cues\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <!-- The bundled Whistle model and engine (Windows files), so the app needs no download. -->
     <None Include="..\..\model\cactus-needle\**" Exclude="..\..\model\cactus-needle\**\*.so"

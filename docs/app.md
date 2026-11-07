@@ -1,5 +1,8 @@
 # The app
 
+The app has its own help: click **Help** in the top bar or press F1. Its pages are in [docs/help](help/), and
+they are the user guide. This page is a short tour for developers.
+
 The window follows the [UI mockup](https://claude.ai/artifact/Mpfk1gufrjqJuZPS88tqmr).
 
 ![Main window with the F-14BU profile and the "gear up" command selected](images/main-window.png)
@@ -10,7 +13,7 @@ The screenshots were taken under Wine (see `../.claude/skills/run-dcs-voicecom`)
 stand-ins, and DCS, DCS-BIOS definitions and speech are offline.
 
 - **Top bar:** push-to-talk binding, Listening/Idle, DCS-BIOS and speech status, profile override (Auto or a
-  pinned profile), Save (Ctrl+S), Log, Settings.
+  pinned profile), Save (Ctrl+S), Log, Settings, Help (F1).
 - **Airframe profiles:** one per `_ACFT_NAME`, plus `common` for all aircraft; the active one has a green dot.
   + New profile offers the aircraft DCS-BIOS knows, the one you are flying first. Threshold, critical threshold and
   keywords sit below the list.
@@ -39,4 +42,7 @@ stand-ins, and DCS, DCS-BIOS definitions and speech are offline.
   and press Enter (or *Test selected*); *Dry run* lists the steps without sending them.
 - **Settings:** push-to-talk rebind, microphone, language, Whistle model folder, DCS-BIOS ports and
   definitions folder, profiles folder, key hold, cues. Saving restarts the voice engine.
+- **Help:** the pages in `docs/help`, built into the exe: topics in groups, full-text search, links between pages,
+  screenshots (click one to see it full size). It stays open beside the main window and keeps the last topic until
+  the app quits.
 - **Tray icon:** minimizing hides the window to the tray; its menu pins a profile or returns to Auto, and quits.

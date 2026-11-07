@@ -24,6 +24,8 @@ public partial class App : Application
     private MainViewModel? _vm;
     private MainWindow? _window;
     private TrayIcon? _tray;
+    private HelpWindow? _help;
+    private HelpViewModel? _helpModel;
     private VoiceComRuntime? _runtime;
     private bool _quitting;
 
@@ -88,7 +90,7 @@ public partial class App : Application
         _vm.ProfileOverrideChanged += pinned => SaveSettings(_settings with { ProfileOverride = pinned });
         _vm.Log.Add("INFO", $"Settings: {AppSettings.DefaultPath}");
 
-        _window = new MainWindow(_vm) { OpenSettings = () => _ = OpenSettingsAsync() };
+        _window = new MainWindow(_vm) { OpenSettings = () => _ = OpenSettingsAsync(), OpenHelp = OpenHelp };
         _window.StateChanged += (_, _) =>
         {
             if (_window.WindowState == WindowState.Minimized) _window.Hide(); // to the tray
@@ -135,6 +137,22 @@ public partial class App : Application
         {
             _vm?.Log.Add("ERROR", $"Stopping: {ex.Message}");
         }
+    }
+
+    /// <summary>Shows the Help window, or brings it forward. The topic shown last is kept until the app quits.</summary>
+    private void OpenHelp()
+    {
+        if (_window is null) return;
+        if (_help is { } open)
+        {
+            if (open.WindowState == WindowState.Minimized) open.WindowState = WindowState.Normal;
+            open.Activate();
+            return;
+        }
+        _helpModel ??= new HelpViewModel(HelpContent.Pages(), HelpContent.Version);
+        _help = new HelpWindow(_helpModel) { Owner = _window };
+        _help.Closed += (_, _) => _help = null;
+        _help.Show();
     }
 
     private async Task OpenSettingsAsync()
