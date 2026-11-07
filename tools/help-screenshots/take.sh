@@ -36,7 +36,8 @@ marker() {
 # crop IN OUT x y w h
 crop() { convert "$1" -crop "$5x$6+$3+$4" +repage "$2"; }
 
-# A shot taken while Wine repaints can come out black: stop instead of committing it.
+# A shot taken while Wine repaints can come out black: stop instead of committing it. Run it on the raw shot,
+# before the markers add colours, and again on each crop.
 check() {
   local colors; colors=$(identify -format %k "$1")
   if ((colors < 16)); then echo "blank screenshot: $1 ($colors colours); run again" >&2; exit 1; fi
@@ -64,7 +65,7 @@ grep -q Geometry "$WORK/launch.log" || { cat "$WORK/launch.log"; exit 1; }
 # Main window: F-14BU, "gear up" selected.
 "$D" click 120 104; "$D" wait 1
 "$D" click 400 180; "$D" wait 2
-"$D" ss main >/dev/null
+"$D" ss main >/dev/null; check "$SHOTS/main.png"
 marker "$SHOTS/main.png" "$OUT/main-window.png" \
   770 36 1   212 77 2   372 83 3   712 95 4   1240 93 5   42 636 6
 
@@ -72,13 +73,13 @@ marker "$SHOTS/main.png" "$OUT/main-window.png" \
 "$D" click 600 653; "$D" type "landing gear up"; "$D" key Return; "$D" wait 1
 "$D" key ctrl+a; "$D" type "cheer down"; "$D" key Return; "$D" wait 1
 "$D" key ctrl+a; "$D" type "master arm"; "$D" key Return; "$D" wait 2
-"$D" ss log >/dev/null
+"$D" ss log >/dev/null; check "$SHOTS/log.png"
 crop "$SHOTS/log.png" "$OUT/log.png" 16 620 1400 230
 
 # Editor: the UHF frequency command (a slot and an Enter value step).
 "$D" click 400 120; "$D" wait 1; "$D" type "uhf"; "$D" wait 2
 "$D" click 400 180; "$D" wait 3
-"$D" ss editor >/dev/null
+"$D" ss editor >/dev/null; check "$SHOTS/editor.png"
 crop "$SHOTS/editor.png" "$OUT/voice-line.png" 584 72 418 350
 crop "$SHOTS/editor.png" "$OUT/actions.png" 584 432 418 176
 

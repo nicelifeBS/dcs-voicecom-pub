@@ -18,7 +18,8 @@ public sealed record HelpNavItem(string Text, HelpTopic? Topic)
 /// <summary>The help window: topics in groups, full-text search, and links between topics.</summary>
 public sealed class HelpViewModel : ObservableObject
 {
-    private static readonly MarkdownPipeline s_pipeline = new MarkdownPipelineBuilder().UsePipeTables().Build();
+    /// <summary>The Markdig pipeline for help pages, shared by the search text and the rendered page.</summary>
+    public static MarkdownPipeline Pipeline { get; } = new MarkdownPipelineBuilder().UsePipeTables().Build();
 
     private string _search = "";
     private HelpTopic? _selected;
@@ -96,21 +97,25 @@ public sealed class HelpViewModel : ObservableObject
             t.Title.Contains(w, StringComparison.OrdinalIgnoreCase) || t.PlainText.Contains(w, StringComparison.OrdinalIgnoreCase)));
     }
 
+    /// <summary>Refills <see cref="Items"/>, then raises PropertyChanged for it once, so a view syncs once.</summary>
     private void Refresh()
     {
         Items.Clear();
         if (_search.Trim().Length > 0)
         {
             foreach (var topic in Find(_search)) Items.Add(new HelpNavItem(topic.Title, topic));
-            return;
         }
-        string? group = null;
-        foreach (var topic in Topics)
+        else
         {
-            if (topic.Group.Length > 0 && topic.Group != group) Items.Add(new HelpNavItem(topic.Group.ToUpperInvariant(), null));
-            group = topic.Group;
-            Items.Add(new HelpNavItem(topic.Title, topic));
+            string? group = null;
+            foreach (var topic in Topics)
+            {
+                if (topic.Group.Length > 0 && topic.Group != group) Items.Add(new HelpNavItem(topic.Group.ToUpperInvariant(), null));
+                group = topic.Group;
+                Items.Add(new HelpNavItem(topic.Title, topic));
+            }
         }
+        OnPropertyChanged(nameof(Items));
     }
 
     /// <summary>Reads the front matter (<c>title:</c>, <c>group:</c> between two <c>---</c> lines) and the body.</summary>
@@ -122,10 +127,12 @@ public sealed class HelpViewModel : ObservableObject
         var body = text.Replace("\r\n", "\n");
         if (body.StartsWith("---\n", StringComparison.Ordinal))
         {
-            var end = body.IndexOf("\n---", 3, StringComparison.Ordinal);
+            // The front matter ends at the next line that is exactly "---".
+            var lines = body.Split('\n');
+            var end = Array.FindIndex(lines, 1, l => l.TrimEnd() == "---");
             if (end > 0)
             {
-                foreach (var line in body[4..end].Split('\n'))
+                foreach (var line in lines[1..end])
                 {
                     var colon = line.IndexOf(':');
                     if (colon <= 0) continue;
@@ -134,11 +141,10 @@ public sealed class HelpViewModel : ObservableObject
                     if (key == "title") title = value;
                     else if (key == "group") group = value;
                 }
-                var next = body.IndexOf('\n', end + 4);
-                body = next < 0 ? "" : body[(next + 1)..];
+                body = string.Join('\n', lines[(end + 1)..]);
             }
         }
         body = body.TrimStart('\n');
-        return new HelpTopic(id, title, group, body, Markdig.Markdown.ToPlainText(body, s_pipeline));
+        return new HelpTopic(id, title, group, body, Markdig.Markdown.ToPlainText(body, Pipeline));
     }
 }

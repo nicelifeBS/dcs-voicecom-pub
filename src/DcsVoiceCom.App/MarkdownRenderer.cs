@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
+using DcsVoiceCom.ViewModels;
 using Markdig;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
@@ -22,7 +23,6 @@ namespace DcsVoiceCom.App;
 /// </summary>
 public sealed class MarkdownRenderer(Func<string, ImageSource?> loadImage, Action<string> openLink, Action<ImageSource, string>? openImage = null)
 {
-    private static readonly MarkdownPipeline s_pipeline = new MarkdownPipelineBuilder().UsePipeTables().Build();
     private static readonly FontFamily s_mono = new("Cascadia Mono, Consolas");
 
     public FlowDocument Render(string markdown)
@@ -37,7 +37,7 @@ public sealed class MarkdownRenderer(Func<string, ImageSource?> loadImage, Actio
             Foreground = Brush("Text"),
             Background = Brushes.Transparent,
         };
-        foreach (var block in Markdown.Parse(markdown, s_pipeline))
+        foreach (var block in Markdown.Parse(markdown, HelpViewModel.Pipeline))
             if (Block(block) is { } converted) document.Blocks.Add(converted);
         return document;
     }
@@ -97,11 +97,30 @@ public sealed class MarkdownRenderer(Func<string, ImageSource?> loadImage, Actio
     {
         var text = new TextBlock { TextWrapping = TextWrapping.Wrap, LineHeight = 20 };
         var first = true;
-        foreach (var paragraph in quote.OfType<LeafBlock>())
+        void Gap(int lines)
         {
-            if (!first) { text.Inlines.Add(new LineBreak()); text.Inlines.Add(new LineBreak()); }
+            if (!first) for (var i = 0; i < lines; i++) text.Inlines.Add(new LineBreak());
             first = false;
-            if (paragraph.Inline is not null) AddInlines(text.Inlines, paragraph.Inline);
+        }
+        foreach (var child in quote)
+        {
+            if (child is LeafBlock { Inline: { } inlines })
+            {
+                Gap(2);
+                AddInlines(text.Inlines, inlines);
+            }
+            else if (child is ListBlock list)
+            {
+                // A tip is one TextBlock, so its list is drawn as lines starting with a bullet.
+                var number = 1;
+                foreach (var item in list.OfType<ListItemBlock>())
+                {
+                    Gap(first ? 0 : 1);
+                    text.Inlines.Add(new Run(list.IsOrdered ? $"{number++}. " : "• "));
+                    foreach (var leaf in item.OfType<LeafBlock>())
+                        if (leaf.Inline is not null) AddInlines(text.Inlines, leaf.Inline);
+                }
+            }
         }
         foreach (var bold in text.Inlines.OfType<Bold>()) bold.Foreground = Brush("Accent");
         return new BlockUIContainer(new Border
@@ -140,7 +159,8 @@ public sealed class MarkdownRenderer(Func<string, ImageSource?> loadImage, Actio
         {
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             var column = 0;
-            foreach (var cell in row.OfType<MdCell>())
+            // Cells beyond the header's columns have no column of their own: drop them.
+            foreach (var cell in row.OfType<MdCell>().Take(columns))
             {
                 var text = new TextBlock { TextWrapping = column == columns - 1 ? TextWrapping.Wrap : TextWrapping.NoWrap, LineHeight = 20 };
                 if (cell.FirstOrDefault() is ParagraphBlock { Inline: { } inlines }) AddInlines(text.Inlines, inlines);
@@ -158,7 +178,7 @@ public sealed class MarkdownRenderer(Func<string, ImageSource?> loadImage, Actio
                     BorderThickness = new Thickness(0, rowIndex == 0 ? 0 : 2, 0, 0),
                 };
                 Grid.SetRow(border, rowIndex);
-                Grid.SetColumn(border, Math.Min(column, columns - 1));
+                Grid.SetColumn(border, column);
                 grid.Children.Add(border);
                 column++;
             }

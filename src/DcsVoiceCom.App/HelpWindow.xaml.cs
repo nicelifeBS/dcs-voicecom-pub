@@ -29,7 +29,6 @@ public partial class HelpWindow : Window
         Icon = AppIcon.ImageSource;
         _renderer = new MarkdownRenderer(HelpContent.Image, OpenLink, ShowImage);
         vm.PropertyChanged += OnViewModelChanged;
-        vm.Items.CollectionChanged += (_, _) => SyncList();
         Closed += (_, _) => vm.PropertyChanged -= OnViewModelChanged;
         ShowPage();
         SyncList();
@@ -46,6 +45,10 @@ public partial class HelpWindow : Window
         if (e.PropertyName == nameof(HelpViewModel.Selected))
         {
             ShowPage();
+            SyncList();
+        }
+        else if (e.PropertyName == nameof(HelpViewModel.Items))
+        {
             SyncList();
         }
     }

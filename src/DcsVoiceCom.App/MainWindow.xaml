@@ -14,7 +14,6 @@
   <Window.InputBindings>
     <KeyBinding Key="N" Modifiers="Control" Command="{Binding NewCommandCommand}" />
     <KeyBinding Key="F5" Command="{Binding ReloadCommand}" />
-    <KeyBinding Key="F1" Command="{x:Static ApplicationCommands.Help}" />
   </Window.InputBindings>
   <Window.CommandBindings>
     <CommandBinding Command="{x:Static ApplicationCommands.Help}" Executed="Help_Executed" />

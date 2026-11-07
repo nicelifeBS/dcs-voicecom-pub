@@ -25,6 +25,37 @@ public class HelpTests
     }
 
     [Fact]
+    public void Empty_front_matter_does_not_crash()
+    {
+        var topic = HelpViewModel.Parse("01-a.md", "---\n---\n# Title\n");
+
+        Assert.Equal("01-a", topic.Title);
+        Assert.Equal("# Title\n", topic.Markdown);
+    }
+
+    [Fact]
+    public void Front_matter_ends_only_at_a_line_that_is_exactly_three_dashes()
+    {
+        var topic = HelpViewModel.Parse("01-a.md", "---\ntitle: A\n----\ngroup: G\n---\nBody\n");
+
+        Assert.Equal("A", topic.Title);
+        Assert.Equal("G", topic.Group);
+        Assert.Equal("Body\n", topic.Markdown);
+    }
+
+    [Fact]
+    public void A_search_raises_one_change_for_the_list()
+    {
+        var help = Sample();
+        var changes = 0;
+        help.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(HelpViewModel.Items)) changes++; };
+
+        help.Search = "freq";
+
+        Assert.Equal(1, changes);
+    }
+
+    [Fact]
     public void Without_front_matter_the_file_name_is_the_title()
     {
         var topic = HelpViewModel.Parse("notes.md", "Just text.");
