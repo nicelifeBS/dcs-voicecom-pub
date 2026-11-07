@@ -25,6 +25,9 @@ public sealed record ProbeContext(ControlCatalog Catalog, Func<string, string?> 
     public int MaxSteps { get; init; } = 40;
 }
 
+/// <summary>A wheel that changes the display, but whose values could not be read from it; the user is asked for its range.</summary>
+public sealed record ProbeUnresolved(string Control, int At, int Len, string GuessedRange, string Reason, WheelMode Mode);
+
 /// <summary>What learning found: wheel fields, or keypad keys, plus the controls that were dropped.</summary>
 public sealed class ProbeResult
 {
@@ -33,7 +36,15 @@ public sealed class ProbeResult
     public Dictionary<string, string> Keys { get; } = [];
     public string? Clear { get; set; }
     public List<ProbeDropped> Dropped { get; } = [];
+    public List<ProbeUnresolved> Unresolved { get; } = [];
     public List<string> Notes { get; } = [];
+
+    /// <summary>
+    /// A wheel's text got wider (9 → 10) and pushed the display along: the first cell after it in the narrow layout, and
+    /// how many cells the display was shifted when learning started (0 when it was narrow). Fields are saved narrow.
+    /// </summary>
+    public int GrowEnd { get; set; } = -1;
+    public int SampleShift { get; set; }
     public bool Cancelled { get; set; }
 }
 
@@ -140,6 +151,10 @@ public static partial class DisplayProbe
         var start = Rises(min) ? min : Falls(max) ? max : 0;
         return Enumerable.Range(0, cycle.Count).Select(i => cycle[(start + i) % cycle.Count]).ToList();
     }
+
+    /// <summary>The live text as it looks with the growing wheel one cell wide: <paramref name="shift"/> cells removed after it.</summary>
+    public static string NarrowSample(string live, int growEnd, int shift) =>
+        shift <= 0 || growEnd < 0 || growEnd + shift > live.Length ? live : live.Remove(growEnd, shift).PadRight(live.Length);
 
     /// <summary>"never-touch" when a control must never be operated by a probe, else null.</summary>
     public static string? NeverTouchReason(ControlDefinition control)
@@ -371,11 +386,20 @@ public static partial class DisplayProbe
             }
             var (at, len) = span.Value;
             var values = all.Select(r => r.PadRight(at + len).Substring(at, len)).ToList();
+            var grew = Growing(all, lowReadings.Count);
+            if (grew is { } g)
+            {
+                // The dial's text gets wider and the decimal point moves (A-10C II FM: 9 then 10 on one cell).
+                (at, len, values) = (g.At, g.BaseLen, g.Values);
+                _growers.Add((control.Identifier, g.At + g.BaseLen, g.StartShift));
+                result.Notes.Add($"{control.Identifier} gets wider (its text moves the rest of the display along): fields after it are saved for its narrow state.");
+            }
             if (wrapped) values = NormalizeCycle(values);
             var range = RangeFromValues(values);
             if (range is null)
             {
-                result.Dropped.Add(new ProbeDropped(control.Identifier, "values not readable"));
+                result.Unresolved.Add(new ProbeUnresolved(control.Identifier, at, len, $"0-{Math.Max(1, all.Count - 1)}", "its values could not be read from the display",
+                    IsStep(control) ? WheelMode.Step : WheelMode.Click));
                 return;
             }
             var field = new DisplayField
@@ -385,6 +409,36 @@ public static partial class DisplayProbe
                 Mode = SetFits(control, values, range.Value) ? WheelMode.Set : IsStep(control) ? WheelMode.Step : WheelMode.Click,
             };
             _found.Add((field, control, values.Count));
+        }
+
+        private readonly List<(string Control, int End, int StartShift)> _growers = [];
+
+        /// <summary>
+        /// A wheel whose text gets wider moves the decimal point: its own cells are the ones that change while the
+        /// point stays put. Returns its first cell, narrow width, values (each as wide as it was) and the shift at the start.
+        /// </summary>
+        private (int At, int BaseLen, int StartShift, List<string> Values)? Growing(List<string> all, int startIndex)
+        {
+            var points = all.Select(r => r.IndexOf('.')).ToList();
+            if (points.Any(p => p < 0)) return null;
+            var min = points.Min();
+            if (points.Max() == min) return null;
+            var changed = new SortedSet<int>();
+            var narrow = new SortedSet<int>();
+            for (var i = 0; i + 1 < all.Count; i++)
+            {
+                if (points[i] != points[i + 1]) continue;
+                foreach (var c in ChangedCells(all[i], all[i + 1], _noisy))
+                {
+                    changed.Add(c);
+                    if (points[i] == min) narrow.Add(c);
+                }
+            }
+            if (changed.Count == 0) return null;
+            var at = changed.Min;
+            var baseLen = narrow.Count > 0 ? narrow.Max - at + 1 : 1;
+            var values = all.Select((r, i) => r.PadRight(at + baseLen + points[i] - min).Substring(at, baseLen + points[i] - min)).ToList();
+            return (at, baseLen, points[startIndex] - min, values);
         }
 
         private (int At, int Len)? SpanOf(List<string> readings)
@@ -544,8 +598,16 @@ public static partial class DisplayProbe
             foreach (var item in _found.OrderByDescending(f => f.Values))
             {
                 var clash = kept.FirstOrDefault(k => item.Field.At < k.Field.At + k.Field.Len && k.Field.At < item.Field.At + item.Field.Len);
-                if (clash.Field != null) result.Dropped.Add(new ProbeDropped(item.Control.Identifier, $"changes the same characters as {clash.Control.Identifier}; a display that shifts its text when a wheel gets wider (9 to 10) can't be learned"));
+                if (clash.Field != null) result.Dropped.Add(new ProbeDropped(item.Control.Identifier, $"changes the same characters as {clash.Control.Identifier};"));
                 else kept.Add(item);
+            }
+            if (_growers.Count > 0)
+            {
+                // Everything was seen with the growing wheel at its start value: save the layout for its narrow state.
+                var (_, end, shift) = _growers[0];
+                result.GrowEnd = end;
+                result.SampleShift = shift;
+                foreach (var (field, _, _) in kept) if (shift > 0 && field.At >= end + shift) field.At -= shift;
             }
             result.Wheels.AddRange(kept.Select(k => k.Field).OrderBy(f => f.At));
             foreach (var (control, ch, _) in _keys) result.Keys[ch] = control;

@@ -1,6 +1,7 @@
 using System.Text;
 using DcsVoiceCom.DcsBios;
 using DcsVoiceCom.Definitions;
+using DcsVoiceCom.Engine;
 using DcsVoiceCom.Profiles;
 
 namespace DcsVoiceCom.ViewModels.Tests;
@@ -586,6 +587,115 @@ public class EnterValueEditorTests
         Assert.Equal(["CDU_CLR"], vm.ToStep().Before);
         Assert.Equal("", cockpit.Scratch);
         Assert.Contains("Learned", vm.Message);
+    }
+
+    private const int FmAddress = 0x1700;
+
+    /// <summary>The A-10C II FM radio: dial 1 goes 0-15 on one cell, so the display text moves when it passes 9.</summary>
+    private sealed class FmCockpit
+    {
+        public StateBuffer Buffer { get; } = new();
+        public int Tens = 10, One, Tenth, Quarter;
+        public string Text => $"{Tens}{One}.{Tenth}{Quarter * 25:00}".PadRight(7);
+
+        public FmCockpit() => Publish();
+
+        public Task Send(string control, string arg)
+        {
+            var dir = arg == "INC" ? 1 : arg == "DEC" ? -1 : 0;
+            switch (control)
+            {
+                case "VHFFM_FREQ1": Tens = (Tens + dir + 16) % 16; break;
+                case "VHFFM_FREQ2": One = (One + dir + 10) % 10; break;
+                case "VHFFM_FREQ3": Tenth = (Tenth + dir + 10) % 10; break;
+                case "VHFFM_FREQ4": Quarter = (Quarter + dir + 4) % 4; break;
+            }
+            Publish();
+            return Task.CompletedTask;
+        }
+
+        private void Publish() => Buffer.Write(FmAddress, Encoding.ASCII.GetBytes(Text));
+    }
+
+    private static ControlDefinition FmDial(string id, int max) => new()
+    {
+        Identifier = id, Category = "VHF FM Radio",
+        Inputs = [new InputDefinition { Interface = InputInterface.FixedStep }, new InputDefinition { Interface = InputInterface.SetState, MaxValue = max }],
+    };
+
+    private static EnterValueEditorViewModel CreateFm(FmCockpit cockpit, FakeDialogs dialogs)
+    {
+        var catalog = new ControlCatalog("A-10C_2", [],
+        [
+            new ControlDefinition { Identifier = "VHF_FM_FREQUENCY_S", Category = "VHF FM Radio", Outputs = [new OutputDefinition { Type = "string", Address = FmAddress, MaxLength = 7 }] },
+            FmDial("VHFFM_FREQ1", 15), FmDial("VHFFM_FREQ2", 9), FmDial("VHFFM_FREQ3", 9), FmDial("VHFFM_FREQ4", 3),
+        ]);
+        return new EnterValueEditorViewModel(new EnterValueStep { Value = "{freq}", Display = "VHF_FM_FREQUENCY_S" }, ["fm {freq}"],
+            new EnterValueContext(catalog, () => cockpit.Buffer, cockpit.Send), dialogs) { TestDelay = TimeSpan.Zero };
+    }
+
+    [Fact]
+    public async Task Learn_handles_a_dial_that_pushes_the_display_along()
+    {
+        var cockpit = new FmCockpit(); // starts on "100.000": wide
+        var dialogs = new FakeDialogs();
+        var vm = CreateFm(cockpit, dialogs);
+
+        vm.LearnCommand.Execute(null);
+        dialogs.ConfirmAnswers.Enqueue(true);
+        await vm.StartLearnCommand.ExecuteAsync();
+
+        Assert.Equal(
+            [(0, 1, FieldKind.Wheel), (1, 1, FieldKind.Wheel), (2, 1, FieldKind.ReadOnly), (3, 1, FieldKind.Wheel), (4, 2, FieldKind.Wheel)],
+            vm.Fields.Select(f => (f.At, f.Len, f.Kind)).ToList());
+        Assert.Equal("0-15", vm.Fields[0].Range);
+        Assert.Equal("100.000", cockpit.Text);
+        var step = vm.ToStep();
+        Assert.Equal("10.000 ", step.Sample);
+        Assert.Equal(["11", "2", "5", "00"], DisplayLayout.Targets(step, "112.5", out _).Select(t => t.Text.Trim()));
+        Assert.DoesNotContain(vm.Problems, p => p.Contains("overlaps") || p.Contains("decimal point"));
+    }
+
+    [Fact]
+    public async Task Learn_asks_for_the_range_of_a_dial_it_could_not_read()
+    {
+        var cockpit = new BlankFirstCockpit();
+        var dialogs = new FakeDialogs();
+        var catalog = new ControlCatalog("T", [],
+        [
+            new ControlDefinition { Identifier = "D_DISP", Category = "Radio", Outputs = [new OutputDefinition { Type = "string", Address = FmAddress, MaxLength = 3 }] },
+            new ControlDefinition { Identifier = "D_DIAL", Category = "Radio", Inputs = [new InputDefinition { Interface = InputInterface.FixedStep }] },
+        ]);
+        var vm = new EnterValueEditorViewModel(new EnterValueStep { Value = "{n}", Display = "D_DISP" }, ["n {n}"],
+            new EnterValueContext(catalog, () => cockpit.Buffer, cockpit.Send), dialogs) { TestDelay = TimeSpan.Zero };
+
+        vm.LearnCommand.Execute(null);
+        dialogs.ConfirmAnswers.Enqueue(true);
+        dialogs.PromptAnswers.Enqueue("0-3");
+        await vm.StartLearnCommand.ExecuteAsync();
+
+        Assert.Contains(dialogs.Asked, a => a.Contains("D_DIAL") && a.Contains("range"));
+        Assert.Equal("0-3", dialogs.LastInitial);
+        var field = Assert.Single(vm.Fields, f => f.IsWheel);
+        Assert.Equal(("D_DIAL", "0-3"), (field.Control, field.Range));
+        Assert.Equal(2, cockpit.N);
+    }
+
+    private sealed class BlankFirstCockpit
+    {
+        public StateBuffer Buffer { get; } = new();
+        public int N = 2;
+
+        public BlankFirstCockpit() => Publish();
+
+        public Task Send(string control, string arg)
+        {
+            N = (N + (arg == "INC" ? 1 : arg == "DEC" ? -1 : 0) + 4) % 4;
+            Publish();
+            return Task.CompletedTask;
+        }
+
+        private void Publish() => Buffer.Write(FmAddress, Encoding.ASCII.GetBytes((N == 0 ? " " : N.ToString()) + "|X"));
     }
 
     private static Profile Wrap(Step step) => new() { Commands = [new Command { Name = "C", Steps = [step] }] };

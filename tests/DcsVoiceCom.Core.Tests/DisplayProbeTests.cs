@@ -274,6 +274,91 @@ public class DisplayProbeTests
         Assert.Equal(before, cockpit.Text);
     }
 
+    /// <summary>The A-10C II FM radio (issue #5): dial 1 goes 0-15 on one cell, so "90.000" becomes "100.000".</summary>
+    private sealed class FmRadio : Cockpit
+    {
+        public int Tens = 9, One = 2, Tenth = 5, Quarter = 1;
+        public override string Text => $"{Tens}{One}.{Tenth}{Quarter * 25:00}".PadRight(7);
+
+        protected override void React(string control, string arg)
+        {
+            var dir = arg == "INC" ? 1 : arg == "DEC" ? -1 : 0;
+            switch (control)
+            {
+                case "VHFFM_FREQ1": Tens = (Tens + dir + 16) % 16; break;
+                case "VHFFM_FREQ2": One = (One + dir + 10) % 10; break;
+                case "VHFFM_FREQ3": Tenth = (Tenth + dir + 10) % 10; break;
+                case "VHFFM_FREQ4": Quarter = (Quarter + dir + 4) % 4; break;
+            }
+        }
+    }
+
+    private static ControlCatalog FmCatalog() => new("A-10C_2", [],
+    [
+        Display("VHF_FM_FREQUENCY_S", "VHF FM Radio", 7),
+        Input("VHFFM_FREQ1", "VHF FM Radio", "Frequency 1", Step(), Set(15)),
+        Input("VHFFM_FREQ2", "VHF FM Radio", "Frequency 2", Step(), Set(9)),
+        Input("VHFFM_FREQ3", "VHF FM Radio", "Frequency 3", Step(), Set(9)),
+        Input("VHFFM_FREQ4", "VHF FM Radio", "Frequency 4", Step(), Set(3)),
+    ]);
+
+    [Theory]
+    [InlineData(9, 0)]  // learned with the display narrow ("92.525")
+    [InlineData(12, 1)] // learned with it wide ("122.525"): the layout is still saved narrow
+    public async Task Learns_a_dial_that_pushes_the_display_along(int tens, int shift)
+    {
+        var catalog = FmCatalog();
+        var cockpit = new FmRadio { Tens = tens };
+        var before = cockpit.Text;
+
+        var result = await Learn(Context(catalog, cockpit), "VHF_FM_FREQUENCY_S", catalog);
+
+        Assert.Equal(
+            [(0, 1, "0-15", "VHFFM_FREQ1"), (1, 1, "0-9", "VHFFM_FREQ2"), (3, 1, "0-9", "VHFFM_FREQ3"), (4, 2, "00,25,50,75", "VHFFM_FREQ4")],
+            result.Wheels.Select(w => (w.At, w.Len, w.Range!, w.Control!)).ToList());
+        Assert.Equal(1, result.GrowEnd);
+        Assert.Equal(shift, result.SampleShift);
+        Assert.Equal(shift == 0 ? "92.525 " : "12.525 ", DisplayProbe.NarrowSample(before, result.GrowEnd, result.SampleShift));
+        Assert.Equal(before, cockpit.Text);
+        Assert.Empty(result.Unresolved);
+        Assert.Contains(result.Notes, n => n.Contains("gets wider"));
+    }
+
+    [Fact]
+    public void A_wide_sample_is_narrowed_to_one_cell_for_the_dial()
+    {
+        Assert.Equal("12.500 ", DisplayProbe.NarrowSample("122.500", 1, 1));
+        Assert.Equal("92.500 ", DisplayProbe.NarrowSample("92.500 ", 1, 0));
+    }
+
+    /// <summary>A dial whose first position shows nothing: " ", 1, 2, 3.</summary>
+    private sealed class BlankFirstDial : Cockpit
+    {
+        public int N = 2;
+        public override string Text => (N == 0 ? " " : N.ToString()) + "|X";
+
+        protected override void React(string control, string arg) => N = (N + (arg == "INC" ? 1 : arg == "DEC" ? -1 : 0) + 4) % 4;
+    }
+
+    [Fact]
+    public async Task A_dial_whose_values_cannot_be_read_is_left_for_the_user_to_give_its_range()
+    {
+        var catalog = new ControlCatalog("T", [],
+        [
+            Display("D_DISP", "Radio", 3),
+            Input("D_DIAL", "Radio", "Dial", Step()),
+        ]);
+        var cockpit = new BlankFirstDial();
+
+        var result = await Learn(Context(catalog, cockpit), "D_DISP", catalog);
+
+        Assert.Empty(result.Wheels);
+        var unresolved = Assert.Single(result.Unresolved);
+        Assert.Equal(("D_DIAL", 0, 1, WheelMode.Step), (unresolved.Control, unresolved.At, unresolved.Len, unresolved.Mode));
+        Assert.Equal("0-3", unresolved.GuessedRange);
+        Assert.Equal(2, cockpit.N);
+    }
+
     /// <summary>A scratchpad: clock cell (noise), page digit, "[" 8 entry characters "]".</summary>
     private sealed class Scratchpad(bool rightAlign = false) : Cockpit
     {

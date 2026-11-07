@@ -548,7 +548,13 @@ public sealed class EnterValueEditorViewModel : ObservableObject
         var live = Display.Trim().Length > 0 ? ReadDisplay(Display.Trim()) : null;
         _liveText = live ?? "";
         // The sample keeps the last layout seen live: length, decimal point and read-only characters.
-        if (live != null && live.Trim().Length > 0) _sample = live;
+        if (live != null && live.Trim().Length > 0)
+        {
+            // With a wheel that gets wider the sample stays the narrow layout: the live text is only wider.
+            var fields = Fields.Select(f => f.ToField()).ToList();
+            var wider = DisplayLayout.Grower(fields) is { } g && DisplayLayout.PointShift(_sample, live, g.Field.At) > 0;
+            if (!wider) _sample = live;
+        }
         else if (_sample.Length == 0 && DisplayLength() is { } length) _sample = new string(' ', length);
         foreach (var field in Fields) field.RefreshCommands();
         Changed();
@@ -595,8 +601,12 @@ public sealed class EnterValueEditorViewModel : ObservableObject
     private int? ReadPosition(DisplayFieldViewModel field, ValueRange range)
     {
         var text = ReadDisplay(Display.Trim());
-        return text is null ? null : range.IndexOf(DisplayLayout.Read(text, field.ToField()));
+        return text is null ? null : range.IndexOf(DisplayLayout.Read(text, LiveField(field, text)));
     }
+
+    /// <summary>Where a field sits on the live text: a wheel that got wider (9 → 10) pushes the fields after it along.</summary>
+    private DisplayField LiveField(DisplayFieldViewModel field, string live) =>
+        DisplayLayout.Live(field.ToField(), Fields.Select(f => f.ToField()).ToList(), _sample, live);
 
     /// <summary>The display's text padded to its DCS-BIOS length, or null without DCS or for an unknown display.</summary>
     private string? ReadDisplay(string id)
@@ -782,9 +792,12 @@ public sealed class EnterValueEditorViewModel : ObservableObject
         foreach (var old in LearnCandidates) old.PropertyChanged -= OnCandidateChanged;
         LearnCandidates.Clear();
         var found = DisplayProbe.Candidates(_context.Catalog, Display.Trim(), _learnCategories);
+        // Names only rank: with no name that stands out (A-10C II "VHFFM_FREQ1") a small panel is ticked whole;
+        // a long list is left for the user to tick, so nothing is operated by surprise.
+        var tickAll = !found.Candidates.Any(c => c.Likely) && found.Candidates.Count <= 12;
         foreach (var c in found.Candidates)
         {
-            var vm = new LearnCandidateViewModel(c) { IsTicked = c.Likely };
+            var vm = new LearnCandidateViewModel(c) { IsTicked = c.Likely || tickAll };
             vm.PropertyChanged += OnCandidateChanged;
             LearnCandidates.Add(vm);
         }
@@ -858,7 +871,20 @@ public sealed class EnterValueEditorViewModel : ObservableObject
     {
         var lines = new List<string>();
         var live = ReadDisplay(Display.Trim()) ?? _sample;
-        var hasWheels = result.Wheels.Count > 0;
+        var wheels = result.Wheels.ToList();
+        foreach (var u in result.Unresolved)
+        {
+            // The probe saw the dial move but could not read its values: ask for its range.
+            var answer = _dialogs.Prompt("Learn from display", $"{u.Control}: {u.Reason}. What is its range? For example 0-15, or a list like X,Y.", u.GuessedRange)?.Trim();
+            if (DisplayLayout.ParseRange(answer) is null)
+            {
+                lines.Add($"{u.Control} left out: no range given.");
+                continue;
+            }
+            wheels.Add(new DisplayField { At = u.At, Len = u.Len, Kind = FieldKind.Wheel, Control = u.Control, Range = answer, Mode = u.Mode });
+        }
+        wheels = wheels.OrderBy(w => w.At).ToList();
+        var hasWheels = wheels.Count > 0;
         var hasKeys = result.Keys.Count > 0;
         var useKeys = hasKeys && !hasWheels;
         if (hasWheels && hasKeys)
@@ -888,8 +914,10 @@ public sealed class EnterValueEditorViewModel : ObservableObject
         {
             Fields.Clear();
             IsKeypad = false;
-            foreach (var f in DisplayProbe.WithFixedGaps(result.Wheels, live)) Fields.Add(new DisplayFieldViewModel(this, f));
-            lines.Insert(0, $"Learned {result.Wheels.Count} wheels. Check them before saving.");
+            if (result.GrowEnd >= 0) live = DisplayProbe.NarrowSample(live, result.GrowEnd, result.SampleShift);
+            foreach (var f in DisplayProbe.WithFixedGaps(wheels, live)) Fields.Add(new DisplayFieldViewModel(this, f));
+            if (result.GrowEnd >= 0 && live.Trim().Length > 0) _sample = live;
+            lines.Insert(0, $"Learned {wheels.Count} wheels. Check them before saving.");
         }
         else
         {
@@ -1071,7 +1099,7 @@ public sealed class EnterValueEditorViewModel : ObservableObject
             field.Place = field.IsWheel && DisplayLayout.PlaceOf(step, step.Fields!.First(f => f.At == field.At)) is { } place
                 ? place.ToString("0.############", CultureInfo.InvariantCulture)
                 : "—";
-            field.Shown = live ? DisplayLayout.Read(_liveText, field.ToField()) : "";
+            field.Shown = live ? DisplayLayout.Read(_liveText, LiveField(field, _liveText)) : "";
             field.Notify();
         }
     }
@@ -1079,10 +1107,10 @@ public sealed class EnterValueEditorViewModel : ObservableObject
     private string Preview(EnterValueStep step, IReadOnlyList<FieldTarget> targets)
     {
         if (SelectedField is not { } field || field.IsReadOnly) return "";
-        var target = targets.FirstOrDefault(t => t.Field.At == field.At)?.Text;
+        var target = targets.FirstOrDefault(t => (t.Base ?? t.Field).At == field.At)?.Text;
         if (target is null) return "";
         if (field.IsKeypad) return $"types ‘{target.Trim()}’";
-        var current = IsLive ? DisplayLayout.Read(_liveText, field.ToField()) : null;
+        var current = IsLive ? DisplayLayout.Read(_liveText, LiveField(field, _liveText)) : null;
         var range = DisplayLayout.RangeOf(field.ToField());
         var head = $"‘{current?.Trim() ?? "?"}’ → ‘{target.Trim()}’";
         if (field.Mode == WheelMode.Set) return $"{head} · send {range.IndexOf(target)}";
