@@ -1,6 +1,6 @@
 # Plan: "Learn from display": build fields live from DCS-BIOS
 
-Status: planned, not implemented yet.
+Status: implemented (`DisplayProbe`, `Learn from display…` in the Enter value editor).
 
 ## Context
 Today, "Fill from radio…" (`EnterValueEditorViewModel.Suggest`, `EnterValueGuess.cs`) only guesses from control names: `<PREFIX>_<digits>_DIAL` for wheels, `<PREFIX>_<char>` for keypad keys (`EnterValueGuess.Keys`). It breaks when a module names things differently, uses digits it doesn't know, or has a display with extra text. It also never works out real ranges (e.g. `22-39`, `00,25,50,75`, `X,Y`), so the user fixes those by hand.

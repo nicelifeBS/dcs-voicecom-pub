@@ -29,7 +29,9 @@ stand-ins, and DCS, DCS-BIOS definitions and speech are offline.
   *Switches / dials* or *Keypad*. The display shows cell by cell: click a character, Shift+click to widen, then make
   it a *Wheel*, the *Keypad* field or *Read-only*. Place and width come from where the field sits. For a wheel, pick
   its control, range (`0-9`, `22-39`, `X,Y`) and mode; ▲/▼ send one test click and learn which way it turns.
-  *Fill from radio…* finds a radio's wheels and places them on the live display. *Try a spoken value* shows in green
+  *Fill from radio…* finds a radio's wheels and places them on the live display. *Learn from display…* (DCS running) lists
+  the controls that might drive the display; tick them and press Start, and the app operates each once, watches the
+  display and builds the wheels (or keys) and their ranges, then puts everything back. It only runs when you press it. *Try a spoken value* shows in green
   what each character will become. Setting up fields needs DCS running; without it the window shows a warning and
   empty cells, and the rest stays editable.
 - **Add DCS-BIOS command:** search the aircraft's controls by words, filter by panel, see live values while DCS flies
