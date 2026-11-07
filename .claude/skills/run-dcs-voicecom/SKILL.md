@@ -37,7 +37,7 @@ $D ss main                 # -> /tmp/dcs-voicecom-run/shots/main.png (main windo
 $D click 600 651           # Log panel test box
 $D type "landing gear up"
 $D key Return              # runs the phrase through the matcher; the box keeps its text, so key ctrl+a before the next one
-$D click 1378 35           # Settings button
+$D click 1315 36           # Settings button (Help is at 1389 36, or key F1)
 $D waitwin '^Settings$'    # dialog ignores clicks for ~2s after it appears
 $D windows                 # lists windows: "Settings" at 400,70 632x726
 $D sswin '^Settings$' settings-dialog
