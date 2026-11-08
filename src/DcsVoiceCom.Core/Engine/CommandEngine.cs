@@ -471,7 +471,7 @@ internal sealed class StepRunner(
         bool Read(out int position)
         {
             position = 0;
-            if (!state.TryReadString(display, out var shown) || range.IndexOf(DisplayLayout.Read(shown, field)) is not { } index) return false;
+            if (!state.TryReadString(display, out var shown) || range.IndexOf(DisplayLayout.Read(shown, DisplayLayout.Resolve(target, shown))) is not { } index) return false;
             position = index;
             return true;
         }

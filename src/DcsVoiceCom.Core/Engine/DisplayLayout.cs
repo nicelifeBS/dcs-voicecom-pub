@@ -54,8 +54,19 @@ public sealed class ValueRange
     public override string ToString() => Items is null ? $"{Low}-{High}" : string.Join(",", Items);
 }
 
-/// <summary>The text one field of the display must show.</summary>
-public sealed record FieldTarget(DisplayField Field, string Text);
+/// <summary>The fields of a step and the display text they were set up on, to follow a wheel that gets wider.</summary>
+public sealed record GrowLayout(IReadOnlyList<DisplayField> Fields, string Sample);
+
+/// <summary>
+/// The text one field of the display must show. <see cref="Field"/> is where it sits once the value is entered; when
+/// a wheel grows (9 → 10 pushes the rest of the display right), <see cref="Base"/> is the field as saved and
+/// <see cref="Layout"/> lets the engine find it on the live text.
+/// </summary>
+public sealed record FieldTarget(DisplayField Field, string Text)
+{
+    public DisplayField? Base { get; init; }
+    public GrowLayout? Layout { get; init; }
+}
 
 /// <summary>
 /// The pure parts of an <see cref="EnterValueStep"/> with <see cref="EnterValueStep.Fields"/>: where the value goes
@@ -102,7 +113,7 @@ public static class DisplayLayout
     /// <summary>True when the field shows the target: wheels by position in their range ("09" = " 9"), keypad text ignoring case and padding.</summary>
     public static bool Shows(string display, FieldTarget target)
     {
-        var shown = Read(display, target.Field);
+        var shown = Read(display, Resolve(target, display));
         if (target.Field.Kind == FieldKind.Wheel)
         {
             var range = RangeOf(target.Field);
@@ -113,6 +124,53 @@ public static class DisplayLayout
     }
 
     public static bool ShowsAll(string display, IEnumerable<FieldTarget> targets) => targets.All(t => Shows(display, t));
+
+    // ---- a wheel that gets wider ---------------------------------------------------------------------------
+
+    /// <summary>
+    /// How many extra characters a wheel can need: its widest value minus its width. The A-10C II FM dial 0-15 on one
+    /// cell shows "9" then "10", and the decimal point and everything after it move right.
+    /// </summary>
+    public static int GrowCap(DisplayField field)
+    {
+        if (field.Kind != FieldKind.Wheel || ParseRange(field.Range) is not { } range) return 0;
+        var widest = range.Items is null ? range.High.ToString(CultureInfo.InvariantCulture).Length : range.Items.Max(i => i.Length);
+        return Math.Max(0, widest - field.Len);
+    }
+
+    /// <summary>The first wheel (from the left) that can grow, and by how much.</summary>
+    public static (DisplayField Field, int Cap)? Grower(IEnumerable<DisplayField> fields) =>
+        fields.Where(f => GrowCap(f) > 0).OrderBy(f => f.At).Select(f => ((DisplayField Field, int Cap)?)(f, GrowCap(f))).FirstOrDefault();
+
+    /// <summary>The field after the growing wheel has taken <paramref name="growth"/> extra characters.</summary>
+    public static DisplayField Shifted(DisplayField field, IEnumerable<DisplayField> all, int growth)
+    {
+        if (growth <= 0 || Grower(all) is not { } grower) return field;
+        growth = Math.Min(growth, grower.Cap);
+        if (ReferenceEquals(field, grower.Field)) return Copy(field, field.At, field.Len + growth);
+        return field.At >= grower.Field.At + grower.Field.Len ? Copy(field, field.At + growth, field.Len) : field;
+    }
+
+    /// <summary>How far the decimal point moved from the saved sample to the live text (0 when either has none).</summary>
+    public static int PointShift(string sample, string live, int from = 0)
+    {
+        var a = sample.IndexOf('.', Math.Min(from, sample.Length));
+        var b = live.IndexOf('.', Math.Min(from, live.Length));
+        return a >= 0 && b >= 0 ? Math.Max(0, b - a) : 0;
+    }
+
+    /// <summary>Where a saved field sits on the live text when a growing wheel has pushed the display along.</summary>
+    public static DisplayField Live(DisplayField field, IReadOnlyList<DisplayField> all, string sample, string live) =>
+        Grower(all) is { } g ? Shifted(field, all, PointShift(sample, live, g.Field.At)) : field;
+
+    /// <summary>The target's field on the live display text.</summary>
+    public static DisplayField Resolve(FieldTarget target, string live) =>
+        target.Layout is { } layout ? Live(target.Base ?? target.Field, layout.Fields, layout.Sample, live) : target.Field;
+
+    private static DisplayField Copy(DisplayField f, int at, int len) => new()
+    {
+        At = at, Len = len, Kind = f.Kind, Control = f.Control, Range = f.Range, Mode = f.Mode, Flip = f.Flip, Align = f.Align,
+    };
 
     /// <summary>
     /// What every wheel or keypad field must show for <paramref name="value"/>, or why the value can't be entered
@@ -147,13 +205,15 @@ public static class DisplayLayout
             problem = "enter_value has no wheels";
             return [];
         }
-        var line = Place(step, wheels, text, out problem);
+        var line = Place(step, wheels, text, out problem, out var growth);
         if (line is null) return [];
 
+        var layout = new GrowLayout(wheels, step.Sample ?? "");
         var targets = new List<FieldTarget>();
-        foreach (var wheel in wheels)
+        foreach (var saved in wheels)
         {
-            var part = line.Substring(wheel.At, wheel.Len);
+            var wheel = Shifted(saved, wheels, growth);
+            var part = line.PadRight(wheel.At + wheel.Len).Substring(wheel.At, wheel.Len);
             var range = RangeOf(wheel);
             if (range.IndexOf(part) is null)
             {
@@ -161,15 +221,16 @@ public static class DisplayLayout
                 problem = $"{text}: {wheel.Control} would need {shown}, outside {range}";
                 return [];
             }
-            targets.Add(new FieldTarget(wheel, part));
+            targets.Add(new FieldTarget(wheel, part) { Base = saved, Layout = layout });
         }
         return targets;
     }
 
     /// <summary>The value laid out over the whole display width (other cells are spaces), or null with a problem.</summary>
-    private static string? Place(EnterValueStep step, List<DisplayField> wheels, string text, out string? problem)
+    private static string? Place(EnterValueStep step, List<DisplayField> wheels, string text, out string? problem, out int growth)
     {
         problem = null;
+        growth = 0;
         var sample = step.Sample ?? "";
         var start = wheels.Min(w => w.At);
         var end = wheels.Max(w => w.At + w.Len);
@@ -186,13 +247,6 @@ public static class DisplayLayout
             var shown = 0;
             while (point + 1 + shown < sample.Length && char.IsDigit(sample[point + 1 + shown])) shown++;
             var decimals = Math.Max(end - point - 1, shown);
-            if (point + decimals + 1 > line.Length)
-            {
-                var wider = new char[point + decimals + 1];
-                Array.Fill(wider, ' ');
-                line.CopyTo(wider, 0);
-                line = wider;
-            }
             if (decimal.Round(number, decimals) != number)
             {
                 problem = $"{text} has more decimals than the display ({decimals})";
@@ -200,14 +254,25 @@ public static class DisplayLayout
             }
             var formatted = number.ToString("F" + decimals, CultureInfo.InvariantCulture);
             var whole = decimals > 0 ? formatted[..formatted.IndexOf('.')] : formatted;
-            if (whole.Length > (start < point ? point - start : point))
+            // A growing wheel (0-15 on one cell) takes the extra digits and pushes the point right.
+            growth = Math.Max(0, whole.Length - (start < point ? point - start : point));
+            if (growth > (Grower(wheels)?.Cap ?? 0))
             {
                 problem = $"{text} has too many digits for the display";
+                growth = 0;
                 return null;
             }
-            for (var i = 0; i < whole.Length; i++) line[point - whole.Length + i] = whole[i];
-            line[point] = '.';
-            for (var i = 0; i < decimals; i++) line[point + 1 + i] = formatted[formatted.Length - decimals + i];
+            var at = point + growth;
+            if (at + decimals + 1 > line.Length)
+            {
+                var wider = new char[at + decimals + 1];
+                Array.Fill(wider, ' ');
+                line.CopyTo(wider, 0);
+                line = wider;
+            }
+            for (var i = 0; i < whole.Length; i++) line[at - whole.Length + i] = whole[i];
+            line[at] = '.';
+            for (var i = 0; i < decimals; i++) line[at + 1 + i] = formatted[formatted.Length - decimals + i];
             return new string(line);
         }
 

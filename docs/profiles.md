@@ -92,6 +92,8 @@ Each field has `at` (first character, counting from 0), `len` (number of charact
 
 - `wheel`: `control`, `range` and `mode`. `range` is what the wheel can show, in click order: a span such as `0-9`
   or `22-39`, or a list such as `X,Y` or `00,25,50,75`. Without a range it is `0` to `9…9` for its width.
+  A range wider than the field (`0-15` on one cell: "9", then "10") makes the field grow: the decimal point and the
+  fields after it move right with it. Save the fields for the narrow state (`sample` `"90.000 "`).
 - `keypad`: `align` (`left` or `right`), where the typed text sits in the field. A keypad step has exactly one
   keypad field and types the whole value into it as one line. For a second field (latitude, then longitude), use a
   second step.

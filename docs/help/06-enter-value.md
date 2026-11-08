@@ -20,6 +20,10 @@ on a keypad. Add it with **+ Enter value**, then click **Edit**. DCS must be run
 **Start**, and the app turns each knob or presses each key once, sees what changes and fills in the fields and ranges.
 It puts knobs back and clears the entry afterwards. **Cancel** does the same. Check the result before saving.
 
+> **Tip:** A dial that goes `0-15` on one cell pushes the rest of the display right when it passes 9. Learn handles it:
+> the field keeps one cell and the range `0-15`, and the fields after it follow. If a dial's values can't be read, you are
+> asked for its range.
+
 > **Tip:** Learn only runs when you press the button. Power, arm, fire and ENT-type controls are never touched.
 
 *Try a spoken value* shows what each character will become.
