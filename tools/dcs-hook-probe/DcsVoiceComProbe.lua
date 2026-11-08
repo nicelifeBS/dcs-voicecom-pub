@@ -1,15 +1,24 @@
 -- DCS VoiceCom test hook: finds out which mission, map and server info a hook can read.
 -- Install: copy to  Saved Games\DCS\Scripts\Hooks\DcsVoiceComProbe.lua
--- Output:          Saved Games\DCS\Logs\dcs-voicecom-probe.log
--- Read-only: it only writes the log file. Remove it when the test is done.
+-- Output:          Saved Games\DCS\Logs\dcs.log (lines tagged VOICECOM.PROBE)
+--                  and Saved Games\DCS\Logs\dcs-voicecom-probe.log if the hook may write files.
+-- Read-only: it only writes log lines. Remove it when the test is done.
 
-local logPath = lfs.writedir() .. "Logs\\dcs-voicecom-probe.log"
+-- Every line goes to dcs.log (always works in a hook) and, if file access works, to its own file too.
+local logPath = nil
+pcall(function() logPath = lfs.writedir() .. "Logs\\dcs-voicecom-probe.log" end)
+local fileFailed = false
 
 local function write(line)
-    local f = io.open(logPath, "a")
-    if f then
-        f:write(os.date("%Y-%m-%d %H:%M:%S"), "  ", line, "\n")
+    pcall(log.write, "VOICECOM.PROBE", log.INFO, line)
+    if fileFailed or not logPath then return end
+    local ok, f, err = pcall(io.open, logPath, "a")
+    if ok and f then
+        pcall(function() f:write(os.date("%Y-%m-%d %H:%M:%S"), "  ", line, "\n") end)
         f:close()
+    else
+        fileFailed = true
+        pcall(log.write, "VOICECOM.PROBE", log.INFO, "cannot write own log file: " .. tostring(err or f))
     end
 end
 
@@ -131,5 +140,5 @@ local ok, err = pcall(function()
     DCS.setUserCallbacks(handler)
 end)
 if not ok then
-    pcall(log.write, "DcsVoiceComProbe", log.ERROR, tostring(err))
+    pcall(log.write, "VOICECOM.PROBE", log.ERROR, tostring(err))
 end

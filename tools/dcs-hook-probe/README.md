@@ -11,10 +11,12 @@ multiplayer server, not only in single player.
    - a single-player mission,
    - join a multiplayer server and pick a slot,
    - if you can, host a server yourself.
-3. Open `Saved Games\DCS\Logs\dcs-voicecom-probe.log` and share it.
+3. Share `Saved Games\DCS\Logs\dcs-voicecom-probe.log`. If that file is missing,
+   the hook couldn't write files: share `dcs.log` instead (lines tagged `VOICECOM.PROBE`).
+   The log also says whether file writing worked, which tells us if the app's hook can use files.
 4. Delete the hook file when you're done.
 
-The hook only writes to the log. It never sends anything or changes the game.
+The hook only writes log lines. It never sends anything or changes the game.
 
 ## What to look for
 
