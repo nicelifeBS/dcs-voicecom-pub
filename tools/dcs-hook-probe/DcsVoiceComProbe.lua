@@ -22,15 +22,21 @@ local function write(line)
     end
 end
 
-local function show(v, depth)
+local show
+show = function(v, depth)
     depth = depth or 0
-    if type(v) ~= "table" then return tostring(v) end
+    if type(v) ~= "table" then
+        local text = tostring(v):gsub("[\r\n]+", " | ")
+        if #text > 400 then text = text:sub(1, 400) .. "..." end
+        return text
+    end
     if depth >= 2 then return "{...}" end
     local parts, n = {}, 0
     for k, val in pairs(v) do
         n = n + 1
         if n > 30 then parts[#parts + 1] = "..."; break end
-        parts[#parts + 1] = tostring(k) .. "=" .. show(val, depth + 1)
+        local shown = (k == "ucid" or k == "ipaddr") and "<hidden>" or show(val, depth + 1)
+        parts[#parts + 1] = tostring(k) .. "=" .. shown
     end
     return "{" .. table.concat(parts, ", ") .. "}"
 end
@@ -81,6 +87,53 @@ local function briefing(current, label, value)
     write("briefing " .. label .. " = " .. (text:gsub("[\r\n]+", " | ")))
 end
 
+-- Looks for our server in the server browser list by its address.
+function findInServerList(host)
+    local ok, list = pcall(function() return net.serverlist_get() end)
+    if not ok or type(list) ~= "table" then
+        write("net.serverlist_get(): " .. tostring(list))
+        return
+    end
+    local n, first = 0, nil
+    for _, entry in pairs(list) do
+        n = n + 1
+        first = first or entry
+        if host and type(entry) == "table" then
+            local ip = tostring(host):match("^[^:]+")
+            for _, v in pairs(entry) do
+                if type(v) == "string" and ip and v:find(ip, 1, true) then
+                    write("server list match = " .. show(entry))
+                    break
+                end
+            end
+        end
+    end
+    write("net.serverlist_get(): " .. n .. " entries, first = " .. show(first))
+end
+
+-- DCS logs "ASYNCNET ... Server name: <name>" when we join. See if a hook can read that back.
+function findInLogHistory()
+    local ok, history = pcall(function() return DCS.getLogHistory() end)
+    if not ok or history == nil then
+        write("DCS.getLogHistory(): " .. tostring(history))
+        return
+    end
+    write("DCS.getLogHistory(): type " .. type(history))
+    local function scan(text)
+        if type(text) == "table" then
+            for _, v in pairs(text) do scan(v) end
+        elseif type(text) == "string" then
+            for name in text:gmatch("Server name:%s*([^\r\n]+)") do write("log history server name = " .. name) end
+        end
+    end
+    scan(history)
+    if type(history) == "table" then
+        local n = 0
+        for _ in pairs(history) do n = n + 1 end
+        write("DCS.getLogHistory(): " .. n .. " entries, sample = " .. show(history[1] or history[n]))
+    end
+end
+
 local function probe(event)
     write("==== " .. event .. " ====")
     try("DCS.isMultiplayer()", DCS, "isMultiplayer")
@@ -88,6 +141,12 @@ local function probe(event)
     try("DCS.getMissionName()", DCS, "getMissionName")
     try("DCS.getMissionFilename()", DCS, "getMissionFilename")
     try("DCS.getPlayerUnitType()", DCS, "getPlayerUnitType")
+
+    try("DCS.getMissionTheatre()", DCS, "getMissionTheatre")
+    try("DCS.getTheatreID()", DCS, "getTheatreID")
+    try("DCS.getMissionDescription()", DCS, "getMissionDescription")
+    try("DCS.getPlayerBriefing()", DCS, "getPlayerBriefing")
+    try("DCS.getPlayerCoalition()", DCS, "getPlayerCoalition")
 
     local okMission, current = pcall(DCS.getCurrentMission)
     if okMission and type(current) == "table" then
@@ -119,7 +178,12 @@ local function probe(event)
     try("net.get_server_id()", net, "get_server_id")
     if myId then try("net.get_player_info(me)", net, "get_player_info", myId) end
     try("net.get_player_list()", net, "get_player_list")
-    try("net.get_server_host()", net, "get_server_host")
+    local host = try("net.get_server_host()", net, "get_server_host")
+    try("net.get_server_settings()", net, "get_server_settings")
+    try("net.serverinfo_get()", net, "serverinfo_get")
+    try("net.serverinfo_request()", net, "serverinfo_request")
+    findInServerList(host)
+    findInLogHistory()
     try("net.get_name(me)", net, "get_name", myId or 0)
 end
 
@@ -129,7 +193,11 @@ function handler.onMissionLoadEnd() probe("onMissionLoadEnd") end
 function handler.onSimulationStart() probe("onSimulationStart") end
 function handler.onNetConnect(localPlayerId) probe("onNetConnect id=" .. tostring(localPlayerId)) end
 function handler.onNetMissionChanged(name) probe("onNetMissionChanged name=" .. tostring(name)) end
-function handler.onPlayerChangeSlot(id) probe("onPlayerChangeSlot id=" .. tostring(id)) end
+function handler.onPlayerChangeSlot(id)
+    local okMe, me = pcall(function() return net.get_my_player_id() end)
+    if okMe and id ~= me then return end
+    probe("onPlayerChangeSlot id=" .. tostring(id))
+end
 function handler.onSimulationStop() write("==== onSimulationStop ====") end
 function handler.onNetDisconnect(reason) write("==== onNetDisconnect " .. tostring(reason) .. " ====") end
 

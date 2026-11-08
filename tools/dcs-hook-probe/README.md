@@ -24,4 +24,7 @@ The hook only writes log lines. It never sends anything or changes the game.
 - `DCS.getMissionName()` / `mission.sortie`: the mission name.
 - `briefing ...`: the briefing text (description and each side's task).
 - `net ... functions`: every `net` call DCS offers. Look for one with the server name.
-- `get_player_info` / `get_server_host`: may hold the server name or address.
+- `get_server_host`: the server address.
+- `serverinfo_*`, `get_server_settings`, `server list match`, `log history server name`:
+  ways to get the server name. DCS also logs it in `dcs.log` as `ASYNCNET ... Server name:`.
+- Your IP and UCID are hidden in the log.
