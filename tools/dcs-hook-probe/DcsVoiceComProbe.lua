@@ -41,9 +41,14 @@ show = function(v, depth)
     return "{" .. table.concat(parts, ", ") .. "}"
 end
 
+-- New, untested calls. Some crash DCS outright (pcall can't catch that), e.g. DCS.getTheatreID()
+-- before a map is loaded. They run only once the mission is running, each announced first.
+local riskyNow = false
+
 -- Calls a function if it exists and logs the result or the error.
 local function try(label, tbl, name, ...)
     local fn = tbl and tbl[name]
+    if riskyNow and type(fn) == "function" then write("calling " .. label .. " ...") end
     if type(fn) ~= "function" then
         write(label .. ": (not available)")
         return nil
@@ -88,7 +93,7 @@ local function briefing(current, label, value)
 end
 
 -- Looks for our server in the server browser list by its address.
-function findInServerList(host)
+local function findInServerList(host)
     local ok, list = pcall(function() return net.serverlist_get() end)
     if not ok or type(list) ~= "table" then
         write("net.serverlist_get(): " .. tostring(list))
@@ -112,7 +117,7 @@ function findInServerList(host)
 end
 
 -- DCS logs "ASYNCNET ... Server name: <name>" when we join. See if a hook can read that back.
-function findInLogHistory()
+local function findInLogHistory()
     local ok, history = pcall(function() return DCS.getLogHistory() end)
     if not ok or history == nil then
         write("DCS.getLogHistory(): " .. tostring(history))
@@ -134,19 +139,23 @@ function findInLogHistory()
     end
 end
 
-local function probe(event)
-    write("==== " .. event .. " ====")
+local function probe(event, full)
+    write("==== " .. event .. (full and " (full)" or "") .. " ====")
     try("DCS.isMultiplayer()", DCS, "isMultiplayer")
     try("DCS.isServer()", DCS, "isServer")
     try("DCS.getMissionName()", DCS, "getMissionName")
     try("DCS.getMissionFilename()", DCS, "getMissionFilename")
     try("DCS.getPlayerUnitType()", DCS, "getPlayerUnitType")
 
-    try("DCS.getMissionTheatre()", DCS, "getMissionTheatre")
-    try("DCS.getTheatreID()", DCS, "getTheatreID")
-    try("DCS.getMissionDescription()", DCS, "getMissionDescription")
-    try("DCS.getPlayerBriefing()", DCS, "getPlayerBriefing")
-    try("DCS.getPlayerCoalition()", DCS, "getPlayerCoalition")
+    -- DCS.getTheatreID() is left out: it crashed DCS when called before the map was loaded.
+    if full then
+        riskyNow = true
+        try("DCS.getMissionTheatre()", DCS, "getMissionTheatre")
+        try("DCS.getMissionDescription()", DCS, "getMissionDescription")
+        try("DCS.getPlayerBriefing()", DCS, "getPlayerBriefing")
+        try("DCS.getPlayerCoalition()", DCS, "getPlayerCoalition")
+        riskyNow = false
+    end
 
     local okMission, current = pcall(DCS.getCurrentMission)
     if okMission and type(current) == "table" then
@@ -179,24 +188,30 @@ local function probe(event)
     if myId then try("net.get_player_info(me)", net, "get_player_info", myId) end
     try("net.get_player_list()", net, "get_player_list")
     local host = try("net.get_server_host()", net, "get_server_host")
-    try("net.get_server_settings()", net, "get_server_settings")
-    try("net.serverinfo_get()", net, "serverinfo_get")
-    try("net.serverinfo_request()", net, "serverinfo_request")
-    findInServerList(host)
-    findInLogHistory()
+    if full then
+        riskyNow = true
+        try("net.get_server_settings()", net, "get_server_settings")
+        try("net.serverinfo_get()", net, "serverinfo_get")
+        try("net.serverinfo_request()", net, "serverinfo_request")
+        write("calling net.serverlist_get() ...")
+        findInServerList(host)
+        write("calling DCS.getLogHistory() ...")
+        findInLogHistory()
+        riskyNow = false
+    end
     try("net.get_name(me)", net, "get_name", myId or 0)
 end
 
 local handler = {}
 
 function handler.onMissionLoadEnd() probe("onMissionLoadEnd") end
-function handler.onSimulationStart() probe("onSimulationStart") end
+function handler.onSimulationStart() probe("onSimulationStart", true) end
 function handler.onNetConnect(localPlayerId) probe("onNetConnect id=" .. tostring(localPlayerId)) end
 function handler.onNetMissionChanged(name) probe("onNetMissionChanged name=" .. tostring(name)) end
 function handler.onPlayerChangeSlot(id)
     local okMe, me = pcall(function() return net.get_my_player_id() end)
     if okMe and id ~= me then return end
-    probe("onPlayerChangeSlot id=" .. tostring(id))
+    probe("onPlayerChangeSlot id=" .. tostring(id), true)
 end
 function handler.onSimulationStop() write("==== onSimulationStop ====") end
 function handler.onNetDisconnect(reason) write("==== onNetDisconnect " .. tostring(reason) .. " ====") end
