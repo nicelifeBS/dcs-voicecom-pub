@@ -45,25 +45,32 @@ public sealed class ProfileStore
             : [];
 
     /// <summary>
-    /// The server profiles whose <c>servers</c> match the session, in name order. Files that can't be read are
-    /// skipped and reported in <paramref name="problems"/>.
+    /// The server profiles whose <c>servers</c> match the session, loaded, in name order. Files that can't be read
+    /// are skipped and reported in <paramref name="problems"/>.
     /// </summary>
-    public IReadOnlyList<string> MatchingServerProfiles(DcsSession? session, List<string>? problems = null)
+    public IReadOnlyList<Profile> MatchingServerProfiles(DcsSession? session, List<string>? problems = null) =>
+        session is null || !session.OnServer
+            ? []
+            : ListServerProfiles()
+                .Select(name => TryLoadServerProfile(name, problems))
+                .OfType<Profile>()
+                .Where(p => ServerPattern.MatchesAny(p.Servers, session))
+                .ToList();
+
+    /// <summary>A server profile, named after its file; null (reported in <paramref name="problems"/>) when it can't be read.</summary>
+    public Profile? TryLoadServerProfile(string name, List<string>? problems = null)
     {
-        if (session is null || !session.OnServer) return [];
-        var matches = new List<string>();
-        foreach (var name in ListServerProfiles())
+        try
         {
-            try
-            {
-                if (ServerPattern.MatchesAny(TryLoad(name)?.Servers, session)) matches.Add(name);
-            }
-            catch (Exception ex) when (ex is IOException or System.Text.Json.JsonException or UnauthorizedAccessException)
-            {
-                problems?.Add($"Could not read server profile {name}: {ex.Message}");
-            }
+            var profile = TryLoad(name);
+            if (profile != null) profile.Aircraft = name;
+            return profile;
         }
-        return matches;
+        catch (Exception ex) when (ex is IOException or System.Text.Json.JsonException or UnauthorizedAccessException)
+        {
+            problems?.Add($"Could not read server profile {name}: {ex.Message}");
+            return null;
+        }
     }
 
     public void Delete(string aircraft) => File.Delete(PathFor(aircraft));
@@ -93,10 +100,10 @@ public sealed class ProfileStore
     /// added unless a higher one has a command of the same name; keywords are combined.
     /// Order: aircraft &gt; server profiles (in the order given) &gt; common. Returns null when no file exists.
     /// </summary>
-    public Profile? LoadMerged(string aircraft, IReadOnlyList<string>? serverProfiles = null)
+    public Profile? LoadMerged(string aircraft, IReadOnlyList<Profile>? serverProfiles = null)
     {
         var own = TryLoad(aircraft);
-        var layers = (serverProfiles ?? []).Select(TryLoad).Append(TryLoad(CommonProfileName)).ToList();
+        var layers = (serverProfiles ?? []).Append(TryLoad(CommonProfileName)).ToList();
         if (own is null && layers.All(l => l is null)) return null;
         return layers.Aggregate(own ?? new Profile { Aircraft = aircraft }, Merge);
     }

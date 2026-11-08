@@ -14,8 +14,11 @@ public sealed record DcsSession
     /// <summary>True on a multiplayer server we know the name or address of.</summary>
     public bool OnServer => Multiplayer && (Server.Length > 0 || Address.Length > 0);
 
+    /// <summary>The server name, or its address when the name is unknown.</summary>
+    public string DisplayName => Server.Length > 0 ? Server : Address;
+
     public override string ToString() =>
-        OnServer ? $"{(Server.Length > 0 ? Server : Address)} ({Mission}, {Map})" : $"single player ({Mission}, {Map})";
+        OnServer ? $"{DisplayName} ({Mission}, {Map})" : $"single player ({Mission}, {Map})";
 
     /// <summary>
     /// Reads one hook message. <c>{"v":1,"event":"mission",...}</c> gives a session, <c>{"event":"stop"}</c> gives

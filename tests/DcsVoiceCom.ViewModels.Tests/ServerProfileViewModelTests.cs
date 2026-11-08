@@ -108,6 +108,56 @@ public class ServerProfileViewModelTests
     }
 
     [Fact]
+    public void New_server_profile_name_matches_its_file_when_the_server_name_has_odd_characters()
+    {
+        using var ws = new Workspace();
+        var dialogs = new FakeDialogs();
+        dialogs.PromptAnswers.Enqueue("*Fox3: PvP/PvE*");
+        var vm = Create(ws, dialogs);
+
+        vm.NewServerProfileCommand.Execute(null);
+
+        Assert.Equal("server-Fox3_ PvP_PvE", vm.SelectedProfile!.Name);
+        Assert.Equal(["*Fox3: PvP/PvE*"], ws.Store.TryLoad(vm.SelectedProfile.Name)!.Servers);
+    }
+
+    [Fact]
+    public void Deleting_the_pinned_server_profile_unpins_it_and_reloads()
+    {
+        using var ws = new Workspace();
+        ws.Store.Save(new Profile { Aircraft = "server-Reapers", Servers = ["ShadowReapers*"] });
+        var dialogs = new FakeDialogs();
+        var runtime = new FakeRuntime { DcsAircraft = "TestJet" };
+        var vm = Create(ws, dialogs, runtime);
+        vm.SelectedServerOverride = "Reapers";
+        var reloads = runtime.Reloads;
+
+        dialogs.ConfirmAnswers.Enqueue(true);
+        vm.DeleteProfileCommand.Execute(vm.Profiles.Single(p => p.IsServer));
+
+        Assert.Null(runtime.ServerOverride);
+        Assert.Equal(MainViewModel.AutoProfile, vm.SelectedServerOverride);
+        Assert.Equal(["Auto"], vm.ServerOverrideOptions);
+        Assert.True(runtime.Reloads > reloads);
+    }
+
+    [Fact]
+    public void Deleting_an_active_server_profile_reloads()
+    {
+        using var ws = new Workspace();
+        ws.Store.Save(new Profile { Aircraft = "server-Reapers", Servers = ["ShadowReapers*"] });
+        var dialogs = new FakeDialogs();
+        var runtime = new FakeRuntime { DcsAircraft = "TestJet", ActiveServerProfiles = ["server-Reapers"] };
+        var vm = Create(ws, dialogs, runtime);
+        var reloads = runtime.Reloads;
+
+        dialogs.ConfirmAnswers.Enqueue(true);
+        vm.DeleteProfileCommand.Execute(vm.Profiles.Single(p => p.IsServer));
+
+        Assert.Equal(reloads + 1, runtime.Reloads);
+    }
+
+    [Fact]
     public void Settings_install_and_remove_the_hook()
     {
         using var ws = new Workspace();

@@ -34,12 +34,16 @@ public sealed class DcsHookInstaller
 
     public static string Template { get; } = LoadTemplate();
 
-    /// <summary>Saved Games\DCS and Saved Games\DCS.* folders.</summary>
+    /// <summary>
+    /// Saved Games\DCS and Saved Games\DCS.* folders, but not dedicated servers' (DCS.server, DCS.dcs_serverrelease, …):
+    /// a server hosted on this PC would also report to the app and fight the client over which server you're on.
+    /// </summary>
     public IReadOnlyList<string> DcsFolders() =>
         Directory.Exists(_savedGames)
             ? Directory.EnumerateDirectories(_savedGames)
                 .Where(d => Path.GetFileName(d) is { } n &&
-                            (n.Equals("DCS", StringComparison.OrdinalIgnoreCase) || n.StartsWith("DCS.", StringComparison.OrdinalIgnoreCase)))
+                            (n.Equals("DCS", StringComparison.OrdinalIgnoreCase) || n.StartsWith("DCS.", StringComparison.OrdinalIgnoreCase)) &&
+                            !n.Contains("server", StringComparison.OrdinalIgnoreCase))
                 .Order(StringComparer.OrdinalIgnoreCase)
                 .ToList()
             : [];

@@ -159,13 +159,12 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
 
             _catalog = _definitions.Exists ? _definitions.LoadAircraft(aircraft) : ControlCatalog.Empty;
             var problems = new List<string>();
-            IReadOnlyList<string> servers = _serverOverride is { } pinned
-                ? _profiles.Exists(pinned) ? [pinned] : []
-                : _profiles.MatchingServerProfiles(_hook.Session, problems);
+            var servers = ServerLayers(problems);
             foreach (var problem in problems) Log(problem);
-            if (!servers.SequenceEqual(_activeServerProfiles, StringComparer.OrdinalIgnoreCase))
-                Log(servers.Count == 0 ? "Server profile: none" : $"Server profile: {string.Join(", ", servers)}");
-            _activeServerProfiles = servers;
+            var names = servers.Select(p => p.Aircraft).ToList();
+            if (!names.SequenceEqual(_activeServerProfiles, StringComparer.OrdinalIgnoreCase))
+                Log(names.Count == 0 ? "Server profile: none" : $"Server profile: {string.Join(", ", names)}");
+            _activeServerProfiles = names;
             var profile = _profiles.LoadMerged(aircraft, servers) ?? new Profile { Aircraft = aircraft };
             var compiled = CompiledProfile.Compile(profile);
             foreach (var problem in compiled.Problems) Log($"Profile problem: {problem}");
@@ -211,11 +210,20 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
         if (_override is null && IsRealAircraft(aircraft)) _ = RunLogged(ReloadProfileAsync);
     }
 
+    /// <summary>The pinned server profile, or the ones matching the current session. Unreadable files are skipped.</summary>
+    private IReadOnlyList<Profile> ServerLayers(List<string>? problems = null) =>
+        _serverOverride is { } pinned
+            ? _profiles.TryLoadServerProfile(pinned, problems) is { } profile ? [profile] : []
+            : _profiles.MatchingServerProfiles(_hook.Session, problems);
+
     private void OnSessionChanged(DcsSession? session)
     {
         Log(session is null ? "DCS hook: mission ended" : $"DCS hook: {session}");
         SessionChanged?.Invoke(session);
-        if (_serverOverride is null && ActiveAircraft != null) _ = RunLogged(ReloadProfileAsync);
+        if (_serverOverride is not null || ActiveAircraft is null) return;
+        // A new mission or map on the same server keeps the same server profiles: no reload needed.
+        var names = ServerLayers().Select(p => p.Aircraft);
+        if (!names.SequenceEqual(_activeServerProfiles, StringComparer.OrdinalIgnoreCase)) _ = RunLogged(ReloadProfileAsync);
     }
 
     private void OnPttPressed()

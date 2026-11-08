@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 
 namespace DcsVoiceCom.DcsHook;
@@ -9,13 +10,15 @@ namespace DcsVoiceCom.DcsHook;
 /// </summary>
 public static class ServerPattern
 {
+    private static readonly ConcurrentDictionary<string, Regex> Cache = new();
+
     public static bool Matches(string pattern, DcsSession? session)
     {
         if (session is null || !session.OnServer) return false;
         pattern = pattern.Trim();
         if (pattern.Length == 0 || pattern.All(c => c == '*')) return false; // "*" alone would match every server
-        var regex = new Regex("^" + string.Join(".*", pattern.Split('*').Select(Regex.Escape)) + "$",
-            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        var regex = Cache.GetOrAdd(pattern, p => new Regex("^" + string.Join(".*", p.Split('*').Select(Regex.Escape)) + "$",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant));
         return (session.Server.Length > 0 && regex.IsMatch(session.Server.Trim())) ||
                (session.Address.Length > 0 && regex.IsMatch(session.Address.Trim()));
     }

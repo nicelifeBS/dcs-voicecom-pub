@@ -98,7 +98,7 @@ public class ServerProfileTests
         Assert.Equal(["server-Other", "server-Reapers"], store.ListServerProfiles());
 
         var servers = store.MatchingServerProfiles(Reapers);
-        Assert.Equal(["server-Reapers"], servers);
+        Assert.Equal(["server-Reapers"], servers.Select(p => p.Aircraft));
         var merged = store.LoadMerged("TestJet", servers)!;
         Assert.Equal(["Gear up/jet", "Request tanker/server", "Check in/server", "Radio check/common"],
             merged.Commands.Select(c => $"{c.Name}/{c.Description}"));
@@ -117,8 +117,22 @@ public class ServerProfileTests
         store.Save(new Profile { Aircraft = "server-Good", Servers = ["*Reapers*"] });
         File.WriteAllText(Path.Combine(dir.Path, "server-Bad.json"), "{ not json");
         var problems = new List<string>();
-        Assert.Equal(["server-Good"], store.MatchingServerProfiles(Reapers, problems));
+        Assert.Equal(["server-Good"], store.MatchingServerProfiles(Reapers, problems).Select(p => p.Aircraft));
         Assert.Single(problems);
+
+        // A pinned broken profile is skipped too, so aircraft and common commands still load.
+        problems.Clear();
+        Assert.Null(store.TryLoadServerProfile("server-Bad", problems));
+        Assert.Single(problems);
+        Assert.Equal("server-Good", store.TryLoadServerProfile("server-Good")!.Aircraft);
+    }
+
+    [Fact]
+    public void Server_profile_takes_its_file_name_even_if_the_json_says_otherwise()
+    {
+        using var dir = new TempDir();
+        File.WriteAllText(Path.Combine(dir.Path, "server-X.json"), """{ "aircraft": "something else", "servers": ["*Reapers*"] }""");
+        Assert.Equal(["server-X"], new ProfileStore(dir.Path).MatchingServerProfiles(Reapers).Select(p => p.Aircraft));
     }
 
     [Fact]
@@ -139,6 +153,8 @@ public class ServerProfileTests
         Directory.CreateDirectory(Path.Combine(dir.Path, "DCS"));
         Directory.CreateDirectory(Path.Combine(dir.Path, "DCS.openbeta"));
         Directory.CreateDirectory(Path.Combine(dir.Path, "Other Game"));
+        Directory.CreateDirectory(Path.Combine(dir.Path, "DCS.server")); // a dedicated server on this PC: left alone
+        Directory.CreateDirectory(Path.Combine(dir.Path, "DCS.dcs_serverrelease"));
         Assert.Equal(HookStatus.NotInstalled, installer.Status());
 
         var written = installer.Install();

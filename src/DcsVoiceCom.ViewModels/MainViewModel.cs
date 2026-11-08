@@ -728,7 +728,7 @@ public sealed class MainViewModel : ObservableObject
     /// <summary>A server profile, named after the server you're on (if any) and turned on for it.</summary>
     private void NewServerProfile()
     {
-        var current = _runtime?.Session is { OnServer: true } session ? session.Server.Length > 0 ? session.Server : session.Address : "";
+        var current = _runtime?.Session is { OnServer: true } session ? session.DisplayName : "";
         var label = _dialogs.Prompt("New server profile", "Server name. Use * for any text, e.g. ShadowReapers*", current)?.Trim();
         if (string.IsNullOrEmpty(label)) return;
         var name = ProfileStore.ServerPrefix + FileLabel(label);
@@ -747,13 +747,14 @@ public sealed class MainViewModel : ObservableObject
         if (_runtime != null) _ = RunAsync(() => _runtime.ReloadProfileAsync());
     }
 
-    /// <summary>A server name made fit for a file name: no wildcards, no characters Windows refuses.</summary>
+    /// <summary>
+    /// A server name made fit for a profile name: wildcards dropped, spaces collapsed, then the store's file-name rule,
+    /// so the name matches the file it's saved as.
+    /// </summary>
     private static string FileLabel(string label)
     {
-        var invalid = Path.GetInvalidFileNameChars();
-        var cleaned = new string(label.Select(c => c == '*' || invalid.Contains(c) || c is '/' or '\\' or ':' ? ' ' : c).ToArray());
-        cleaned = string.Join(' ', cleaned.Split(' ', StringSplitOptions.RemoveEmptyEntries));
-        return cleaned.Length > 0 ? cleaned : "server";
+        var cleaned = string.Join(' ', label.Replace('*', ' ').Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        return cleaned.Length > 0 ? Path.GetFileNameWithoutExtension(ProfileStore.FileNameFor(cleaned)) : "server";
     }
 
     private static bool CanDeleteProfile(ProfileItemViewModel? item) =>
@@ -768,6 +769,10 @@ public sealed class MainViewModel : ObservableObject
         var index = Profiles.IndexOf(item);
         _store.Delete(item.Name);
         Log.Add("INFO", $"Deleted profile {item.Name}");
+        if (item.IsServer && _selectedServerOverride == ProfileItemViewModel.ServerLabel(item.Name))
+            SelectedServerOverride = AutoProfile; // the pin pointed at the deleted file; this also reloads the runtime
+        else if (_runtime != null && AffectsActiveProfile(item.Name))
+            _ = RunAsync(() => _runtime.ReloadProfileAsync());
         if (wasSelected)
         {
             IsDirty = false; // its unsaved edits went with it
@@ -1034,7 +1039,7 @@ public sealed class MainViewModel : ObservableObject
                 ? $"Profile · {active}{(runtime.ProfileOverride != null ? " (pinned)" : "")}"
                 : "Profile · none";
             ServerStatus = runtime.Session is { OnServer: true } session
-                ? $"Server · {(session.Server.Length > 0 ? session.Server : session.Address)}"
+                ? $"Server · {session.DisplayName}"
                 : NoServer;
             IsListening = runtime.IsListening;
         }
