@@ -26,40 +26,52 @@
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
-    <!-- Top bar: push-to-talk, listening, DCS-BIOS and speech status, profile override, log, save, settings -->
-    <DockPanel Grid.Row="0" Margin="0,0,0,14" LastChildFill="False">
-      <TextBlock DockPanel.Dock="Left" Text="DCS VoiceCom" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,20,0" />
-      <Border DockPanel.Dock="Left" Style="{StaticResource Pill}" ToolTip="One button for every aircraft profile; set it in Settings">
-        <StackPanel Orientation="Horizontal">
-          <TextBlock Text="Push-to-talk · " Foreground="{StaticResource Muted}" />
-          <TextBlock Text="{Binding PttText}" />
-        </StackPanel>
-      </Border>
-      <Border DockPanel.Dock="Left" Style="{StaticResource Pill}">
-        <StackPanel Orientation="Horizontal">
-          <Ellipse Width="8" Height="8" Margin="0,0,6,0" Fill="{Binding IsListening, Converter={StaticResource StatusBrush}}" />
-          <TextBlock Text="{Binding ListeningText}" />
-        </StackPanel>
-      </Border>
-      <Border DockPanel.Dock="Left" Style="{StaticResource Pill}">
-        <StackPanel Orientation="Horizontal">
-          <Ellipse Width="8" Height="8" Margin="0,0,6,0" Fill="{Binding DcsLive, Converter={StaticResource StatusBrush}}" />
-          <TextBlock Text="{Binding DcsStatus}" />
-        </StackPanel>
-      </Border>
-      <Border DockPanel.Dock="Left" Style="{StaticResource Pill}">
-        <TextBlock Text="{Binding SpeechStatus}" />
-      </Border>
+    <!-- Top bar: title, status (shrinks when narrow), then the buttons, which always stay visible. -->
+    <Grid Grid.Row="0" Margin="0,0,0,14">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+      <TextBlock Text="DCS VoiceCom" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,20,0" />
 
-      <Button DockPanel.Dock="Right" Content="Help" Command="{x:Static ApplicationCommands.Help}" ToolTip="Help (F1)" Margin="8,0,0,0" />
-      <Button DockPanel.Dock="Right" Content="Settings" Click="Settings_Click" Margin="8,0,0,0" />
-      <ToggleButton DockPanel.Dock="Right" Content="Log" IsChecked="{Binding ShowLog}" Margin="8,0,0,0" />
-      <Button DockPanel.Dock="Right" Content="Save" Style="{StaticResource Primary}" Command="{Binding SaveCommand}"
-              ToolTip="Save this profile (Ctrl+S)" Margin="8,0,0,0" />
-      <ComboBox DockPanel.Dock="Right" Width="190" ItemsSource="{Binding OverrideOptions}" SelectedItem="{Binding SelectedOverride}"
-                ToolTip="Auto follows the aircraft DCS-BIOS reports; pick a profile to pin it" />
-      <TextBlock DockPanel.Dock="Right" Text="{Binding ActiveProfileText}" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,10,0" />
-    </DockPanel>
+      <!-- Space runs out: the profile text goes first, then the push-to-talk name is shortened in the middle. -->
+      <local:StatusStrip Grid.Column="1" VerticalAlignment="Center">
+        <Border Style="{StaticResource Pill}" local:StatusStrip.ShrinkOrder="2" ToolTip="{Binding ListeningTip}">
+          <DockPanel>
+            <Ellipse DockPanel.Dock="Left" Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center"
+                     Fill="{Binding IsListening, Converter={StaticResource StatusBrush}}" />
+            <TextBlock DockPanel.Dock="Left" Text="Push-to-talk · " Foreground="{StaticResource Muted}"
+                       ToolTip="One button for every aircraft profile; set it in Settings" />
+            <local:MiddleTrimText Text="{Binding PttText}" VerticalAlignment="Center" />
+          </DockPanel>
+        </Border>
+        <Border Style="{StaticResource Pill}" ToolTip="{Binding DcsStatus}">
+          <StackPanel Orientation="Horizontal">
+            <Ellipse Width="8" Height="8" Margin="0,0,6,0" Fill="{Binding DcsLive, Converter={StaticResource StatusBrush}}" />
+            <TextBlock Text="{Binding DcsText}" />
+          </StackPanel>
+        </Border>
+        <Border Style="{StaticResource Pill}" ToolTip="{Binding SpeechStatus}">
+          <StackPanel Orientation="Horizontal">
+            <Ellipse Width="8" Height="8" Margin="0,0,6,0" Fill="{Binding SpeechReady, Converter={StaticResource StatusBrush}}" />
+            <TextBlock Text="Speech" />
+          </StackPanel>
+        </Border>
+        <TextBlock local:StatusStrip.ShrinkOrder="1" Text="{Binding ActiveProfileText}" Foreground="{StaticResource Muted}"
+                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,10,0" />
+      </local:StatusStrip>
+
+      <StackPanel Grid.Column="2" Orientation="Horizontal">
+        <ComboBox Width="170" ItemsSource="{Binding OverrideOptions}" SelectedItem="{Binding SelectedOverride}"
+                  ToolTip="Auto follows the aircraft DCS-BIOS reports; pick a profile to pin it" />
+        <Button Content="Save" Style="{StaticResource Primary}" Command="{Binding SaveCommand}"
+                ToolTip="Save this profile (Ctrl+S)" Margin="8,0,0,0" />
+        <ToggleButton Content="Log" IsChecked="{Binding ShowLog}" Margin="8,0,0,0" />
+        <Button Content="Settings" Click="Settings_Click" Margin="8,0,0,0" />
+        <Button Content="Help" Command="{x:Static ApplicationCommands.Help}" ToolTip="Help (F1)" Margin="8,0,0,0" />
+      </StackPanel>
+    </Grid>
 
     <Grid Grid.Row="1">
       <Grid.ColumnDefinitions>
@@ -67,9 +79,10 @@
         <ColumnDefinition Width="14" />
         <ColumnDefinition Width="320" />
         <ColumnDefinition Width="14" />
+        <!-- Editor and control browser share the rest; the browser gives way first on narrow windows. -->
         <ColumnDefinition Width="*" MinWidth="360" />
         <ColumnDefinition Width="14" />
-        <ColumnDefinition Width="400" />
+        <ColumnDefinition Width="*" MinWidth="120" MaxWidth="400" />
       </Grid.ColumnDefinitions>
 
       <!-- Profiles -->

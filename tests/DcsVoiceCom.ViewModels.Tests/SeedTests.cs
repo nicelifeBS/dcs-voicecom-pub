@@ -78,7 +78,7 @@ public class SeedTests
 
         dialogs.ConfirmAnswers.Enqueue(true);
         vm.RemoveSeededCommand.Execute(null);
-        Assert.Equal(["Landing gear lever up", "Gear down"], vm.Commands.Select(c => c.Name));
+        Assert.Equal(["Gear down", "Landing gear lever down"], vm.Commands.Select(c => c.Name));
         Assert.False(vm.RemoveSeededCommand.CanExecute(null));
     }
 
@@ -91,7 +91,7 @@ public class SeedTests
         vm.SeedCommand.Execute(null);
 
         vm.CommandFilter = "gear";
-        Assert.Equal(["Gear up", "Landing gear lever up", "Landing gear lever down"], vm.Commands.Where(c => c.IsVisible).Select(c => c.Name));
+        Assert.Equal(["Gear up", "Landing gear lever down", "Landing gear lever up"], vm.Commands.Where(c => c.IsVisible).Select(c => c.Name));
         vm.HideSeeded = true;
         Assert.Equal(["Gear up"], vm.Commands.Where(c => c.IsVisible).Select(c => c.Name));
         Assert.Equal("1 of 4 commands · 3 seeded", vm.CommandCountText);
