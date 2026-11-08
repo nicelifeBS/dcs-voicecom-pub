@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using DcsVoiceCom.DcsHook;
 using DcsVoiceCom.Definitions;
 using DcsVoiceCom.Editing;
 using DcsVoiceCom.Engine;
@@ -21,8 +22,16 @@ public sealed class ProfileItemViewModel : ObservableObject
     }
 
     public string Name { get; }
-    public bool IsCommon => Name.Equals(ProfileStore.CommonProfileName, StringComparison.OrdinalIgnoreCase);
-    public string Display => IsCommon ? "common (all aircraft)" : Name;
+    public bool IsCommon => ProfileStore.IsCommon(Name);
+    public bool IsServer => ProfileStore.IsServerProfile(Name);
+
+    /// <summary>An aircraft profile: not common, not a server profile.</summary>
+    public bool IsAircraft => !IsCommon && !IsServer;
+
+    public string Display => IsCommon ? "common (all aircraft)" : IsServer ? ServerLabel(Name) + " (server)" : Name;
+
+    /// <summary>"server-ShadowReapers" → "ShadowReapers".</summary>
+    public static string ServerLabel(string name) => ProfileStore.IsServerProfile(name) ? name[ProfileStore.ServerPrefix.Length..] : name;
 
     public int CommandCount
     {
@@ -112,6 +121,9 @@ public sealed class MainViewModel : ObservableObject
     private string _testText = "";
     private bool _dryRun = true;
     private string _selectedOverride = AutoProfile;
+    private string _selectedServerOverride = AutoProfile;
+    private string _serverStatus = NoServer;
+    private const string NoServer = "Server · none";
     private bool _isListening;
     private bool _dryRunInFlight;
     private string _dcsStatus = "DCS-BIOS · not started";
@@ -132,6 +144,7 @@ public sealed class MainViewModel : ObservableObject
         Browser.ArgumentPicked += OnArgumentPicked;
 
         NewProfileCommand = new RelayCommand(NewProfile);
+        NewServerProfileCommand = new RelayCommand(NewServerProfile);
         DeleteProfileCommand = new RelayCommand(p => DeleteProfile(p as ProfileItemViewModel ?? SelectedProfile), p => CanDeleteProfile(p as ProfileItemViewModel ?? SelectedProfile));
         NewCommandCommand = new RelayCommand(NewCommand, () => _profile != null);
         DuplicateCommandCommand = new RelayCommand(p => Duplicate(p as CommandItemViewModel ?? SelectedCommand), p => (p ?? SelectedCommand) is CommandItemViewModel);
@@ -158,7 +171,11 @@ public sealed class MainViewModel : ObservableObject
     /// <summary>"Auto" plus every aircraft profile: what the profile override can pin.</summary>
     public ObservableCollection<string> OverrideOptions { get; } = [];
 
+    /// <summary>"Auto" plus every server profile's label: what the server profile override can pin.</summary>
+    public ObservableCollection<string> ServerOverrideOptions { get; } = [];
+
     public RelayCommand NewProfileCommand { get; }
+    public RelayCommand NewServerProfileCommand { get; }
     public RelayCommand DeleteProfileCommand { get; }
     public RelayCommand NewCommandCommand { get; }
     public RelayCommand DuplicateCommandCommand { get; }
@@ -208,10 +225,13 @@ public sealed class MainViewModel : ObservableObject
     }
 
     /// <summary>An aircraft profile whose DCS-BIOS definitions are loaded.</summary>
-    public bool CanSeed => _profile != null && SelectedProfile is { IsCommon: false } && Browser.Catalog.Count > 0;
+    public bool CanSeed => _profile != null && SelectedProfile is { IsAircraft: true } && Browser.Catalog.Count > 0;
 
     /// <summary>Raised when the user picks a profile override (null = Auto), so the app can remember it.</summary>
     public event Action<string?>? ProfileOverrideChanged;
+
+    /// <summary>Raised when the user pins a server profile (its file name, null = Auto), so the app can remember it.</summary>
+    public event Action<string?>? ServerOverrideChanged;
 
     public IVoiceComRuntime? Runtime => _runtime;
 
@@ -258,6 +278,24 @@ public sealed class MainViewModel : ObservableObject
 
     public bool HasEditor => Editor != null;
     public bool HasProfile => _profile != null;
+
+    /// <summary>The selected profile is a server profile: shows its server list.</summary>
+    public bool IsServerProfile => _profile != null && SelectedProfile is { IsServer: true };
+
+    /// <summary>A server profile's server names or addresses, one per line; <c>*</c> stands for any text.</summary>
+    public string ServersText
+    {
+        get => _profile?.Servers is { } servers ? string.Join(Environment.NewLine, servers) : "";
+        set
+        {
+            if (_profile is null || !IsServerProfile) return;
+            var servers = value.Split('\n').Select(s => s.Trim()).Where(s => s.Length > 0).ToList();
+            if (_profile.Servers is { } old && servers.SequenceEqual(old)) return;
+            _profile.Servers = servers;
+            OnPropertyChanged();
+            IsDirty = true;
+        }
+    }
 
     public string ProfileTitle => _profile is null ? "No profile selected" : $"{SelectedProfile?.Display} commands";
 
@@ -349,6 +387,32 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
+    /// <summary>The pinned server profile's label, or "Auto" to follow the server the DCS hook reports.</summary>
+    public string SelectedServerOverride
+    {
+        get => _selectedServerOverride;
+        set
+        {
+            value ??= AutoProfile;
+            if (!SetProperty(ref _selectedServerOverride, value)) return;
+            var pinned = value == AutoProfile ? null : ProfileStore.ServerPrefix + value;
+            ServerOverrideChanged?.Invoke(pinned);
+            if (_runtime != null) _ = RunAsync(() => _runtime.SetServerOverrideAsync(pinned));
+        }
+    }
+
+    /// <summary>"Server · name" while on a multiplayer server, else "Server · none".</summary>
+    public string ServerStatus
+    {
+        get => _serverStatus;
+        private set
+        {
+            if (SetProperty(ref _serverStatus, value)) OnPropertyChanged(nameof(HasServer));
+        }
+    }
+
+    public bool HasServer => ServerStatus != NoServer;
+
     public bool IsListening
     {
         get => _isListening;
@@ -395,6 +459,7 @@ public sealed class MainViewModel : ObservableObject
             _runtime.ProfileLoaded -= OnProfileLoaded;
             _runtime.ListeningChanged -= OnListeningChanged;
             _runtime.AircraftChanged -= OnAircraftChanged;
+            _runtime.SessionChanged -= OnSessionChanged;
         }
         _runtime = runtime;
         if (runtime != null)
@@ -403,8 +468,12 @@ public sealed class MainViewModel : ObservableObject
             runtime.ProfileLoaded += OnProfileLoaded;
             runtime.ListeningChanged += OnListeningChanged;
             runtime.AircraftChanged += OnAircraftChanged;
+            runtime.SessionChanged += OnSessionChanged;
             _selectedOverride = runtime.ProfileOverride ?? AutoProfile;
             OnPropertyChanged(nameof(SelectedOverride));
+            _selectedServerOverride = runtime.ServerOverride is { } server ? ProfileItemViewModel.ServerLabel(server) : AutoProfile;
+            if (!ServerOverrideOptions.Contains(_selectedServerOverride)) ServerOverrideOptions.Add(_selectedServerOverride);
+            OnPropertyChanged(nameof(SelectedServerOverride));
         }
         MarkActive();
         RefreshStatus();
@@ -461,14 +530,20 @@ public sealed class MainViewModel : ObservableObject
     {
         var keep = _selectedProfile?.Name;
         var names = _store.List().ToList();
+        var servers = _store.ListServerProfiles().ToList();
         Profiles.Clear();
-        foreach (var name in names) Profiles.Add(new ProfileItemViewModel(name, CountCommands(name)));
+        foreach (var name in names.Concat(servers)) Profiles.Add(new ProfileItemViewModel(name, CountCommands(name)));
         Profiles.Add(new ProfileItemViewModel(ProfileStore.CommonProfileName, CountCommands(ProfileStore.CommonProfileName)));
 
         OverrideOptions.Clear();
         OverrideOptions.Add(AutoProfile);
         foreach (var name in names) OverrideOptions.Add(name);
         if (!OverrideOptions.Contains(_selectedOverride)) OverrideOptions.Add(_selectedOverride);
+
+        ServerOverrideOptions.Clear();
+        ServerOverrideOptions.Add(AutoProfile);
+        foreach (var name in servers) ServerOverrideOptions.Add(ProfileItemViewModel.ServerLabel(name));
+        if (!ServerOverrideOptions.Contains(_selectedServerOverride)) ServerOverrideOptions.Add(_selectedServerOverride);
 
         MarkActive();
         if (keep != null)
@@ -513,6 +588,8 @@ public sealed class MainViewModel : ObservableObject
         NewCommandCommand.Refresh();
         SeedCommand.Refresh();
         OnPropertyChanged(nameof(HasProfile));
+        OnPropertyChanged(nameof(IsServerProfile));
+        OnPropertyChanged(nameof(ServersText));
         OnPropertyChanged(nameof(ProfileTitle));
         OnPropertyChanged(nameof(WindowTitle));
         OnPropertyChanged(nameof(Threshold));
@@ -605,7 +682,7 @@ public sealed class MainViewModel : ObservableObject
 
     private ControlCatalog LoadCatalog(ProfileItemViewModel? item)
     {
-        if (item is null || item.IsCommon || !_definitions.Exists) return ControlCatalog.Empty;
+        if (item is null || !item.IsAircraft || !_definitions.Exists) return ControlCatalog.Empty;
         try
         {
             return _definitions.LoadAircraft(item.Name);
@@ -646,6 +723,37 @@ public sealed class MainViewModel : ObservableObject
         _selectedProfile = null;
         ReloadProfileList();
         SelectedProfile = Profiles.First(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>A server profile, named after the server you're on (if any) and turned on for it.</summary>
+    private void NewServerProfile()
+    {
+        var current = _runtime?.Session is { OnServer: true } session ? session.Server.Length > 0 ? session.Server : session.Address : "";
+        var label = _dialogs.Prompt("New server profile", "Server name. Use * for any text, e.g. ShadowReapers*", current)?.Trim();
+        if (string.IsNullOrEmpty(label)) return;
+        var name = ProfileStore.ServerPrefix + FileLabel(label);
+        if (Profiles.FirstOrDefault(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase)) is { } existing)
+        {
+            SelectedProfile = existing;
+            return;
+        }
+        if (!ConfirmDiscardOrSave()) return;
+        _store.Save(new Profile { Aircraft = name, Servers = [label] });
+        Log.Add("INFO", $"Created server profile {ProfileItemViewModel.ServerLabel(name)} for \"{label}\"");
+        IsDirty = false;
+        _selectedProfile = null;
+        ReloadProfileList();
+        SelectedProfile = Profiles.First(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        if (_runtime != null) _ = RunAsync(() => _runtime.ReloadProfileAsync());
+    }
+
+    /// <summary>A server name made fit for a file name: no wildcards, no characters Windows refuses.</summary>
+    private static string FileLabel(string label)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        var cleaned = new string(label.Select(c => c == '*' || invalid.Contains(c) || c is '/' or '\\' or ':' ? ' ' : c).ToArray());
+        cleaned = string.Join(' ', cleaned.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        return cleaned.Length > 0 ? cleaned : "server";
     }
 
     private static bool CanDeleteProfile(ProfileItemViewModel? item) =>
@@ -784,8 +892,9 @@ public sealed class MainViewModel : ObservableObject
         if (_runtime != null && AffectsActiveProfile(_selectedProfile.Name)) await _runtime.ReloadProfileAsync();
     }
 
+    /// <summary>Saving this profile changes what's active. Any server profile counts: its server list may now match.</summary>
     private bool AffectsActiveProfile(string name) =>
-        name.Equals(ProfileStore.CommonProfileName, StringComparison.OrdinalIgnoreCase) ||
+        ProfileStore.IsCommon(name) || ProfileStore.IsServerProfile(name) ||
         string.Equals(_runtime?.ActiveAircraft, name, StringComparison.OrdinalIgnoreCase);
 
     private void Revert()
@@ -820,7 +929,7 @@ public sealed class MainViewModel : ObservableObject
             Log.Add("ERROR", "Not running: the voice engine is stopped.");
             return;
         }
-        if (_runtime.ActiveAircraft is { } active && _selectedProfile != null && !_selectedProfile.IsCommon &&
+        if (_runtime.ActiveAircraft is { } active && _selectedProfile is { IsAircraft: true } &&
             !active.Equals(_selectedProfile.Name, StringComparison.OrdinalIgnoreCase))
             Log.Add("INFO", $"Testing against the active profile {active}, not {_selectedProfile.Name} (pin it with the profile override).");
         if (IsDirty && _selectedProfile != null && AffectsActiveProfile(_selectedProfile.Name)) await SaveAsync();
@@ -893,10 +1002,15 @@ public sealed class MainViewModel : ObservableObject
 
     private void OnAircraftChanged(string aircraft) => _ui.Post(RefreshStatus);
 
+    private void OnSessionChanged(DcsSession? session) => _ui.Post(RefreshStatus);
+
     private void MarkActive()
     {
         var active = _runtime?.ActiveAircraft;
-        foreach (var p in Profiles) p.IsActive = active != null && p.Name.Equals(active, StringComparison.OrdinalIgnoreCase);
+        var servers = _runtime?.ActiveServerProfiles ?? [];
+        foreach (var p in Profiles)
+            p.IsActive = active != null && (p.Name.Equals(active, StringComparison.OrdinalIgnoreCase) ||
+                                            servers.Contains(p.Name, StringComparer.OrdinalIgnoreCase));
     }
 
     private void RefreshStatus()
@@ -907,6 +1021,7 @@ public sealed class MainViewModel : ObservableObject
             DcsStatus = "DCS-BIOS · not running";
             SpeechStatus = "Speech · not running";
             ActiveProfileText = "";
+            ServerStatus = NoServer;
         }
         else
         {
@@ -915,9 +1030,15 @@ public sealed class MainViewModel : ObservableObject
                 ? $"DCS-BIOS · {(aircraft.Length == 0 || aircraft.Equals("NONE", StringComparison.OrdinalIgnoreCase) ? "no aircraft" : aircraft)}"
                 : runtime.FrameCount == 0 ? "DCS-BIOS · waiting for DCS" : "DCS-BIOS · no data";
             SpeechStatus = runtime.SpeechReady ? "Speech · ready" : "Speech · offline";
+            var servers = runtime.ActiveServerProfiles;
+            var serverText = servers.Count == 0 ? ""
+                : " + " + string.Join(", ", servers.Select(ProfileItemViewModel.ServerLabel)) + (runtime.ServerOverride != null ? " (pinned)" : "");
             ActiveProfileText = runtime.ActiveAircraft is { } active
-                ? $"Profile · {active}{(runtime.ProfileOverride != null ? " (pinned)" : "")}"
+                ? $"Profile · {active}{(runtime.ProfileOverride != null ? " (pinned)" : "")}{serverText}"
                 : "Profile · none";
+            ServerStatus = runtime.Session is { OnServer: true } session
+                ? $"Server · {(session.Server.Length > 0 ? session.Server : session.Address)}"
+                : NoServer;
             IsListening = runtime.IsListening;
         }
         OnPropertyChanged(nameof(DcsLive));

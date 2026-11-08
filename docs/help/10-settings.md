@@ -10,6 +10,8 @@ group: Reference
 - **Speech.** Microphone, language and the Whistle model folder. Leave the folder empty to use the built-in model.
 - **DCS-BIOS connection.** Host, ports and the folder with the aircraft definitions. The defaults fit a normal
   install.
+- **DCS hook.** *Install* puts a small script into `Saved Games\DCS\Scripts\Hooks`. It tells the app which
+  multiplayer server you're on, for [server profiles](11-server-profiles.md). *Remove* takes it out again.
 - **Profiles and keys.** Where the profile files are kept, how long a key is held, and the sounds for accepted,
   no match and refused.
 

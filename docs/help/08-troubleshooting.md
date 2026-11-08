@@ -16,6 +16,7 @@ Look in the **Log** first. It says what was heard and why a command did not run.
 | no microphone matches | Pick the microphone again in Settings. |
 | DCS-BIOS waiting for DCS | Start DCS and check that DCS-BIOS is installed. |
 | No profile, wrong profile | The profile name must match the aircraft. Or pin a profile in the top bar. |
+| Server profile not active | Settings → DCS hook → Install, then restart DCS. Check its *Servers* list. |
 
 The app does not start? Read `%LOCALAPPDATA%\DcsVoiceCom\crash.log`. Also check the tray: a minimized window
 hides there.

@@ -1,6 +1,6 @@
 # Plan: server profiles, auto-activated by the multiplayer server
 
-Status: proposed.
+Status: implemented (`DcsHook/`, server profiles in `ProfileStore`, Settings → DCS hook).
 
 ## Context
 Some commands only make sense on one server, e.g. its own F10 comms menu items. Today `common.json` is merged
@@ -58,7 +58,8 @@ Single player needs nothing new: `common.json` covers it.
 - `VoiceComRuntime` reloads the profile on `SessionChanged`, the same way it does on `AircraftChanged`.
 
 ### 5. UI
-- Main window: show `Server: <name>` and the active server profile(s) next to the aircraft.
+- Main window: below the profile list, `Server · <name>` and the server profile pin (Auto or a profile). The top bar
+  had no room for it. The active profile text shows `F-14BU + <server profile>`.
 - Profile list: server profiles are editable like `common`. New "New server profile…" fills `servers` with the
   current server name.
 - Settings: "Install DCS hook" button copies the hook to `Saved Games\DCS\Scripts\Hooks\` (and

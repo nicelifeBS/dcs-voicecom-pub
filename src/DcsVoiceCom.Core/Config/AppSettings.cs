@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using DcsVoiceCom.DcsBios;
+using DcsVoiceCom.DcsHook;
 using DcsVoiceCom.Definitions;
 using DcsVoiceCom.Profiles;
 using DcsVoiceCom.Speech;
@@ -13,6 +14,13 @@ public sealed record PttSettings
     public string? DeviceGuid { get; init; }
     public string? DeviceName { get; init; }
     public int Button { get; init; }
+}
+
+/// <summary>The DCS hook that reports the multiplayer server (for server profiles).</summary>
+public sealed record DcsHookSettings
+{
+    /// <summary>UDP port on 127.0.0.1 the hook sends to. Changing it needs the hook installed again.</summary>
+    public int Port { get; init; } = DcsHookListener.DefaultPort;
 }
 
 public sealed record CueSettings
@@ -32,6 +40,7 @@ public sealed record AppSettings
     public string DcsBiosJsonPath { get; init; } = DefinitionLoader.DefaultJsonDirectory;
     public string ProfilesPath { get; init; } = ProfileStore.DefaultDirectory;
     public DcsBiosEndpoints DcsBios { get; init; } = new();
+    public DcsHookSettings DcsHook { get; init; } = new();
     public SpeechSettings Speech { get; init; } = new();
     public PttSettings Ptt { get; init; } = new();
     public CueSettings Cues { get; init; } = new();
@@ -39,6 +48,9 @@ public sealed record AppSettings
 
     /// <summary>Pinned profile; null follows the aircraft DCS-BIOS reports ("Auto").</summary>
     public string? ProfileOverride { get; init; }
+
+    /// <summary>Pinned server profile (server-…); null follows the server the DCS hook reports ("Auto").</summary>
+    public string? ServerProfileOverride { get; init; }
 
     public static string DefaultDirectory =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DcsVoiceCom");

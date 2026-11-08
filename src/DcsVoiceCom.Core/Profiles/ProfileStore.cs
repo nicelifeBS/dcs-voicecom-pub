@@ -1,9 +1,18 @@
+using DcsVoiceCom.DcsHook;
+
 namespace DcsVoiceCom.Profiles;
 
 /// <summary>Loads and saves profiles from a folder (%LOCALAPPDATA%\DcsVoiceCom\profiles by default).</summary>
 public sealed class ProfileStore
 {
     public const string CommonProfileName = "common";
+
+    /// <summary>Server profiles are stored as server-&lt;name&gt;.json.</summary>
+    public const string ServerPrefix = "server-";
+
+    public static bool IsServerProfile(string name) => name.StartsWith(ServerPrefix, StringComparison.OrdinalIgnoreCase);
+
+    public static bool IsCommon(string name) => name.Equals(CommonProfileName, StringComparison.OrdinalIgnoreCase);
 
     public ProfileStore(string directory) => Directory = directory;
 
@@ -21,15 +30,41 @@ public sealed class ProfileStore
         return safe + ".json";
     }
 
-    public IReadOnlyList<string> List() =>
+    /// <summary>Aircraft profiles: every file but common and the server profiles.</summary>
+    public IReadOnlyList<string> List() => AllNames().Where(n => !IsCommon(n) && !IsServerProfile(n)).ToList();
+
+    /// <summary>Server profile names, with their "server-" prefix.</summary>
+    public IReadOnlyList<string> ListServerProfiles() => AllNames().Where(IsServerProfile).ToList();
+
+    private IEnumerable<string> AllNames() =>
         System.IO.Directory.Exists(Directory)
             ? System.IO.Directory.EnumerateFiles(Directory, "*.json")
                 .Select(Path.GetFileNameWithoutExtension)
                 .OfType<string>()
-                .Where(n => !n.Equals(CommonProfileName, StringComparison.OrdinalIgnoreCase))
                 .Order(StringComparer.OrdinalIgnoreCase)
-                .ToList()
             : [];
+
+    /// <summary>
+    /// The server profiles whose <c>servers</c> match the session, in name order. Files that can't be read are
+    /// skipped and reported in <paramref name="problems"/>.
+    /// </summary>
+    public IReadOnlyList<string> MatchingServerProfiles(DcsSession? session, List<string>? problems = null)
+    {
+        if (session is null || !session.OnServer) return [];
+        var matches = new List<string>();
+        foreach (var name in ListServerProfiles())
+        {
+            try
+            {
+                if (ServerPattern.MatchesAny(TryLoad(name)?.Servers, session)) matches.Add(name);
+            }
+            catch (Exception ex) when (ex is IOException or System.Text.Json.JsonException or UnauthorizedAccessException)
+            {
+                problems?.Add($"Could not read server profile {name}: {ex.Message}");
+            }
+        }
+        return matches;
+    }
 
     public void Delete(string aircraft) => File.Delete(PathFor(aircraft));
 
@@ -54,16 +89,16 @@ public sealed class ProfileStore
     }
 
     /// <summary>
-    /// The aircraft profile with common.json merged under it: common commands are added unless the
-    /// aircraft profile has a command of the same name; keywords are combined.
-    /// Returns null when neither file exists.
+    /// The aircraft profile with the server profiles, then common.json, merged under it: a lower layer's command is
+    /// added unless a higher one has a command of the same name; keywords are combined.
+    /// Order: aircraft &gt; server profiles (in the order given) &gt; common. Returns null when no file exists.
     /// </summary>
-    public Profile? LoadMerged(string aircraft)
+    public Profile? LoadMerged(string aircraft, IReadOnlyList<string>? serverProfiles = null)
     {
         var own = TryLoad(aircraft);
-        var common = TryLoad(CommonProfileName);
-        if (own is null && common is null) return null;
-        return Merge(own ?? new Profile { Aircraft = aircraft }, common);
+        var layers = (serverProfiles ?? []).Select(TryLoad).Append(TryLoad(CommonProfileName)).ToList();
+        if (own is null && layers.All(l => l is null)) return null;
+        return layers.Aggregate(own ?? new Profile { Aircraft = aircraft }, Merge);
     }
 
     public static Profile Merge(Profile aircraft, Profile? common)

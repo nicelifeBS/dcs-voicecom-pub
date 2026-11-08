@@ -8,7 +8,8 @@ group: Start
 
 1. **Status bar.** Push-to-talk button, listening, DCS-BIOS and speech status. On the right: the active
    profile, Save (Ctrl+S), Log, Settings and Help.
-2. **Profiles.** One per aircraft, plus *common* for every aircraft. The active one has a green dot.
+2. **Profiles.** One per aircraft, [server profiles](11-server-profiles.md), and *common* for every aircraft.
+   The active ones have a green dot. Below the list: the multiplayer server you're on, and the server profile pin.
    *Matching* below the list sets the scores a command needs and the keywords.
 3. **Commands.** All commands of the profile. Tick a box to enable a command. Right-click for duplicate and delete.
 4. **Editor.** The voice line and the actions of the selected command.

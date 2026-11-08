@@ -4,6 +4,17 @@ One JSON file per aircraft, named after its DCS-BIOS `_ACFT_NAME` (`F-14BU.json`
 `%LOCALAPPDATA%\DcsVoiceCom\profiles\`. `common.json` has the same format and is merged under every aircraft
 profile: its commands are added unless the aircraft profile has a command with the same name.
 
+**Server profiles** (`server-<name>.json`) have the same format plus `servers`: the multiplayer servers they are
+for. While you're on a matching server they are merged in between: aircraft, then server profiles, then common.
+The DCS hook (Settings → DCS hook → Install) tells the app which server you're on.
+
+```json
+{ "aircraft": "server-ShadowReapers", "servers": ["ShadowReapers*", "65.109.30.115:10321"], "commands": [ ] }
+```
+
+A `servers` line is a server name or address, ignoring case and outer spaces. `*` stands for any text, anywhere:
+`ShadowReapers*`, `*Reapers*`, `*PvE`. Without `*` the whole name must match.
+
 ```json
 {
   "aircraft": "F-14BU",

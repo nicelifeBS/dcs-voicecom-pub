@@ -5,6 +5,7 @@ using System.Windows.Threading;
 using DcsVoiceCom.Config;
 using DcsVoiceCom.Definitions;
 using DcsVoiceCom.Profiles;
+using DcsVoiceCom.DcsHook;
 using DcsVoiceCom.Runtime;
 using DcsVoiceCom.ViewModels;
 using DcsVoiceCom.Windows;
@@ -88,6 +89,7 @@ public partial class App : Application
         _vm = new MainViewModel(new ProfileStore(_settings.ProfilesPath), new DefinitionLoader(_settings.DcsBiosJsonPath),
             dialogs, new WpfUiThread(Dispatcher), SettingsViewModel.Describe(_settings.Ptt));
         _vm.ProfileOverrideChanged += pinned => SaveSettings(_settings with { ProfileOverride = pinned });
+        _vm.ServerOverrideChanged += pinned => SaveSettings(_settings with { ServerProfileOverride = pinned });
         _vm.Log.Add("INFO", $"Settings: {AppSettings.DefaultPath}");
 
         _window = new MainWindow(_vm) { OpenSettings = () => _ = OpenSettingsAsync(), OpenHelp = OpenHelp };
@@ -120,6 +122,25 @@ public partial class App : Application
         catch (Exception ex)
         {
             _vm.Log.Add("ERROR", $"Start failed: {ex.Message}");
+        }
+        WarnIfHookMissing();
+    }
+
+    /// <summary>Server profiles do nothing without the DCS hook: say so once at start.</summary>
+    private void WarnIfHookMissing()
+    {
+        try
+        {
+            if (_runtime is null || _runtime.Profiles.ListServerProfiles().Count == 0) return;
+            var status = new DcsHookInstaller(_settings.DcsHook.Port).Status();
+            if (status == HookStatus.NotInstalled)
+                _vm?.Log.Add("WARN", "Server profiles need the DCS hook: Settings → DCS hook → Install.");
+            else if (status == HookStatus.OutOfDate)
+                _vm?.Log.Add("WARN", "The DCS hook is out of date: Settings → DCS hook → Install.");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // only a hint
         }
     }
 
@@ -172,7 +193,8 @@ public partial class App : Application
             }
         }
 
-        var dialog = new SettingsWindow(new SettingsViewModel(_settings, new DirectInputBinder(() => WindowHandle), microphones)) { Owner = _window };
+        var dialog = new SettingsWindow(new SettingsViewModel(_settings, new DirectInputBinder(() => WindowHandle), microphones,
+            new DcsHookInstaller(_settings.DcsHook.Port))) { Owner = _window };
         if (dialog.ShowDialog() != true || dialog.Result is not { } updated) return;
 
         var pathsChanged = updated.ProfilesPath != _settings.ProfilesPath || updated.DcsBiosJsonPath != _settings.DcsBiosJsonPath;
