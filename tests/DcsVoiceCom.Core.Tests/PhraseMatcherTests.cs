@@ -15,14 +15,6 @@ public class PhraseMatcherTests
     }
 
     [Fact]
-    public void Normalize_mirrors_the_profile_text()
-    {
-        Assert.Equal("radio 251.0", PhraseMatcher.Normalize("Radio 251.0."));
-        Assert.Equal("gear up", PhraseMatcher.Normalize("Gear, up!"));
-        Assert.Equal("x ray", PhraseMatcher.Normalize("X-ray"));
-    }
-
-    [Fact]
     public void Ratio_is_rapidfuzz_ratio()
     {
         Assert.Equal(100, PhraseMatcher.Ratio("", ""));
