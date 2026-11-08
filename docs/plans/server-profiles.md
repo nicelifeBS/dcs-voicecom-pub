@@ -46,8 +46,10 @@ Single player needs nothing new: `common.json` covers it.
   { "aircraft": "server-ShadowReapers", "servers": ["ShadowReapers*"], "commands": [ ... ] }
   ```
 - Stored as `server-<name>.json` in the profiles folder (`server-` prefix, like `common`).
-- `servers` entries match the server name, ignoring case and outer spaces. `*` is a wildcard, so one profile can
-  cover all ShadowReapers servers. An entry can also be an address (`65.109.30.115:10321`).
+- `servers` entries match the server name, ignoring case and outer spaces. `*` is a wildcard for any text and
+  works anywhere: start, middle or end. `ShadowReapers*` matches names that start with it, `*Reapers*` matches
+  names that contain it, `*PvE` matches names that end with it. Without `*` the name must match exactly.
+  An entry can also be an address (`65.109.30.115:10321`).
 - `ProfileStore.List()` leaves server profiles out of the aircraft list, like `common`.
 
 ### 4. Merging (`ProfileStore.LoadMerged`)
@@ -65,7 +67,7 @@ Single player needs nothing new: `common.json` covers it.
 
 ### 6. Tests
 - `DcsHookListener`: parsing, change events, timeout.
-- Server name matching: trim, case, wildcard, address.
+- Server name matching: trim, case, `*` at start, middle and end, exact match without `*`, address.
 - Merge order: aircraft > server > common.
 - Hook Lua: run under a fake `DCS`/`net` (as done for the probe) to check messages and that the hash is never sent.
 
