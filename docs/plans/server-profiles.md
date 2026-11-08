@@ -59,7 +59,8 @@ Single player needs nothing new: `common.json` covers it.
 
 ### 5. UI
 - Main window: below the profile list, `Server · <name>` and the server profile pin (Auto or a profile). The top bar
-  had no room for it. The active profile text shows `F-14BU + <server profile>`.
+  had no room for it. Active server profiles get the green dot in the profile list. A server profile's **Servers** box sits above
+  its command filter.
 - Profile list: server profiles are editable like `common`. New "New server profile…" fills `servers` with the
   current server name.
 - Settings: "Install DCS hook" button copies the hook to `Saved Games\DCS\Scripts\Hooks\` (and

@@ -77,7 +77,7 @@ public class ServerProfileViewModelTests
         runtime.ReloadProfileAsync();
 
         Assert.Equal($"Server · {Reapers.Server}", vm.ServerStatus);
-        Assert.Equal("Profile · TestJet + Reapers", vm.ActiveProfileText);
+        Assert.Equal("Profile · TestJet", vm.ActiveProfileText); // the green dot in the list shows the server profile
         Assert.True(vm.Profiles.Single(p => p.Name == "server-Reapers").IsActive);
         Assert.False(vm.Profiles.Single(p => p.Name == "common").IsActive);
 

@@ -12,7 +12,7 @@ Some commands only make sense on one multiplayer server, like its own F10 comms 
 2. Join the server. Below the profile list it says **Server · *name***.
 3. Click **+ Server profile**. It starts with the server's name. Add commands like in any profile.
 
-**Servers** under *Matching* lists the servers the profile is for, one per line. `*` stands for any text:
+**Servers**, above the command list, lists the servers the profile is for, one per line. `*` stands for any text:
 
 | Line | Matches |
 |---|---|

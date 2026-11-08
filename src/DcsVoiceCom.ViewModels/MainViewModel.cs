@@ -1030,11 +1030,8 @@ public sealed class MainViewModel : ObservableObject
                 ? $"DCS-BIOS · {(aircraft.Length == 0 || aircraft.Equals("NONE", StringComparison.OrdinalIgnoreCase) ? "no aircraft" : aircraft)}"
                 : runtime.FrameCount == 0 ? "DCS-BIOS · waiting for DCS" : "DCS-BIOS · no data";
             SpeechStatus = runtime.SpeechReady ? "Speech · ready" : "Speech · offline";
-            var servers = runtime.ActiveServerProfiles;
-            var serverText = servers.Count == 0 ? ""
-                : " + " + string.Join(", ", servers.Select(ProfileItemViewModel.ServerLabel)) + (runtime.ServerOverride != null ? " (pinned)" : "");
             ActiveProfileText = runtime.ActiveAircraft is { } active
-                ? $"Profile · {active}{(runtime.ProfileOverride != null ? " (pinned)" : "")}{serverText}"
+                ? $"Profile · {active}{(runtime.ProfileOverride != null ? " (pinned)" : "")}"
                 : "Profile · none";
             ServerStatus = runtime.Session is { OnServer: true } session
                 ? $"Server · {(session.Server.Length > 0 ? session.Server : session.Address)}"

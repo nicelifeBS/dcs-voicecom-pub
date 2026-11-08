@@ -97,11 +97,6 @@
             <Label Content="Keywords" Margin="0,8,0,0" />
             <TextBox Text="{Binding KeywordsText, UpdateSourceTrigger=LostFocus}" TextWrapping="Wrap"
                      ToolTip="Comma separated. Only words the recognizer gets wrong (e.g. TACAN, Shkval)." />
-            <StackPanel Visibility="{Binding IsServerProfile, Converter={StaticResource Visible}}">
-              <Label Content="Servers" Margin="0,8,0,0" />
-              <TextBox Text="{Binding ServersText, UpdateSourceTrigger=LostFocus}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="44"
-                       ToolTip="One server name or address per line. * stands for any text: ShadowReapers*, *Reapers*, *PvE" />
-            </StackPanel>
           </StackPanel>
         </Border>
         <Button DockPanel.Dock="Bottom" Content="+ Server profile" Command="{Binding NewServerProfileCommand}" Margin="0,6,0,0"
@@ -145,6 +140,11 @@
                   ToolTip="Generate disabled starter commands from this aircraft's DCS-BIOS definitions" />
           <TextBlock Text="{Binding ProfileTitle}" Style="{StaticResource Heading}" VerticalAlignment="Center" Margin="0" TextTrimming="CharacterEllipsis" />
         </DockPanel>
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8" Visibility="{Binding IsServerProfile, Converter={StaticResource Visible}}">
+          <Label Content="Servers (one per line, * = any text)" />
+          <TextBox Text="{Binding ServersText, UpdateSourceTrigger=LostFocus}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="44"
+                   ToolTip="One server name or address per line. * stands for any text: ShadowReapers*, *Reapers*, *PvE" />
+        </StackPanel>
         <Grid DockPanel.Dock="Top" Margin="0,0,0,4">
           <TextBox x:Name="CommandSearch" Text="{Binding CommandFilter, UpdateSourceTrigger=PropertyChanged}" ToolTip="Voice line, alternative or step" />
           <TextBlock Text="Filter commands…" Foreground="{StaticResource Muted}" Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
