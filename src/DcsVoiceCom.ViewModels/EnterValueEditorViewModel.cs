@@ -187,6 +187,17 @@ public sealed class DisplayFieldViewModel : ObservableObject
     };
 }
 
+/// <summary>A control the user can tick before it is operated by "Learn from display".</summary>
+public sealed class LearnCandidateViewModel(ProbeCandidate candidate) : ObservableObject
+{
+    private bool _ticked;
+    public ProbeCandidate Candidate { get; } = candidate;
+    public string Control => Candidate.Control;
+    public string Description => Candidate.Description;
+    public string Kind => Candidate.IsKey ? "key" : "wheel";
+    public bool IsTicked { get => _ticked; set => SetProperty(ref _ticked, value); }
+}
+
 /// <summary>One keypad key: a character and the control that types it.</summary>
 public sealed class KeypadKeyViewModel(EnterValueEditorViewModel owner, string character, string control) : ObservableObject
 {
@@ -221,7 +232,8 @@ public sealed class EnterValueEditorViewModel : ObservableObject
     private readonly EnterValueContext _context;
     private readonly IDialogs _dialogs;
     private readonly EnterValueStep? _legacy;
-    private readonly List<string>? _before, _after;
+    private List<string>? _before;
+    private readonly List<string>? _after;
     private string _value, _display, _sample, _decimals, _timeout, _up, _down, _delay, _maxSteps, _press, _try;
     private bool _isKeypad;
     private (int Start, int End)? _selection;
@@ -279,6 +291,10 @@ public sealed class EnterValueEditorViewModel : ObservableObject
         SuggestCommand = new RelayCommand(Suggest);
         FillKeysCommand = new RelayCommand(FillKeys);
         AddKeyCommand = new RelayCommand(AddKey);
+        LearnCommand = new RelayCommand(BeginLearn, () => CanLearn);
+        StartLearnCommand = new AsyncCommand(StartLearnAsync, ReportLearnError, () => IsChoosing && LearnCandidates.Any(c => c.IsTicked));
+        CancelLearnCommand = new RelayCommand(CancelLearn);
+        AddLearnCategoryCommand = new RelayCommand(AddLearnCategory);
         RefreshLive();
     }
 
@@ -297,6 +313,10 @@ public sealed class EnterValueEditorViewModel : ObservableObject
     public RelayCommand SuggestCommand { get; }
     public RelayCommand FillKeysCommand { get; }
     public RelayCommand AddKeyCommand { get; }
+    public RelayCommand LearnCommand { get; }
+    public AsyncCommand StartLearnCommand { get; }
+    public RelayCommand CancelLearnCommand { get; }
+    public RelayCommand AddLearnCategoryCommand { get; }
 
     public string Value { get => _value; set { if (SetProperty(ref _value, value)) Changed(); } }
 
@@ -534,6 +554,8 @@ public sealed class EnterValueEditorViewModel : ObservableObject
         Changed();
         OnPropertyChanged(nameof(IsLive));
         OnPropertyChanged(nameof(CanTest));
+        OnPropertyChanged(nameof(CanLearn));
+        LearnCommand.Refresh();
     }
 
     /// <summary>Sends one click up or down and sees which way the field moved; a wrong way sets <see cref="DisplayFieldViewModel.Flip"/>.</summary>
@@ -685,6 +707,214 @@ public sealed class EnterValueEditorViewModel : ObservableObject
         if (Keys.Any(k => k.Character == key)) return;
         Keys.Add(new KeypadKeyViewModel(this, key, ""));
         Changed();
+    }
+
+    // ---- learn from display --------------------------------------------------------------------------------
+
+    private readonly HashSet<string> _learnCategories = new(StringComparer.OrdinalIgnoreCase);
+    private CancellationTokenSource? _learnCts;
+    private bool _isChoosing, _isLearning;
+    private string _learnProgress = "";
+
+    /// <summary>Controls the user can tick before "Learn from display" operates them.</summary>
+    public ObservableCollection<LearnCandidateViewModel> LearnCandidates { get; } = [];
+
+    /// <summary>The candidate list is shown, waiting for Start.</summary>
+    public bool IsChoosing { get => _isChoosing; private set { if (SetProperty(ref _isChoosing, value)) RefreshLearn(); } }
+
+    /// <summary>A probe is running.</summary>
+    public bool IsLearning { get => _isLearning; private set { if (SetProperty(ref _isLearning, value)) RefreshLearn(); } }
+
+    public bool ShowLearnPanel => IsChoosing || IsLearning;
+    public string LearnProgress { get => _learnProgress; private set => SetProperty(ref _learnProgress, value); }
+
+    /// <summary>Learn from display needs DCS running and nothing else going on.</summary>
+    public bool CanLearn => CanTest && !IsChoosing && !IsLearning;
+
+    private void RefreshLearn()
+    {
+        OnPropertyChanged(nameof(ShowLearnPanel));
+        OnPropertyChanged(nameof(CanLearn));
+        OnPropertyChanged(nameof(CanEditLearnList));
+        StartLearnCommand.Refresh();
+        LearnCommand.Refresh();
+    }
+
+    public bool CanEditLearnList => IsChoosing && !IsLearning;
+
+    private void ReportLearnError(Exception ex)
+    {
+        IsLearning = false;
+        IsChoosing = false;
+        Message = ex.Message;
+    }
+
+    /// <summary>
+    /// "Learn from display…": lists the controls that might drive the display, for the user to tick. Nothing is sent
+    /// until Start; the editor never probes on its own.
+    /// </summary>
+    private void BeginLearn()
+    {
+        Message = null;
+        if (!CanTest)
+        {
+            Message = "Learn from display needs DCS running.";
+            return;
+        }
+        var display = Display.Trim();
+        if (display.Length == 0)
+        {
+            display = _dialogs.Prompt("Learn from display", "Which display shows the value?", StringOutputs.FirstOrDefault() ?? "", StringOutputs)?.Trim() ?? "";
+            if (display.Length == 0) return;
+            Display = display;
+        }
+        ListLearnCandidates();
+        if (LearnCandidates.Count == 0)
+        {
+            Message = "No controls found for this display. Add a category that holds its knobs or keys.";
+            return;
+        }
+        IsChoosing = true;
+    }
+
+    private void ListLearnCandidates()
+    {
+        foreach (var old in LearnCandidates) old.PropertyChanged -= OnCandidateChanged;
+        LearnCandidates.Clear();
+        var found = DisplayProbe.Candidates(_context.Catalog, Display.Trim(), _learnCategories);
+        foreach (var c in found.Candidates)
+        {
+            var vm = new LearnCandidateViewModel(c) { IsTicked = c.Likely };
+            vm.PropertyChanged += OnCandidateChanged;
+            LearnCandidates.Add(vm);
+        }
+        _neverTouched = found.Dropped;
+        StartLearnCommand.Refresh();
+    }
+
+    private IReadOnlyList<ProbeDropped> _neverTouched = [];
+
+    private void OnCandidateChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) => StartLearnCommand.Refresh();
+
+    private void AddLearnCategory()
+    {
+        var categories = _context.Catalog.Controls.Select(c => c.Category).Where(c => c.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase).ToList();
+        var category = _dialogs.Prompt("Learn from display", "Also look for controls in which category?", categories.FirstOrDefault() ?? "", categories)?.Trim();
+        if (string.IsNullOrEmpty(category)) return;
+        _learnCategories.Add(category);
+        ListLearnCandidates();
+    }
+
+    /// <summary>Cancel: closes the list, or stops the probe (which still puts wheels back and clears the entry).</summary>
+    private void CancelLearn()
+    {
+        if (IsLearning) _learnCts?.Cancel();
+        else IsChoosing = false;
+    }
+
+    /// <summary>The window closed: stop a probe that is running, with the same cleanup.</summary>
+    public void StopLearning() => _learnCts?.Cancel();
+
+    private sealed class InlineProgress(Action<string> report) : IProgress<string>
+    {
+        public void Report(string value) => report(value);
+    }
+
+    private async Task StartLearnAsync()
+    {
+        var ticked = LearnCandidates.Where(c => c.IsTicked).Select(c => c.Candidate).ToList();
+        if (ticked.Count == 0 || _context.Send is null) return;
+        if (!_dialogs.Confirm("Learn from display", "This turns knobs and presses keys on this panel, then puts them back.\n\nGo on?")) return;
+
+        Message = null;
+        IsChoosing = false;
+        IsLearning = true;
+        LearnProgress = "Reading the display…";
+        _learnCts = new CancellationTokenSource();
+        ProbeResult result;
+        try
+        {
+            var context = new ProbeContext(_context.Catalog, ReadDisplay, _context.Send)
+            {
+                Delay = TestDelay,
+                Up = List(Up) ?? EnterValueStep.DefaultUp,
+                Down = List(Down) ?? EnterValueStep.DefaultDown,
+                Press = List(Press) ?? EnterValueStep.DefaultPress,
+                MaxSteps = Int(MaxSteps, 40),
+            };
+            result = await DisplayProbe.LearnAsync(context, Display.Trim(), ticked, new InlineProgress(m => LearnProgress = m), _learnCts.Token);
+        }
+        finally
+        {
+            _learnCts.Dispose();
+            _learnCts = null;
+            IsLearning = false;
+            LearnProgress = "";
+        }
+        ApplyLearned(result);
+    }
+
+    private void ApplyLearned(ProbeResult result)
+    {
+        var lines = new List<string>();
+        var live = ReadDisplay(Display.Trim()) ?? _sample;
+        var hasWheels = result.Wheels.Count > 0;
+        var hasKeys = result.Keys.Count > 0;
+        var useKeys = hasKeys && !hasWheels;
+        if (hasWheels && hasKeys)
+        {
+            var choice = _dialogs.Prompt("Learn from display", "Both knobs and keys change this display. Which method should this command use?", "Wheels", ["Wheels", "Keypad"])?.Trim();
+            useKeys = string.Equals(choice, "Keypad", StringComparison.OrdinalIgnoreCase);
+            if (string.IsNullOrEmpty(choice)) { hasWheels = hasKeys = false; }
+        }
+
+        if (useKeys && hasKeys)
+        {
+            Fields.Clear();
+            IsKeypad = true;
+            if (result.KeypadField is { } pad)
+            {
+                foreach (var f in DisplayProbe.WithFixedGaps([pad], live).Where(f => f.Kind == FieldKind.ReadOnly)) Fields.Add(new DisplayFieldViewModel(this, f));
+                Fields.Add(new DisplayFieldViewModel(this, pad));
+            }
+            else lines.Add("The entry field was not found: select it on the display and press Keypad.");
+            Keys.Clear();
+            foreach (var (ch, control) in result.Keys.OrderBy(k => k.Key, StringComparer.Ordinal)) Keys.Add(new KeypadKeyViewModel(this, ch, control));
+            AddUntestedKeys(result, lines);
+            _before = result.Clear is { } clear ? [clear] : null;
+            lines.Insert(0, $"Learned {result.Keys.Count} keys. Check them before saving.");
+        }
+        else if (hasWheels)
+        {
+            Fields.Clear();
+            IsKeypad = false;
+            foreach (var f in DisplayProbe.WithFixedGaps(result.Wheels, live)) Fields.Add(new DisplayFieldViewModel(this, f));
+            lines.Insert(0, $"Learned {result.Wheels.Count} wheels. Check them before saving.");
+        }
+        else
+        {
+            lines.Add(result.Cancelled ? "Cancelled. Nothing was changed." : "Nothing on this display moved. Pick other controls, or add their category.");
+        }
+
+        if (result.Cancelled && (hasWheels || hasKeys)) lines.Insert(0, "Cancelled part way: what was learned so far is below.");
+        lines.AddRange(result.Notes);
+        var dropped = result.Dropped.Concat(_neverTouched).ToList();
+        if (dropped.Count > 0) lines.Add("Left out: " + string.Join(", ", dropped.Select(d => $"{d.Control} ({d.Reason})")) + ".");
+        _selection = null;
+        Message = string.Join("\n", lines);
+        Changed();
+    }
+
+    /// <summary>Characters the probe did not find keep the name guess (CDU_A…), marked not tested.</summary>
+    private void AddUntestedKeys(ProbeResult result, List<string> lines)
+    {
+        var prefix = result.Keys.Values.Select(v => v[..Math.Max(0, v.LastIndexOf('_'))]).Where(p => p.Length > 0)
+            .GroupBy(p => p, StringComparer.OrdinalIgnoreCase).OrderByDescending(g => g.Count()).FirstOrDefault()?.Key;
+        if (prefix is null) return;
+        var (guessed, _) = EnterValueGuess.Keys(_context.Catalog, prefix);
+        var untested = guessed.Where(g => g.Value.Length > 0 && !result.Keys.ContainsKey(g.Key) && !result.Dropped.Any(d => d.Control == g.Value)).ToList();
+        foreach (var (ch, control) in untested) Keys.Add(new KeypadKeyViewModel(this, ch, control));
+        if (untested.Count > 0) lines.Add($"Not tested (kept from the names): {string.Join(" ", untested.Select(u => u.Key))}.");
     }
 
     // ---- saving ------------------------------------------------------------------------------------------

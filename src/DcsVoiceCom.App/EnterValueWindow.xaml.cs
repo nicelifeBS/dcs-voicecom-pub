@@ -17,7 +17,11 @@ public partial class EnterValueWindow : Window
         Title = $"Enter value — {editor.Value}";
         _live.Tick += (_, _) => editor.RefreshLive();
         Loaded += (_, _) => _live.Start();
-        Closed += (_, _) => _live.Stop();
+        Closed += (_, _) =>
+        {
+            _live.Stop();
+            editor.StopLearning();
+        };
     }
 
     private EnterValueEditorViewModel Editor => (EnterValueEditorViewModel)DataContext;

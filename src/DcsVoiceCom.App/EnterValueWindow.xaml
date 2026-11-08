@@ -137,6 +137,8 @@
         <Border Style="{StaticResource Card}" Margin="0,0,0,12">
           <StackPanel>
             <DockPanel Margin="0,0,0,8">
+              <Button DockPanel.Dock="Right" Content="Learn from display…" Command="{Binding LearnCommand}" Style="{StaticResource Small}" Margin="8,0,0,0"
+                      ToolTip="With DCS running: operates the knobs or keys once, watches the display and builds the fields. Puts them back afterwards." />
               <Button DockPanel.Dock="Right" Content="{Binding SuggestLabel}" Command="{Binding SuggestCommand}" Style="{StaticResource Small}"
                       ToolTip="Finds the radio's controls and, with DCS running, places them on the display" />
               <TextBlock Text="DISPLAY FIELDS" Style="{StaticResource Heading}" VerticalAlignment="Center" Margin="0,0,12,0" />
@@ -149,6 +151,38 @@
             <Border Background="#2b1a12" BorderBrush="#7a3e26" BorderThickness="1" CornerRadius="6" Padding="10,6" Margin="0,0,0,8"
                     Visibility="{Binding IsLive, Converter={StaticResource Visible}, ConverterParameter=invert}">
               <TextBlock Text="{Binding LiveStatus}" Foreground="#ffb59a" TextWrapping="Wrap" />
+            </Border>
+            <Border Style="{StaticResource Card}" Margin="0,0,0,8" Visibility="{Binding ShowLearnPanel, Converter={StaticResource Visible}}">
+              <StackPanel>
+                <TextBlock Text="LEARN FROM DISPLAY" Style="{StaticResource Heading}" Margin="0,0,0,6" />
+                <StackPanel Visibility="{Binding CanEditLearnList, Converter={StaticResource Visible}}">
+                  <TextBlock Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,0,0,6"
+                             Text="Tick the controls to try. Each one is operated once, then put back. Power, arm, fire, ENT and similar are never touched." />
+                  <ScrollViewer MaxHeight="180" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding LearnCandidates}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <CheckBox IsChecked="{Binding IsTicked}" Margin="0,2">
+                            <TextBlock>
+                              <Run Text="{Binding Control, Mode=OneWay}" FontWeight="SemiBold" />
+                              <Run Text="{Binding Kind, Mode=OneWay}" Foreground="{StaticResource Muted}" />
+                              <Run Text="{Binding Description, Mode=OneWay}" Foreground="{StaticResource Muted}" />
+                            </TextBlock>
+                          </CheckBox>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </ScrollViewer>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                  <Button Content="Start" Command="{Binding StartLearnCommand}" Style="{StaticResource Small}"
+                          Visibility="{Binding CanEditLearnList, Converter={StaticResource Visible}}" />
+                  <Button Content="Add category…" Command="{Binding AddLearnCategoryCommand}" Style="{StaticResource Small}" Margin="8,0,0,0"
+                          Visibility="{Binding CanEditLearnList, Converter={StaticResource Visible}}" />
+                  <Button Content="Cancel" Command="{Binding CancelLearnCommand}" Style="{StaticResource Small}" Margin="8,0,0,0" />
+                  <TextBlock Text="{Binding LearnProgress}" Foreground="{StaticResource Accent}" VerticalAlignment="Center" Margin="12,0,0,0" />
+                </StackPanel>
+              </StackPanel>
             </Border>
             <TextBlock Text="{Binding LegacyNote}" Foreground="{StaticResource Accent}" TextWrapping="Wrap" Margin="0,0,0,8"
                        Visibility="{Binding HasLegacyNote, Converter={StaticResource Visible}}" />

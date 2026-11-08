@@ -431,5 +431,162 @@ public class EnterValueEditorTests
         Assert.Contains(vm.Problems, p => p.Contains("\"PLT_UHF1_1_DAIL\" is not a DCS-BIOS control"));
     }
 
+    // ---- Learn from display ----
+
+    /// <summary>The UHF wheels (wrapping) and the CDU scratchpad, as the export buffer shows them.</summary>
+    private sealed class ProbeCockpit
+    {
+        public StateBuffer Buffer { get; } = new();
+        public int Pair = 25, One = 1, Tenth = 3, Quarter = 2;
+        public string Scratch = "";
+        public List<string> Sent { get; } = [];
+        public Action? OnSend;
+
+        public ProbeCockpit() => Publish();
+
+        public string Uhf => $"{Pair}{One}.{Tenth}{Quarter * 25:00}";
+
+        public Task Send(string control, string arg)
+        {
+            Sent.Add(control + " " + arg);
+            if (arg is "2" or "0")
+            {
+                var dir = arg == "2" ? 1 : -1;
+                switch (control)
+                {
+                    case "PLT_UHF1_110_DIAL": Pair = 22 + (Pair - 22 + dir + 18) % 18; break;
+                    case "PLT_UHF1_1_DIAL": One = (One + dir + 10) % 10; break;
+                    case "PLT_UHF1_01_DIAL": Tenth = (Tenth + dir + 10) % 10; break;
+                    case "PLT_UHF1_025_DIAL": Quarter = (Quarter + dir + 4) % 4; break;
+                }
+            }
+            if (arg == "1" && control.StartsWith("CDU_"))
+            {
+                var name = control[4..];
+                if (name == "CLR") Scratch = "";
+                else if (Scratch.Length < 22) Scratch += name == "POINT" ? "." : name;
+            }
+            Publish();
+            OnSend?.Invoke();
+            return Task.CompletedTask;
+        }
+
+        private void Publish()
+        {
+            Buffer.Write(DispAddress, Encoding.ASCII.GetBytes(Uhf));
+            Buffer.Write(CduAddress, Encoding.ASCII.GetBytes("[" + Scratch.PadRight(22) + "]"));
+        }
+    }
+
+    private static EnterValueEditorViewModel CreateProbe(EnterValueStep step, ProbeCockpit? cockpit, FakeDialogs? dialogs = null) =>
+        new(step, ["uhf {freq}"], new EnterValueContext(Catalog(), () => cockpit?.Buffer, cockpit is null ? null : cockpit.Send), dialogs ?? new FakeDialogs())
+        {
+            TestDelay = TimeSpan.Zero,
+        };
+
+    [Fact]
+    public void Opening_the_editor_and_refreshing_sends_nothing()
+    {
+        var cockpit = new ProbeCockpit();
+        var vm = CreateProbe(NewUhf(), cockpit);
+        vm.RefreshLive();
+        vm.RefreshLive();
+
+        Assert.Empty(cockpit.Sent);
+        Assert.False(vm.IsChoosing);
+        Assert.False(vm.IsLearning);
+    }
+
+    [Fact]
+    public void Learn_needs_dcs()
+    {
+        var vm = CreateProbe(NewUhf(), null);
+        Assert.False(vm.LearnCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task Learn_wheels_lists_candidates_asks_first_and_puts_the_wheels_back()
+    {
+        var cockpit = new ProbeCockpit();
+        var dialogs = new FakeDialogs();
+        var vm = CreateProbe(NewUhf(), cockpit, dialogs);
+        var before = cockpit.Uhf;
+
+        vm.LearnCommand.Execute(null);
+        Assert.True(vm.IsChoosing);
+        Assert.Equal(4, vm.LearnCandidates.Count(c => c.IsTicked));
+        Assert.Empty(cockpit.Sent); // listing sends nothing
+
+        dialogs.ConfirmAnswers.Enqueue(false);
+        await vm.StartLearnCommand.ExecuteAsync();
+        Assert.Empty(cockpit.Sent); // declined
+
+        dialogs.ConfirmAnswers.Enqueue(true);
+        await vm.StartLearnCommand.ExecuteAsync();
+
+        Assert.Contains(dialogs.Asked, a => a.Contains("puts them back"));
+        Assert.False(vm.IsLearning);
+        Assert.False(vm.IsChoosing);
+        Assert.Equal(
+            [(0, 2, "22-39"), (2, 1, "0-9"), (3, 1, null), (4, 1, "0-9"), (5, 2, "00,25,50,75")],
+            vm.Fields.Select(f => (f.At, f.Len, f.IsReadOnly ? null : f.Range)).ToList());
+        Assert.Equal("PLT_UHF1_110_DIAL", vm.Fields[0].Control);
+        Assert.Contains("Check them before saving", vm.Message);
+        Assert.Equal(before, cockpit.Uhf);
+        Assert.DoesNotContain(vm.Problems, p => p.Contains("not a DCS-BIOS control"));
+    }
+
+    [Fact]
+    public async Task Cancel_stops_the_probe_and_puts_the_wheels_back()
+    {
+        var cockpit = new ProbeCockpit { Pair = 31, One = 6, Tenth = 8, Quarter = 3 };
+        var dialogs = new FakeDialogs();
+        var vm = CreateProbe(NewUhf(), cockpit, dialogs);
+        var before = cockpit.Uhf;
+        vm.LearnCommand.Execute(null);
+        dialogs.ConfirmAnswers.Enqueue(true);
+        cockpit.OnSend = () => { if (cockpit.Sent.Count == 60) vm.StopLearning(); };
+
+        await vm.StartLearnCommand.ExecuteAsync();
+
+        Assert.Equal(before, cockpit.Uhf);
+        Assert.StartsWith("Cancelled", vm.Message);
+        Assert.False(vm.IsLearning);
+    }
+
+    [Fact]
+    public async Task Cancel_in_the_list_sends_nothing()
+    {
+        var cockpit = new ProbeCockpit();
+        var vm = CreateProbe(NewUhf(), cockpit);
+        vm.LearnCommand.Execute(null);
+        vm.CancelLearnCommand.Execute(null);
+
+        Assert.False(vm.IsChoosing);
+        Assert.Empty(cockpit.Sent);
+        await Task.CompletedTask;
+    }
+
+    [Fact]
+    public async Task Learn_keypad_builds_the_keys_the_clear_key_and_the_entry_field()
+    {
+        var cockpit = new ProbeCockpit();
+        var dialogs = new FakeDialogs();
+        var vm = CreateProbe(new EnterValueStep { Value = "{name}", Display = "CDU_LINE9", Method = EnterMethod.Keypad }, cockpit, dialogs);
+
+        vm.LearnCommand.Execute(null);
+        dialogs.ConfirmAnswers.Enqueue(true);
+        await vm.StartLearnCommand.ExecuteAsync();
+
+        Assert.True(vm.IsKeypad);
+        var field = Assert.Single(vm.Fields, f => f.IsKeypad);
+        Assert.Equal((1, 22, TextAlign.Left), (field.At, field.Len, field.Align));
+        Assert.Equal("CDU_A", vm.Keys.First(k => k.Character == "A").Control);
+        Assert.Equal("CDU_POINT", vm.Keys.First(k => k.Character == ".").Control);
+        Assert.Equal(["CDU_CLR"], vm.ToStep().Before);
+        Assert.Equal("", cockpit.Scratch);
+        Assert.Contains("Learned", vm.Message);
+    }
+
     private static Profile Wrap(Step step) => new() { Commands = [new Command { Name = "C", Steps = [step] }] };
 }
