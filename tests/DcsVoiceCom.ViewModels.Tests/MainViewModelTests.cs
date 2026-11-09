@@ -61,6 +61,36 @@ public class MainViewModelTests
         Assert.True(saved.Commands[0].Critical);
     }
 
+    private static Command Say(string phrase) => new() { Name = phrase, Phrases = [phrase] };
+
+    [Fact]
+    public async Task Command_list_is_sorted_by_voice_line_but_the_file_keeps_its_order()
+    {
+        using var ws = new Workspace();
+        ws.SaveTestJet(Say("lights on"), Say("Canopy close"), Say("gear up"));
+        var vm = Create(ws, new FakeDialogs());
+        vm.SelectedProfile = vm.Profiles[0];
+        Assert.Equal(["Canopy close", "gear up", "lights on"], vm.Commands.Select(c => c.Phrase));
+        Assert.Equal("Canopy close", vm.SelectedCommand!.Phrase);
+
+        // A duplicate goes to its sorted place, right after the original.
+        vm.DuplicateCommandCommand.Execute(vm.Commands[1]);
+        Assert.Equal(["Canopy close", "gear up", "gear up", "lights on"], vm.Commands.Select(c => c.Phrase));
+
+        // A changed voice line keeps its place while editing and moves on save, staying selected.
+        vm.SelectedCommand = vm.Commands[3];
+        vm.Editor!.VoiceLine = "arm guns";
+        Assert.Equal("arm guns", vm.Commands[3].Phrase);
+        await vm.SaveCommand.ExecuteAsync();
+        Assert.Equal(["arm guns", "Canopy close", "gear up", "gear up"], vm.Commands.Select(c => c.Phrase));
+        Assert.Same(vm.Commands[0], vm.SelectedCommand);
+
+        // The file keeps the order the commands were entered in; new ones are appended.
+        var saved = ws.Store.TryLoad("TestJet")!;
+        Assert.Equal(["arm guns", "Canopy close", "gear up", "gear up"], saved.Commands.Select(c => c.Phrases[0]));
+        Assert.Equal(["arm guns", "Canopy close", "gear up", "gear up copy"], saved.Commands.Select(c => c.Name));
+    }
+
     [Fact]
     public void Delete_asks_first_and_keeps_the_command_on_no()
     {
@@ -231,6 +261,7 @@ public class MainViewModelTests
 
         vm.Tick();
         Assert.Equal("DCS-BIOS · waiting for DCS", vm.DcsStatus);
+        Assert.Equal("DCS-BIOS", vm.DcsText);
         Assert.Equal("", vm.Browser.Results[0].LiveValue);
 
         runtime.DcsAircraft = "TestJet";
@@ -238,11 +269,14 @@ public class MainViewModelTests
         runtime.FrameCount = 10;
         vm.Tick();
         Assert.Equal("DCS-BIOS · TestJet", vm.DcsStatus);
+        Assert.Equal("DCS-BIOS · TestJet", vm.DcsText);
         Assert.Equal("Speech · ready", vm.SpeechStatus);
+        Assert.True(vm.SpeechReady);
         Assert.Equal("1 DN", vm.Browser.Results[0].LiveValue);
 
         runtime.RaiseListening(true);
         Assert.Equal("Listening", vm.ListeningText);
+        Assert.Equal("Listening: speak now", vm.ListeningTip);
         Assert.Contains(vm.Log.Entries, e => e.Tag == "PTT");
     }
 }
