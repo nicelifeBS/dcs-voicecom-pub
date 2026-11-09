@@ -8,9 +8,12 @@ namespace DcsVoiceCom.Definitions;
 /// </summary>
 public static class AircraftFamilies
 {
-    /// <summary>Modules every aircraft carries; they don't tell aircraft apart.</summary>
+    /// <summary>Modules many aircraft carry; they don't tell aircraft apart. Some variants list NS430, others don't.</summary>
     private static readonly HashSet<string> SharedModules =
-        new(["CommonData", "MetadataStart", "MetadataEnd"], StringComparer.OrdinalIgnoreCase);
+        new(["CommonData", "MetadataStart", "MetadataEnd", "NS430"], StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Modules used by many different jets (Flaming Cliffs style): every name keeps its own profile.</summary>
+    private static readonly HashSet<string> GenericModules = new(["FC3"], StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Name prefixes that keep their own profile although the modules are the same.</summary>
     private static readonly string[] SeparateVariants =
@@ -26,7 +29,7 @@ public static class AircraftFamilies
             var names = group.Select(kv => kv.Key).ToList();
             var modules = group.First().Value;
             var main = names.FirstOrDefault(n => modules.Contains(n, StringComparer.OrdinalIgnoreCase))
-                       ?? names.OrderBy(n => n.Length).ThenBy(n => n, StringComparer.OrdinalIgnoreCase).First();
+                       ?? names.Order(StringComparer.OrdinalIgnoreCase).First();
             foreach (var name in names) result[name] = main;
         }
         return result;
@@ -38,9 +41,10 @@ public static class AircraftFamilies
 
     private static string GroupKey(string name, IReadOnlyList<string> modules)
     {
-        var own = modules.Where(m => !SharedModules.Contains(m)).Select(m => m.ToUpperInvariant()).Order(StringComparer.Ordinal);
+        var own = modules.Where(m => !SharedModules.Contains(m)).Select(m => m.ToUpperInvariant()).Order(StringComparer.Ordinal).ToList();
+        // Nothing but shared or generic modules: keep it alone.
+        if (own.All(GenericModules.Contains)) return "=" + name.ToUpperInvariant();
         var key = string.Join("|", own);
-        if (key.Length == 0) key = "=" + name; // nothing but shared modules: keep it alone
         var variant = SeparateVariants.FirstOrDefault(p => name.StartsWith(p, StringComparison.OrdinalIgnoreCase));
         return variant is null ? key : key + "#" + variant.ToUpperInvariant();
     }
