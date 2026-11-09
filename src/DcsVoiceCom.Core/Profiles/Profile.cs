@@ -5,14 +5,21 @@ namespace DcsVoiceCom.Profiles;
 /// <summary>
 /// One aircraft's commands, stored as &lt;_ACFT_NAME&gt;.json so it can be shared as-is.
 /// common.json uses the same format and is merged under every aircraft profile.
+/// Server profiles (server-&lt;name&gt;.json) too, with <see cref="Servers"/>: merged in while you're on a matching server.
 /// </summary>
 public sealed class Profile
 {
     public const int DefaultThreshold = 85;
     public const int DefaultCriticalThreshold = 95;
 
-    /// <summary>The DCS-BIOS _ACFT_NAME this profile is for ("common" for the shared file).</summary>
+    /// <summary>The DCS-BIOS _ACFT_NAME this profile is for ("common" for the shared file, "server-…" for a server profile).</summary>
     public string Aircraft { get; set; } = "";
+
+    /// <summary>
+    /// Server profiles only: the server names or addresses it turns on for (<c>*</c> = any text, see
+    /// <see cref="DcsHook.ServerPattern"/>). Null for other profiles.
+    /// </summary>
+    public List<string>? Servers { get; set; }
 
     /// <summary>DCS-BIOS version the control IDs were checked against.</summary>
     public string? ModuleVersion { get; set; }

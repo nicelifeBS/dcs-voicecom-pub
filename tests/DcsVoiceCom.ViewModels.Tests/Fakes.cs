@@ -1,6 +1,7 @@
 global using Xunit;
 using DcsVoiceCom.Config;
 using DcsVoiceCom.DcsBios;
+using DcsVoiceCom.DcsHook;
 using DcsVoiceCom.Engine;
 using DcsVoiceCom.Profiles;
 using DcsVoiceCom.Runtime;
@@ -52,6 +53,9 @@ internal sealed class FakeRuntime : IVoiceComRuntime
     public string DcsAircraft { get; set; } = "";
     public string? ActiveAircraft => ProfileOverride ?? (DcsAircraft.Length > 0 ? DcsAircraft : null);
     public string? ProfileOverride { get; set; }
+    public DcsSession? Session { get; set; }
+    public string? ServerOverride { get; set; }
+    public IReadOnlyList<string> ActiveServerProfiles { get; set; } = [];
     public CompiledProfile Profile { get; set; } = CompiledProfile.Empty;
     public StateBuffer State { get; } = new();
     public bool IsLive { get; set; }
@@ -67,6 +71,19 @@ internal sealed class FakeRuntime : IVoiceComRuntime
     public event Action<CompiledProfile>? ProfileLoaded;
     public event Action<bool>? ListeningChanged;
     public event Action<string>? AircraftChanged;
+    public event Action<DcsSession?>? SessionChanged;
+
+    public Task SetServerOverrideAsync(string? serverProfile, CancellationToken ct = default)
+    {
+        ServerOverride = serverProfile;
+        return ReloadProfileAsync(ct);
+    }
+
+    public void RaiseSession(DcsSession? session)
+    {
+        Session = session;
+        SessionChanged?.Invoke(session);
+    }
 
     public Task SetProfileOverrideAsync(string? aircraft, CancellationToken ct = default)
     {

@@ -87,7 +87,7 @@
 
       <!-- Profiles -->
       <DockPanel Grid.Column="0">
-        <TextBlock DockPanel.Dock="Top" Text="AIRFRAME PROFILES" Style="{StaticResource Heading}" />
+        <TextBlock DockPanel.Dock="Top" Text="PROFILES" Style="{StaticResource Heading}" />
         <Border DockPanel.Dock="Bottom" Style="{StaticResource Card}" Margin="0,10,0,0" Padding="12"
                 Visibility="{Binding HasProfile, Converter={StaticResource Visible}}">
           <StackPanel>
@@ -112,14 +112,23 @@
                      ToolTip="Comma separated. Only words the recognizer gets wrong (e.g. TACAN, Shkval)." />
           </StackPanel>
         </Border>
+        <Button DockPanel.Dock="Bottom" Content="+ Server profile" Command="{Binding NewServerProfileCommand}" Margin="0,6,0,0"
+                ToolTip="Commands for one multiplayer server; they turn on when you join it" />
         <Button DockPanel.Dock="Bottom" Content="+ New profile" Command="{Binding NewProfileCommand}" Margin="0,8,0,0" />
-        <ListBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}">
+        <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+          <TextBlock Text="{Binding ServerStatus}" ToolTip="{Binding ServerStatus}" TextTrimming="CharacterEllipsis" Margin="0,0,0,4"
+                     Foreground="{StaticResource Muted}" />
+          <ComboBox ItemsSource="{Binding ServerOverrideOptions}" SelectedItem="{Binding SelectedServerOverride}"
+                    ToolTip="Server profile. Auto follows the server the DCS hook reports; pick one to pin it" />
+        </StackPanel>
+        <ListBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}" ItemContainerStyle="{StaticResource ProfileItem}">
           <ListBox.InputBindings>
             <KeyBinding Key="Delete" Command="{Binding DeleteProfileCommand}" />
           </ListBox.InputBindings>
           <ListBox.ContextMenu>
             <ContextMenu>
               <MenuItem Header="New profile…" Command="{Binding NewProfileCommand}" />
+              <MenuItem Header="New server profile…" Command="{Binding NewServerProfileCommand}" />
               <MenuItem Header="Delete profile…" Command="{Binding DeleteProfileCommand}" InputGestureText="Del" />
             </ContextMenu>
           </ListBox.ContextMenu>
@@ -144,6 +153,11 @@
                   ToolTip="Generate disabled starter commands from this aircraft's DCS-BIOS definitions" />
           <TextBlock Text="{Binding ProfileTitle}" Style="{StaticResource Heading}" VerticalAlignment="Center" Margin="0" TextTrimming="CharacterEllipsis" />
         </DockPanel>
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8" Visibility="{Binding IsServerProfile, Converter={StaticResource Visible}}">
+          <Label Content="Servers (one per line, * = any text)" />
+          <TextBox Text="{Binding ServersText, UpdateSourceTrigger=LostFocus}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="44"
+                   ToolTip="One server name or address per line. * stands for any text: ShadowReapers*, *Reapers*, *PvE" />
+        </StackPanel>
         <Grid DockPanel.Dock="Top" Margin="0,0,0,4">
           <TextBox x:Name="CommandSearch" Text="{Binding CommandFilter, UpdateSourceTrigger=PropertyChanged}" ToolTip="Voice line, alternative or step" />
           <TextBlock Text="Filter commands…" Foreground="{StaticResource Muted}" Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"

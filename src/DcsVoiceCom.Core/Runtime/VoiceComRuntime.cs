@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using DcsVoiceCom.Config;
 using DcsVoiceCom.DcsBios;
+using DcsVoiceCom.DcsHook;
 using DcsVoiceCom.Definitions;
 using DcsVoiceCom.Engine;
 using DcsVoiceCom.Input;
@@ -17,6 +18,7 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
 {
     private readonly AppSettings _settings;
     private readonly DcsBiosConnection _dcsBios;
+    private readonly DcsHookListener _hook;
     private readonly DefinitionLoader _definitions;
     private readonly ProfileStore _profiles;
     private readonly IMicrophoneProvider? _microphones;
@@ -27,6 +29,8 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
     private readonly Stopwatch _pttWatch = new();
     private ControlCatalog _catalog = ControlCatalog.Empty;
     private string? _override;
+    private string? _serverOverride;
+    private IReadOnlyList<string> _activeServerProfiles = [];
     private bool _listening;
     private readonly CatalogBiosSender _sender;
 
@@ -37,7 +41,9 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
         _settings = settings;
         Log = log ?? (_ => { });
         _override = settings.ProfileOverride;
+        _serverOverride = settings.ServerProfileOverride;
         _dcsBios = new DcsBiosConnection(settings.DcsBios);
+        _hook = new DcsHookListener(settings.DcsHook.Port);
         _definitions = new DefinitionLoader(settings.DcsBiosJsonPath);
         _profiles = new ProfileStore(settings.ProfilesPath);
         _microphones = microphones;
@@ -78,6 +84,10 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
     /// <summary>The aircraft whose profile should be active.</summary>
     public string? ActiveAircraft => _override ?? (IsRealAircraft(_dcsBios.Aircraft) ? _dcsBios.Aircraft : null);
 
+    public DcsSession? Session => _hook.Session;
+    public string? ServerOverride => _serverOverride;
+    public IReadOnlyList<string> ActiveServerProfiles => _activeServerProfiles;
+
     public bool IsListening => _listening;
     /// <summary>True once Whistle and the microphone are open, so push-to-talk works.</summary>
     public bool SpeechReady => _speech?.IsReady == true;
@@ -87,6 +97,7 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
     public event Action<CompiledProfile>? ProfileLoaded;
     public event Action<bool>? ListeningChanged;
     public event Action<string>? AircraftChanged;
+    public event Action<DcsSession?>? SessionChanged;
 
     public async Task StartAsync(CancellationToken ct = default)
     {
@@ -97,6 +108,17 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
         _dcsBios.ReceiveError += ex => Log($"DCS-BIOS export: handling a packet failed, still listening: {ex.Message}");
         _dcsBios.Start();
         Log($"Listening for DCS-BIOS export on {_settings.DcsBios.ExportMulticastGroup}:{_settings.DcsBios.ExportPort}");
+
+        _hook.SessionChanged += OnSessionChanged;
+        try
+        {
+            _hook.Start();
+            Log($"Listening for the DCS hook on 127.0.0.1:{_hook.Port} (server profiles)");
+        }
+        catch (System.Net.Sockets.SocketException ex)
+        {
+            Log($"DCS hook: can't listen on 127.0.0.1:{_hook.Port} ({ex.Message}); server profiles only work when pinned.");
+        }
 
         // Without a model or microphone the rest still works: live state, profile editing and typed tests.
         _speech = await SpeechService.OpenAsync(_settings.Speech, _settings.Language, _microphones, m => Log("[speech] " + m), ct: ct)
@@ -114,6 +136,14 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
         await ReloadProfileAsync(ct).ConfigureAwait(false);
     }
 
+    /// <summary>Pins a server profile (for testing without DCS), or returns to Auto with null.</summary>
+    public async Task SetServerOverrideAsync(string? serverProfile, CancellationToken ct = default)
+    {
+        _serverOverride = string.IsNullOrWhiteSpace(serverProfile) ? null : serverProfile;
+        Log(_serverOverride is null ? "Server profile: Auto" : $"Server profile pinned to {_serverOverride}");
+        await ReloadProfileAsync(ct).ConfigureAwait(false);
+    }
+
     /// <summary>Reloads definitions and profile for the active aircraft and loads its phrases for matching.</summary>
     public async Task ReloadProfileAsync(CancellationToken ct = default)
     {
@@ -128,7 +158,14 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
             }
 
             _catalog = _definitions.Exists ? _definitions.LoadAircraft(aircraft) : ControlCatalog.Empty;
-            var profile = _profiles.LoadMerged(aircraft) ?? new Profile { Aircraft = aircraft };
+            var problems = new List<string>();
+            var servers = ServerLayers(problems);
+            foreach (var problem in problems) Log(problem);
+            var names = servers.Select(p => p.Aircraft).ToList();
+            if (!names.SequenceEqual(_activeServerProfiles, StringComparer.OrdinalIgnoreCase))
+                Log(names.Count == 0 ? "Server profile: none" : $"Server profile: {string.Join(", ", names)}");
+            _activeServerProfiles = names;
+            var profile = _profiles.LoadMerged(aircraft, servers) ?? new Profile { Aircraft = aircraft };
             var compiled = CompiledProfile.Compile(profile);
             foreach (var problem in compiled.Problems) Log($"Profile problem: {problem}");
             if (_catalog.Count > 0)
@@ -171,6 +208,22 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
         Log($"Aircraft: {(IsRealAircraft(aircraft) ? aircraft : "none")}");
         AircraftChanged?.Invoke(aircraft);
         if (_override is null && IsRealAircraft(aircraft)) _ = RunLogged(ReloadProfileAsync);
+    }
+
+    /// <summary>The pinned server profile, or the ones matching the current session. Unreadable files are skipped.</summary>
+    private IReadOnlyList<Profile> ServerLayers(List<string>? problems = null) =>
+        _serverOverride is { } pinned
+            ? _profiles.TryLoadServerProfile(pinned, problems) is { } profile ? [profile] : []
+            : _profiles.MatchingServerProfiles(_hook.Session, problems);
+
+    private void OnSessionChanged(DcsSession? session)
+    {
+        Log(session is null ? "DCS hook: mission ended" : $"DCS hook: {session}");
+        SessionChanged?.Invoke(session);
+        if (_serverOverride is not null || ActiveAircraft is null) return;
+        // A new mission or map on the same server keeps the same server profiles: no reload needed.
+        var names = ServerLayers().Select(p => p.Aircraft);
+        if (!names.SequenceEqual(_activeServerProfiles, StringComparer.OrdinalIgnoreCase)) _ = RunLogged(ReloadProfileAsync);
     }
 
     private void OnPttPressed()
@@ -228,6 +281,7 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
         _ptt?.Dispose();
         _engine.Cancel();
         _speech?.Dispose();
+        await _hook.DisposeAsync().ConfigureAwait(false);
         await _dcsBios.DisposeAsync().ConfigureAwait(false);
     }
 }

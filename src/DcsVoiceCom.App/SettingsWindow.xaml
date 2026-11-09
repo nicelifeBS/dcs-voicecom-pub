@@ -105,6 +105,19 @@
           </StackPanel>
         </Border>
 
+        <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+          <StackPanel>
+            <TextBlock Text="DCS HOOK" Style="{StaticResource Heading}" />
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Content="Remove" Command="{Binding RemoveHookCommand}" Margin="8,0,0,0" />
+              <Button DockPanel.Dock="Right" Content="Install" Command="{Binding InstallHookCommand}" Margin="8,0,0,0" />
+              <TextBlock Text="{Binding HookStatus}" VerticalAlignment="Center" FontWeight="SemiBold" TextWrapping="Wrap" />
+            </DockPanel>
+            <TextBlock Text="Tells the app which multiplayer server you're on, so server profiles turn on by themselves. It goes into Saved Games\DCS\Scripts\Hooks and only reads the server name, mission and map."
+                       Style="{StaticResource MutedText}" Margin="0,4,0,0" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+
         <Border Style="{StaticResource Card}">
           <StackPanel>
             <TextBlock Text="PROFILES AND KEYS" Style="{StaticResource Heading}" />

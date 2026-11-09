@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using DcsVoiceCom.Config;
 using DcsVoiceCom.DcsBios;
+using DcsVoiceCom.DcsHook;
 
 namespace DcsVoiceCom.ViewModels;
 
@@ -16,9 +17,13 @@ public sealed class SettingsViewModel : ObservableObject
     private bool _binding;
     private string _bindStatus = "";
     private string? _error;
+    private readonly DcsHookInstaller? _hook;
+    private string _hookStatus = "";
 
-    public SettingsViewModel(AppSettings settings, IPttBinder? binder = null, IReadOnlyList<string>? microphones = null)
+    public SettingsViewModel(AppSettings settings, IPttBinder? binder = null, IReadOnlyList<string>? microphones = null,
+        DcsHookInstaller? hook = null)
     {
+        _hook = hook;
         _original = settings;
         _binder = binder;
         _ptt = settings.Ptt;
@@ -43,10 +48,69 @@ public sealed class SettingsViewModel : ObservableObject
             _ptt = new PttSettings();
             OnPropertyChanged(nameof(PttText));
         });
+        InstallHookCommand = new RelayCommand(() => RunHook(h => h.Install()), () => CanInstallHook);
+        RemoveHookCommand = new RelayCommand(() => RunHook(h => h.Remove()), () => CanRemoveHook);
+        RefreshHook();
     }
 
     public AsyncCommand BindCommand { get; }
     public RelayCommand ClearBindingCommand { get; }
+    public RelayCommand InstallHookCommand { get; }
+    public RelayCommand RemoveHookCommand { get; }
+
+    /// <summary>Whether the DCS hook (for server profiles) is in Saved Games\DCS…\Scripts\Hooks.</summary>
+    public string HookStatus
+    {
+        get => _hookStatus;
+        private set => SetProperty(ref _hookStatus, value);
+    }
+
+    private HookStatus? _hookState;
+
+    public bool CanInstallHook => _hookState is DcsHook.HookStatus.NotInstalled or DcsHook.HookStatus.OutOfDate;
+    public bool CanRemoveHook => _hookState is DcsHook.HookStatus.Installed or DcsHook.HookStatus.OutOfDate;
+
+    private void RefreshHook()
+    {
+        try
+        {
+            _hookState = _hook?.Status();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _hookState = null;
+            HookStatus = $"Can't read the DCS folder: {ex.Message}";
+            return;
+        }
+        finally
+        {
+            InstallHookCommand?.Refresh();
+            RemoveHookCommand?.Refresh();
+        }
+        var text = _hookState switch
+        {
+            DcsHook.HookStatus.NoDcs => "No DCS folder found in Saved Games. Start DCS once, then come back.",
+            DcsHook.HookStatus.NotInstalled => "Not installed. Server profiles need it.",
+            DcsHook.HookStatus.OutOfDate => "Installed, but out of date. Install again.",
+            DcsHook.HookStatus.Installed => "Installed. Restart DCS if it's running.",
+            _ => "",
+        };
+        HookStatus = text;
+    }
+
+    private void RunHook(Action<DcsHookInstaller> action)
+    {
+        if (_hook is null) return;
+        try
+        {
+            action(_hook);
+            RefreshHook();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            HookStatus = $"Failed: {ex.Message}";
+        }
+    }
 
     /// <summary>The list entry for the Windows default input (an empty setting).</summary>
     public const string DefaultMicrophone = "Windows default input";

@@ -1,4 +1,5 @@
 using DcsVoiceCom.DcsBios;
+using DcsVoiceCom.DcsHook;
 using DcsVoiceCom.Engine;
 using DcsVoiceCom.Profiles;
 
@@ -15,6 +16,15 @@ public interface IVoiceComRuntime
 
     /// <summary>The pinned profile, or null for Auto.</summary>
     string? ProfileOverride { get; }
+
+    /// <summary>What the DCS hook reports: server, mission and map. Null when no mission runs or no hook is installed.</summary>
+    DcsSession? Session { get; }
+
+    /// <summary>The pinned server profile (server-…), or null for Auto.</summary>
+    string? ServerOverride { get; }
+
+    /// <summary>The server profiles merged into the active profile right now.</summary>
+    IReadOnlyList<string> ActiveServerProfiles { get; }
 
     CompiledProfile Profile { get; }
 
@@ -33,8 +43,11 @@ public interface IVoiceComRuntime
     event Action<CompiledProfile>? ProfileLoaded;
     event Action<bool>? ListeningChanged;
     event Action<string>? AircraftChanged;
+    event Action<DcsSession?>? SessionChanged;
 
     Task SetProfileOverrideAsync(string? aircraft, CancellationToken ct = default);
+    /// <summary>Pins a server profile, or returns to Auto (follow the server) with null.</summary>
+    Task SetServerOverrideAsync(string? serverProfile, CancellationToken ct = default);
     Task ReloadProfileAsync(CancellationToken ct = default);
     /// <summary>Sends one DCS-BIOS line, e.g. a test click from the "Enter value" window.</summary>
     Task SendBiosAsync(string control, string argument, CancellationToken ct = default);

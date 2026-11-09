@@ -8,4 +8,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="DcsVoiceCom.Core.Tests" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="DcsHook\DcsVoiceCom.GameGUI.lua" LogicalName="DcsVoiceCom.GameGUI.lua" />
+  </ItemGroup>
 </Project>

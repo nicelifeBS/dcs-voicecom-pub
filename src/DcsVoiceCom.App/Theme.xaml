@@ -16,6 +16,8 @@
   <SolidColorBrush x:Key="Good" Color="#5fd38a" />
   <SolidColorBrush x:Key="Bad" Color="#ff8a65" />
   <SolidColorBrush x:Key="Info" Color="#8ab4f8" />
+  <!-- Common and server profiles in the profile list. -->
+  <SolidColorBrush x:Key="SharedProfile" Color="#231123" />
 
   <Style TargetType="Window">
     <Setter Property="Background" Value="{StaticResource Bg}" />
@@ -290,6 +292,36 @@
         </ControlTemplate>
       </Setter.Value>
     </Setter>
+  </Style>
+  <!-- Profile rows: common and server profiles get their own background. -->
+  <Style x:Key="ProfileItem" TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+    <Setter Property="Background" Value="{StaticResource Panel}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ListBoxItem">
+          <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{StaticResource Line}" BorderThickness="2"
+                  CornerRadius="6" Padding="{TemplateBinding Padding}">
+            <ContentPresenter />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource LineStrong}" />
+            </Trigger>
+            <Trigger Property="IsSelected" Value="True">
+              <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Accent}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+    <Style.Triggers>
+      <Trigger Property="IsSelected" Value="True">
+        <Setter Property="Background" Value="{StaticResource Selected}" />
+      </Trigger>
+      <DataTrigger Binding="{Binding IsAircraft}" Value="False">
+        <Setter Property="Background" Value="{StaticResource SharedProfile}" />
+      </DataTrigger>
+    </Style.Triggers>
   </Style>
   <!-- Log rows: dense, no cards. -->
   <Style x:Key="LogItem" TargetType="ListBoxItem">
