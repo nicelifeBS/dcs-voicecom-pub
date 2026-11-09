@@ -84,7 +84,7 @@ crop "$SHOTS/editor.png" "$OUT/voice-line.png" 584 72 418 350
 crop "$SHOTS/editor.png" "$OUT/actions.png" 584 432 418 176
 
 # Enter value window (no DCS here, so it shows its warning and empty cells).
-"$D" click 912 561; "$D" waitwin 'Enter value'
+"$D" click 912 592; "$D" waitwin 'Enter value'
 "$D" sswin 'Enter value' enter-value >/dev/null
 cp "$SHOTS/enter-value.png" "$OUT/enter-value.png"
 "$D" click 1083 800; "$D" wait 2
