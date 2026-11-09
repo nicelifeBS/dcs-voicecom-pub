@@ -40,7 +40,12 @@ public sealed class DefinitionLoader
         return raw.ToDictionary(kv => kv.Key, kv => (IReadOnlyList<string>)kv.Value, StringComparer.OrdinalIgnoreCase);
     }
 
-    public IReadOnlyList<string> AvailableAircraft() => LoadAliases().Keys.Order(StringComparer.OrdinalIgnoreCase).ToList();
+    /// <summary>One name per jet: variants with the same control files are left out (see <see cref="AircraftFamilies"/>).</summary>
+    public IReadOnlyList<string> AvailableAircraft() => AircraftFamilies.Main(LoadAliases());
+
+    /// <summary>The profile name shared by this aircraft's variants, e.g. F-16D_52 → F-16C_50. The name itself when unknown.</summary>
+    public string BaseAircraft(string aircraft) =>
+        AircraftFamilies.BaseNames(LoadAliases()).TryGetValue(aircraft, out var main) ? main : aircraft;
 
     public ControlCatalog LoadAircraft(string aircraft)
     {

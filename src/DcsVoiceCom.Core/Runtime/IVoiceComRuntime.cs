@@ -14,6 +14,9 @@ public interface IVoiceComRuntime
     /// <summary>The aircraft whose profile is active: the override, else the reported aircraft.</summary>
     string? ActiveAircraft { get; }
 
+    /// <summary>The aircraft profile in use: <see cref="ActiveAircraft"/>, or the profile its variants share.</summary>
+    string? ActiveProfile { get; }
+
     /// <summary>The pinned profile, or null for Auto.</summary>
     string? ProfileOverride { get; }
 
