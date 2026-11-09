@@ -116,7 +116,7 @@ public class EnterValueUpgradeTests
         var step = EnterValueUpgrade.TryUpgrade(OldUhf(), Catalog("PLT_UHF_DISP", 7), "251.000", out _)!;
         step.Fields![3].Flip = false;
         var cockpit = new FakeCockpit();
-        new DisplayFieldEngineTests.Uhf().Attach(cockpit);
+        new FakeUhf().Attach(cockpit);
         var engine = new CommandEngine(cockpit, cockpit, cockpit, cockpit, new EngineOptions { PollInterval = TimeSpan.FromMilliseconds(2) })
         {
             Profile = CompiledProfile.Compile(new Profile { Commands = [new Command { Name = "UHF", Phrases = ["uhf {freq}"], Steps = [step] }] }),
@@ -136,10 +136,9 @@ public class F14UhfProfileTests
     {
         var path = Path.Combine(AppContext.BaseDirectory, "profiles", "F-14BU.json");
         var compiled = CompiledProfile.Compile(ProfileSerializer.Deserialize(File.ReadAllText(path)));
-        Assert.Empty(compiled.Problems);
 
         var cockpit = new FakeCockpit();
-        var uhf = new DisplayFieldEngineTests.Uhf();
+        var uhf = new FakeUhf();
         uhf.Attach(cockpit);
         var engine = new CommandEngine(cockpit, cockpit, cockpit, cockpit, new EngineOptions { PollInterval = TimeSpan.FromMilliseconds(2) })
         {

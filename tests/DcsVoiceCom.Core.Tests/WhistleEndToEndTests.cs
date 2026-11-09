@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using DcsVoiceCom.Phrases;
 using DcsVoiceCom.Speech;
 
 namespace DcsVoiceCom.Tests;
@@ -86,7 +87,7 @@ public class WhistleEndToEndTests
         {
             using var speech = await SpeechService.OpenAsync(settings, language, new ClipMicrophones(microphone), log.Add);
             Assert.True(speech.IsReady, string.Join("\n", log));
-            var phrases = commands.Values.Where(c => c.Lang == language).Select(c => (PhraseMatcher.Normalize(c.Phrase), c.Phrase));
+            var phrases = commands.Values.Where(c => c.Lang == language).Select(c => (PhraseText.Normalize(c.Phrase), c.Phrase));
             speech.LoadPhrases(language, phrases, []);
 
             foreach (var clip in Directory.GetFiles(clips, "*.wav").Order(StringComparer.Ordinal))
@@ -100,7 +101,7 @@ public class WhistleEndToEndTests
 
                 var line = $"{said.Phrase}: heard \"{result.Raw}\" → {result.Phrase} ({result.Score}) {result.Reject}";
                 if (result.Reject is not null || result.Score < 85) missed.Add(line);
-                else if (result.Phrase == PhraseMatcher.Normalize(said.Phrase)) right.Add(line);
+                else if (result.Phrase == PhraseText.Normalize(said.Phrase)) right.Add(line);
                 else wrong.Add(line);
             }
         }

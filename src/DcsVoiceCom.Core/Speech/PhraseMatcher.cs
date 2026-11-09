@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
+using DcsVoiceCom.Phrases;
 
 namespace DcsVoiceCom.Speech;
 
@@ -65,7 +66,7 @@ public sealed partial class PhraseMatcher
     /// <c>tacan mode {mode:t r|a a}</c> gives <c>tacan mode</c>; the slot values are spoken free-form.
     /// </summary>
     public IReadOnlyList<string> LiteralRuns() =>
-        _templates.SelectMany(t => SlotPattern().Split(t.Phrase)).Select(Normalize).Where(r => r.Length > 0).Distinct().ToList();
+        _templates.SelectMany(t => SlotPattern().Split(t.Phrase)).Select(PhraseText.Normalize).Where(r => r.Length > 0).Distinct().ToList();
 
     /// <summary>Best matches first. Ties prefer the phrase with more literal words, then one without slots.</summary>
     public IReadOnlyList<PhraseMatch> Match(string transcript, int limit = 5)
@@ -164,24 +165,7 @@ public sealed partial class PhraseMatcher
 
     // --- text ------------------------------------------------------------------
 
-    /// <summary>
-    /// Lower-case, drop punctuation (keeping '.'/',' between digits), collapse whitespace. The same as
-    /// <see cref="Phrases.PhraseText.Normalize"/> for text outside slots.
-    /// </summary>
-    public static string Normalize(string text)
-    {
-        var sb = new StringBuilder(text.Length);
-        for (var i = 0; i < text.Length; i++)
-        {
-            var ch = text[i];
-            if (char.IsLetterOrDigit(ch)) sb.Append(char.ToLowerInvariant(ch));
-            else if (ch is '.' or ',' && i > 0 && i < text.Length - 1 && char.IsDigit(text[i - 1]) && char.IsDigit(text[i + 1])) sb.Append(ch);
-            else sb.Append(' ');
-        }
-        return string.Join(' ', sb.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries));
-    }
-
-    private static string[] Tokens(string text) => Normalize(text).Split(' ', StringSplitOptions.RemoveEmptyEntries);
+    private static string[] Tokens(string text) => PhraseText.Normalize(text).Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
     [GeneratedRegex(@"\{[^{}]*\}")]
     internal static partial Regex SlotPattern();
@@ -308,7 +292,7 @@ internal sealed record MatchTemplate(string Phrase, string[] Prefix, string[] Su
             segments.Skip(lastSlot + 1).Select(s => s.Text).ToArray(), true, literals.Length, group);
     }
 
-    private static string[] Words(string text) => PhraseMatcher.Normalize(text).Split(' ', StringSplitOptions.RemoveEmptyEntries);
+    private static string[] Words(string text) => PhraseText.Normalize(text).Split(' ', StringSplitOptions.RemoveEmptyEntries);
 }
 
 /// <summary>One scored phrase: <see cref="Heard"/> holds the transcript words its literal words were compared with.</summary>

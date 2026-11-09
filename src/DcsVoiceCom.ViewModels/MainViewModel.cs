@@ -127,6 +127,7 @@ public sealed class MainViewModel : ObservableObject
     private bool _isListening;
     private bool _dryRunInFlight;
     private string _dcsStatus = "DCS-BIOS · not started";
+    private string _dcsText = "DCS-BIOS";
     private string _speechStatus = "Speech · not started";
     private string _activeProfileText = "";
     private string _pttText;
@@ -418,11 +419,18 @@ public sealed class MainViewModel : ObservableObject
         get => _isListening;
         private set
         {
-            if (SetProperty(ref _isListening, value)) OnPropertyChanged(nameof(ListeningText));
+            if (SetProperty(ref _isListening, value))
+            {
+                OnPropertyChanged(nameof(ListeningText));
+                OnPropertyChanged(nameof(ListeningTip));
+            }
         }
     }
 
     public string ListeningText => IsListening ? "Listening" : "Idle";
+
+    /// <summary>Tooltip for the listening dot in the push-to-talk pill.</summary>
+    public string ListeningTip => IsListening ? "Listening: speak now" : "Not listening: hold push-to-talk and speak";
 
     public string PttText
     {
@@ -430,19 +438,30 @@ public sealed class MainViewModel : ObservableObject
         set => SetProperty(ref _pttText, value);
     }
 
+    /// <summary>The full DCS-BIOS state, shown as a tooltip.</summary>
     public string DcsStatus
     {
         get => _dcsStatus;
         private set => SetProperty(ref _dcsStatus, value);
     }
 
+    /// <summary>Short text for the status bar: the aircraft once DCS sends data, otherwise just the name (the dot says the rest).</summary>
+    public string DcsText
+    {
+        get => _dcsText;
+        private set => SetProperty(ref _dcsText, value);
+    }
+
     public bool DcsLive => _runtime?.IsLive == true;
 
+    /// <summary>The speech recognizer's state, shown as a tooltip on the speech dot.</summary>
     public string SpeechStatus
     {
         get => _speechStatus;
         private set => SetProperty(ref _speechStatus, value);
     }
+
+    public bool SpeechReady => _runtime?.SpeechReady == true;
 
     public string ActiveProfileText
     {
@@ -599,15 +618,40 @@ public sealed class MainViewModel : ObservableObject
         if (_profile != null) ReportMissingControls(_profile, Browser.Catalog);
     }
 
-    /// <summary>Fills the command list from the profile, keeping the filter.</summary>
+    /// <summary>Fills the command list from the profile, sorted A–Z, keeping the filter. The profile keeps its order.</summary>
     private void RebuildCommands()
     {
         Commands.Clear();
         if (_profile != null)
         {
-            foreach (var command in _profile.Commands) Commands.Add(new CommandItemViewModel(command, ItemToggled));
+            foreach (var command in _profile.Commands.OrderBy(SortKey, SortOrder)) Commands.Add(new CommandItemViewModel(command, ItemToggled));
         }
         ApplyFilter();
+    }
+
+    private static readonly StringComparer SortOrder = StringComparer.OrdinalIgnoreCase;
+
+    /// <summary>The list is sorted by the voice line; commands without one go last.</summary>
+    private static string SortKey(Command command) => command.Phrases.Count > 0 ? command.Phrases[0] : "\uffff" + command.Name;
+
+    /// <summary>Puts the list back in A–Z order in place (Move keeps the selection), e.g. after a voice line was edited.</summary>
+    private void SortCommands()
+    {
+        var sorted = Commands.OrderBy(c => SortKey(c.Command), SortOrder).ToList();
+        for (var i = 0; i < sorted.Count; i++)
+        {
+            var from = Commands.IndexOf(sorted[i]);
+            if (from != i) Commands.Move(from, i);
+        }
+    }
+
+    /// <summary>Where a new command goes in the sorted list: after any with the same key.</summary>
+    private int SortedIndex(Command command)
+    {
+        var key = SortKey(command);
+        var index = 0;
+        while (index < Commands.Count && SortOrder.Compare(SortKey(Commands[index].Command), key) <= 0) index++;
+        return index;
     }
 
     /// <summary>A command's Enabled box in the list was clicked.</summary>
@@ -801,7 +845,7 @@ public sealed class MainViewModel : ObservableObject
         if (_profile is null) return;
         _profile.Commands.Add(command);
         var item = new CommandItemViewModel(command, ItemToggled);
-        Commands.Add(item);
+        Commands.Insert(SortedIndex(command), item);
         IsDirty = true;
         UpdateCount();
         OnPropertyChanged(nameof(CommandCountText));
@@ -890,6 +934,7 @@ public sealed class MainViewModel : ObservableObject
         if (_profile is null || _selectedProfile is null) return;
         _store.Save(_profile);
         IsDirty = false;
+        SortCommands();
         UpdateCount();
         var problems = CompiledProfile.Compile(_profile).Problems;
         Log.Add("INFO", $"Saved {_selectedProfile.Display}" + (problems.Count > 0 ? $" with {problems.Count} problem(s)" : ""));
@@ -1024,6 +1069,7 @@ public sealed class MainViewModel : ObservableObject
         if (runtime is null)
         {
             DcsStatus = "DCS-BIOS · not running";
+            DcsText = "DCS-BIOS";
             SpeechStatus = "Speech · not running";
             ActiveProfileText = "";
             ServerStatus = NoServer;
@@ -1034,6 +1080,7 @@ public sealed class MainViewModel : ObservableObject
             DcsStatus = runtime.IsLive
                 ? $"DCS-BIOS · {(aircraft.Length == 0 || aircraft.Equals("NONE", StringComparison.OrdinalIgnoreCase) ? "no aircraft" : aircraft)}"
                 : runtime.FrameCount == 0 ? "DCS-BIOS · waiting for DCS" : "DCS-BIOS · no data";
+            DcsText = runtime.IsLive ? DcsStatus : "DCS-BIOS";
             SpeechStatus = runtime.SpeechReady ? "Speech · ready" : "Speech · offline";
             ActiveProfileText = runtime.ActiveAircraft is { } active
                 ? $"Profile · {active}{(runtime.ProfileOverride != null ? " (pinned)" : "")}"
@@ -1044,6 +1091,7 @@ public sealed class MainViewModel : ObservableObject
             IsListening = runtime.IsListening;
         }
         OnPropertyChanged(nameof(DcsLive));
+        OnPropertyChanged(nameof(SpeechReady));
     }
 
     private async Task RunAsync(Func<Task> action)

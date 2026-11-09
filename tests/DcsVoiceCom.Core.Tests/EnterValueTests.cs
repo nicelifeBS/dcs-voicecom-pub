@@ -167,42 +167,6 @@ public class TextSlotTests
 
 public class EnterValueEngineTests
 {
-    /// <summary>A pretend F-14 pilot UHF: four spring wheels (2 = click up, 0 = click down) and their read-backs.</summary>
-    private sealed class Uhf
-    {
-        public int Th = 25, One = 1, D3, Q;
-        public bool InvertTenth;
-        public bool Stuck;
-
-        public void Attach(FakeCockpit cockpit)
-        {
-            Publish(cockpit);
-            cockpit.OnSend = (c, id, arg) =>
-            {
-                if (arg is not ("2" or "0") || Stuck) return;
-                var dir = arg == "2" ? 1 : -1;
-                switch (id)
-                {
-                    case "PLT_UHF1_110_DIAL": Th = Wrap(Th + dir, 22, 39); break;
-                    case "PLT_UHF1_1_DIAL": One = Wrap(One + dir, 0, 9); break;
-                    case "PLT_UHF1_01_DIAL": D3 = Wrap(D3 + (InvertTenth ? -dir : dir), 0, 9); break;
-                    case "PLT_UHF1_025_DIAL": Q = Wrap(Q + dir, 0, 3); break;
-                }
-                Publish(c);
-            };
-        }
-
-        private void Publish(FakeCockpit c)
-        {
-            c.Integers["PLT_UHF_HIGH_FREQ"] = Th * 10 + One;
-            c.Integers["PLT_UHF_DIAL3_FREQ"] = D3;
-            c.Integers["PLT_UHF_DIAL4_FREQ"] = Q * 25;
-            c.Strings["PLT_UHF_DISP"] = $"{Th * 10 + One}.{D3}{Q * 25:00}";
-        }
-
-        private static int Wrap(int v, int min, int max) => v > max ? min : v < min ? max : v;
-    }
-
     private static EnterValueStep UhfStep() => new()
     {
         Value = "{freq}",
@@ -236,7 +200,7 @@ public class EnterValueEngineTests
     public async Task Clicks_each_wheel_to_the_spoken_frequency_and_checks_the_display()
     {
         var (engine, cockpit) = Create(UhfStep());
-        var uhf = new Uhf();
+        var uhf = new FakeUhf();
         uhf.Attach(cockpit);
 
         var outcome = await engine.HandleAsync(Heard("uhf {freq}", "two six three decimal one seven five"));
@@ -250,7 +214,7 @@ public class EnterValueEngineTests
     public async Task Swaps_up_and_down_when_a_wheel_turns_the_other_way()
     {
         var (engine, cockpit) = Create(UhfStep());
-        var uhf = new Uhf { InvertTenth = true };
+        var uhf = new FakeUhf { InvertTenth = true };
         uhf.Attach(cockpit);
 
         var outcome = await engine.HandleAsync(Heard("uhf {freq}", "two five one decimal three"));
@@ -264,7 +228,7 @@ public class EnterValueEngineTests
     public async Task Skips_everything_when_the_display_already_shows_the_value()
     {
         var (engine, cockpit) = Create(UhfStep());
-        new Uhf().Attach(cockpit);
+        new FakeUhf().Attach(cockpit);
 
         var outcome = await engine.HandleAsync(Heard("uhf {freq}", "two five one decimal zero"));
 
@@ -276,7 +240,7 @@ public class EnterValueEngineTests
     public async Task A_stuck_wheel_is_refused()
     {
         var (engine, cockpit) = Create(UhfStep());
-        new Uhf { Stuck = true }.Attach(cockpit);
+        new FakeUhf { Stuck = true }.Attach(cockpit);
 
         var outcome = await engine.HandleAsync(Heard("uhf {freq}", "two six one decimal zero"));
 
@@ -288,7 +252,7 @@ public class EnterValueEngineTests
     public async Task A_value_the_wheel_cannot_show_is_refused_after_passing_it()
     {
         var (engine, cockpit) = Create(UhfStep());
-        new Uhf().Attach(cockpit);
+        new FakeUhf().Attach(cockpit);
 
         var outcome = await engine.HandleAsync(Heard("uhf {freq}", "two five one decimal zero one"));
 
@@ -302,7 +266,7 @@ public class EnterValueEngineTests
         var step = UhfStep();
         step.Wheels![0].Flip = true; // wrong: the first click goes up, from 39 around to 22
         var (engine, cockpit) = Create(step);
-        var uhf = new Uhf { Th = 39 };
+        var uhf = new FakeUhf { Th = 39 };
         uhf.Attach(cockpit);
 
         var outcome = await engine.HandleAsync(Heard("uhf {freq}", "three zero one decimal zero"));
@@ -337,7 +301,7 @@ public class EnterValueEngineTests
     public async Task Out_of_range_sends_nothing()
     {
         var (engine, cockpit) = Create(UhfStep());
-        new Uhf().Attach(cockpit);
+        new FakeUhf().Attach(cockpit);
 
         var outcome = await engine.HandleAsync(Heard("uhf {freq}", "one two one decimal five"));
 
@@ -349,7 +313,7 @@ public class EnterValueEngineTests
     public async Task Dry_run_lists_the_wheel_targets()
     {
         var (engine, cockpit) = Create(UhfStep());
-        new Uhf().Attach(cockpit);
+        new FakeUhf().Attach(cockpit);
 
         var outcome = await engine.HandleAsync(Heard("uhf {freq}", "two six three decimal one seven five"), dryRun: true);
 
