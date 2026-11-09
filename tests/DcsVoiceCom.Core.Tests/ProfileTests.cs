@@ -71,6 +71,21 @@ public class ProfileTests
     }
 
     [Fact]
+    public void A_press_round_trips_through_json()
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize<Step>(new BiosStep { Control = "U1", Arg = "1", PressMs = 50, Release = "0" }, ProfileSerializer.Options);
+        Assert.Contains("\"press_ms\": 50", json);
+        Assert.Contains("\"release\": \"0\"", json);
+        var step = Assert.IsType<BiosStep>(System.Text.Json.JsonSerializer.Deserialize<Step>(json, ProfileSerializer.Options));
+        Assert.Equal(50, step.PressMs);
+        Assert.Equal("0", step.Release);
+
+        var plain = System.Text.Json.JsonSerializer.Serialize<Step>(new BiosStep { Control = "U1", Arg = "1" }, ProfileSerializer.Options);
+        Assert.DoesNotContain("press_ms", plain);
+        Assert.DoesNotContain("release", plain);
+    }
+
+    [Fact]
     public void Rejects_unknown_step_type()
     {
         var ex = Assert.ThrowsAny<System.Text.Json.JsonException>(() => ProfileSerializer.Deserialize(

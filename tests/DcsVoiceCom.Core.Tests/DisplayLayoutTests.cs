@@ -297,33 +297,6 @@ public class DisplayLayoutTests
 
 public class DisplayFieldEngineTests
 {
-    /// <summary>An F-14 pilot UHF that shows its frequency only on PLT_UHF_DISP.</summary>
-    internal sealed class Uhf
-    {
-        public int Th = 25, One = 1, D3, Q;
-        public bool InvertTenth, Stuck;
-
-        public void Attach(FakeCockpit cockpit)
-        {
-            Publish(cockpit);
-            cockpit.OnSend = (c, id, arg) =>
-            {
-                if (arg is not ("2" or "0") || Stuck) return;
-                var dir = arg == "2" ? 1 : -1;
-                switch (id)
-                {
-                    case "PLT_UHF1_110_DIAL": Th = Wrap(Th + dir, 22, 39); break;
-                    case "PLT_UHF1_1_DIAL": One = Wrap(One + dir, 0, 9); break;
-                    case "PLT_UHF1_01_DIAL": D3 = Wrap(D3 + (InvertTenth ? -dir : dir), 0, 9); break;
-                    case "PLT_UHF1_025_DIAL": Q = Wrap(Q + dir, 0, 3); break;
-                }
-                Publish(c);
-            };
-        }
-
-        private void Publish(FakeCockpit c) => c.Strings["PLT_UHF_DISP"] = $"{Th * 10 + One}.{D3}{Q * 25:00}";
-    }
-
     internal static int Wrap(int v, int min, int max) => v > max ? min : v < min ? max : v;
 
     private static (CommandEngine Engine, FakeCockpit Cockpit) Create(Step step, string phrase)
@@ -342,7 +315,7 @@ public class DisplayFieldEngineTests
     public async Task Turns_each_wheel_from_its_part_of_the_display()
     {
         var (engine, cockpit) = Create(DisplaySteps.Uhf(), "uhf {freq}");
-        new Uhf().Attach(cockpit);
+        new FakeUhf().Attach(cockpit);
 
         var outcome = await engine.HandleAsync(Heard("uhf {freq}", "two six three decimal one seven five"));
 
@@ -355,7 +328,7 @@ public class DisplayFieldEngineTests
     public async Task Swaps_up_and_down_when_a_wheel_turns_the_other_way()
     {
         var (engine, cockpit) = Create(DisplaySteps.Uhf(), "uhf {freq}");
-        var uhf = new Uhf { InvertTenth = true };
+        var uhf = new FakeUhf { InvertTenth = true };
         uhf.Attach(cockpit);
 
         var outcome = await engine.HandleAsync(Heard("uhf {freq}", "two five one decimal three"));
@@ -369,7 +342,7 @@ public class DisplayFieldEngineTests
     public async Task Skips_everything_when_the_display_already_shows_the_value()
     {
         var (engine, cockpit) = Create(DisplaySteps.Uhf(), "uhf {freq}");
-        new Uhf().Attach(cockpit);
+        new FakeUhf().Attach(cockpit);
 
         var outcome = await engine.HandleAsync(Heard("uhf {freq}", "two five one decimal zero"));
 
@@ -381,7 +354,7 @@ public class DisplayFieldEngineTests
     public async Task A_value_outside_a_wheel_range_sends_nothing()
     {
         var (engine, cockpit) = Create(DisplaySteps.Uhf(), "uhf {freq}");
-        new Uhf().Attach(cockpit);
+        new FakeUhf().Attach(cockpit);
 
         var outcome = await engine.HandleAsync(Heard("uhf {freq}", "four zero zero decimal zero"));
 
@@ -394,7 +367,7 @@ public class DisplayFieldEngineTests
     public async Task A_stuck_wheel_is_refused()
     {
         var (engine, cockpit) = Create(DisplaySteps.Uhf(), "uhf {freq}");
-        new Uhf { Stuck = true }.Attach(cockpit);
+        new FakeUhf { Stuck = true }.Attach(cockpit);
 
         var outcome = await engine.HandleAsync(Heard("uhf {freq}", "two six one decimal zero"));
 
