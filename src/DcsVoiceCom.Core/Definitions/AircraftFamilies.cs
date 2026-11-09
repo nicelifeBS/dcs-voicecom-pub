@@ -35,9 +35,14 @@ public static class AircraftFamilies
         return result;
     }
 
-    /// <summary>One name per group, sorted.</summary>
+    /// <summary>Name prefixes left out of the list: the VSN mods, which DCS-BIOS lists whether they're installed or not.</summary>
+    private static readonly string[] HiddenPrefixes = ["VSN_"];
+
+    /// <summary>One name per group, sorted, without the hidden mods. A hidden name still works when typed.</summary>
     public static IReadOnlyList<string> Main(IReadOnlyDictionary<string, IReadOnlyList<string>> aliases) =>
-        BaseNames(aliases).Values.Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase).ToList();
+        BaseNames(aliases).Values
+            .Where(n => !HiddenPrefixes.Any(p => n.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
+            .Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase).ToList();
 
     private static string GroupKey(string name, IReadOnlyList<string> modules)
     {
