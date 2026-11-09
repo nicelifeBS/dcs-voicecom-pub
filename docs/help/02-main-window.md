@@ -10,7 +10,7 @@ group: Start
    DCS connected, speech ready. Hover a dot for details. On the right: the active profile, Save (Ctrl+S),
    Log, Settings and Help. On a narrow window the status text gets shorter; the buttons always stay.
 2. **Profiles.** One per aircraft, [server profiles](11-server-profiles.md), and *common* for every aircraft.
-   The active ones have a green dot. Below the list: the multiplayer server you're on, and the server profile pin.
+   The active ones have a green dot. Common and server profiles are purple and always listed below the aircraft. Below the list: the multiplayer server you're on, and the server profile pin.
    *Matching* below the list sets the scores a command needs and the keywords.
 3. **Commands.** All commands of the profile, sorted A–Z by voice line. Tick a box to enable a command. Right-click for duplicate and delete.
 4. **Editor.** The voice line and the actions of the selected command.

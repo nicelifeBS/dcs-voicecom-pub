@@ -121,7 +121,7 @@
           <ComboBox ItemsSource="{Binding ServerOverrideOptions}" SelectedItem="{Binding SelectedServerOverride}"
                     ToolTip="Server profile. Auto follows the server the DCS hook reports; pick one to pin it" />
         </StackPanel>
-        <ListBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}">
+        <ListBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}" ItemContainerStyle="{StaticResource ProfileItem}">
           <ListBox.InputBindings>
             <KeyBinding Key="Delete" Command="{Binding DeleteProfileCommand}" />
           </ListBox.InputBindings>

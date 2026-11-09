@@ -41,6 +41,20 @@ public class ServerProfileViewModelTests
     }
 
     [Fact]
+    public void Aircraft_profiles_come_first_even_when_they_sort_after_common_and_server()
+    {
+        using var ws = new Workspace();
+        ws.Store.Save(new Profile { Aircraft = "ZZ-Jet" });
+        ws.Store.Save(new Profile { Aircraft = "A-10C" });
+        ws.Store.Save(new Profile { Aircraft = "server-Alpha", Servers = ["Alpha"] });
+        ws.Store.Save(new Profile { Aircraft = ProfileStore.CommonProfileName });
+        var vm = Create(ws, new FakeDialogs());
+
+        Assert.Equal(["A-10C", "ZZ-Jet", "server-Alpha", "common"], vm.Profiles.Select(p => p.Name));
+        Assert.Equal([true, true, false, false], vm.Profiles.Select(p => p.IsAircraft));
+    }
+
+    [Fact]
     public void New_server_profile_starts_from_the_current_server_and_saves_edited_servers()
     {
         using var ws = new Workspace();
