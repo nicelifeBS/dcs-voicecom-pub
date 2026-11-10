@@ -517,7 +517,7 @@ public sealed class MainViewModel : ObservableObject
         RefreshStatus();
         var runtime = _runtime;
         var live = runtime != null && runtime.IsLive && _selectedProfile != null &&
-                   string.Equals(runtime.DcsAircraft, _selectedProfile.Name, StringComparison.OrdinalIgnoreCase);
+                   FliesProfile(runtime, _selectedProfile.Name);
         Browser.RefreshLive(runtime?.State, live);
     }
 
@@ -538,7 +538,7 @@ public sealed class MainViewModel : ObservableObject
     {
         var runtime = _runtime;
         return runtime != null && runtime.IsLive && _selectedProfile != null &&
-               string.Equals(runtime.DcsAircraft, _selectedProfile.Name, StringComparison.OrdinalIgnoreCase);
+               FliesProfile(runtime, _selectedProfile.Name);
     }
 
     /// <summary>Before closing the window: false when the user cancels.</summary>
@@ -751,9 +751,9 @@ public sealed class MainViewModel : ObservableObject
         var suggestions = _definitions.Exists
             ? SafeAvailableAircraft().Where(a => !existing.Contains(a)).ToList()
             : [];
-        var flying = _runtime?.DcsAircraft;
+        var flying = _runtime?.DcsAircraft is { Length: > 0 } reported ? SafeBaseAircraft(reported) : null;
         var initial = !string.IsNullOrEmpty(flying) && !flying.Equals("NONE", StringComparison.OrdinalIgnoreCase) && !existing.Contains(flying) ? flying : "";
-        var name = _dialogs.Prompt("New profile", "Aircraft name as DCS-BIOS reports it (_ACFT_NAME)", initial, suggestions)?.Trim();
+        var name = _dialogs.Prompt("New profile", "Pick a jet. For one variant only, type its DCS-BIOS name (e.g. F-14BU).", initial, suggestions)?.Trim();
         if (string.IsNullOrEmpty(name)) return;
         if (existing.Contains(name))
         {
@@ -835,6 +835,19 @@ public sealed class MainViewModel : ObservableObject
         catch (Exception)
         {
             return [];
+        }
+    }
+
+    /// <summary>The name a variant's profile goes by (F-16D_52 → F-16C_50); the name itself when unknown.</summary>
+    private string SafeBaseAircraft(string aircraft)
+    {
+        try
+        {
+            return _definitions.Exists ? _definitions.BaseAircraft(aircraft) : aircraft;
+        }
+        catch (Exception)
+        {
+            return aircraft;
         }
     }
 
@@ -945,7 +958,12 @@ public sealed class MainViewModel : ObservableObject
     /// <summary>Saving this profile changes what's active. Any server profile counts: its server list may now match.</summary>
     private bool AffectsActiveProfile(string name) =>
         ProfileStore.IsCommon(name) || ProfileStore.IsServerProfile(name) ||
-        string.Equals(_runtime?.ActiveAircraft, name, StringComparison.OrdinalIgnoreCase);
+        string.Equals(_runtime?.ActiveProfile, name, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>DCS flies this profile's aircraft, or a variant that uses this profile (F-16D_52 → F-16C_50).</summary>
+    private static bool FliesProfile(IVoiceComRuntime runtime, string name) =>
+        string.Equals(runtime.DcsAircraft, name, StringComparison.OrdinalIgnoreCase) ||
+        (runtime.ProfileOverride is null && string.Equals(runtime.ActiveProfile, name, StringComparison.OrdinalIgnoreCase));
 
     private void Revert()
     {
@@ -979,7 +997,7 @@ public sealed class MainViewModel : ObservableObject
             Log.Add("ERROR", "Not running: the voice engine is stopped.");
             return;
         }
-        if (_runtime.ActiveAircraft is { } active && _selectedProfile is { IsAircraft: true } &&
+        if (_runtime.ActiveProfile is { } active && _selectedProfile is { IsAircraft: true } &&
             !active.Equals(_selectedProfile.Name, StringComparison.OrdinalIgnoreCase))
             Log.Add("INFO", $"Testing against the active profile {active}, not {_selectedProfile.Name} (pin it with the profile override).");
         if (IsDirty && _selectedProfile != null && AffectsActiveProfile(_selectedProfile.Name)) await SaveAsync();
@@ -1056,7 +1074,7 @@ public sealed class MainViewModel : ObservableObject
 
     private void MarkActive()
     {
-        var active = _runtime?.ActiveAircraft;
+        var active = _runtime?.ActiveProfile;
         var servers = _runtime?.ActiveServerProfiles ?? [];
         foreach (var p in Profiles)
             p.IsActive = active != null && (p.Name.Equals(active, StringComparison.OrdinalIgnoreCase) ||
@@ -1082,7 +1100,7 @@ public sealed class MainViewModel : ObservableObject
                 : runtime.FrameCount == 0 ? "DCS-BIOS · waiting for DCS" : "DCS-BIOS · no data";
             DcsText = runtime.IsLive ? DcsStatus : "DCS-BIOS";
             SpeechStatus = runtime.SpeechReady ? "Speech · ready" : "Speech · offline";
-            ActiveProfileText = runtime.ActiveAircraft is { } active
+            ActiveProfileText = runtime.ActiveProfile is { } active
                 ? $"Profile · {active}{(runtime.ProfileOverride != null ? " (pinned)" : "")}"
                 : "Profile · none";
             ServerStatus = runtime.Session is { OnServer: true } session

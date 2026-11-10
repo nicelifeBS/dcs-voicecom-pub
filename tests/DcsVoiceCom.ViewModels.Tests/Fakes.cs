@@ -52,6 +52,9 @@ internal sealed class FakeRuntime : IVoiceComRuntime
 {
     public string DcsAircraft { get; set; } = "";
     public string? ActiveAircraft => ProfileOverride ?? (DcsAircraft.Length > 0 ? DcsAircraft : null);
+    /// <summary>Set to act like a variant using its family's profile; null means the active aircraft.</summary>
+    public string? SharedProfile { get; set; }
+    public string? ActiveProfile => ActiveAircraft is null ? null : SharedProfile ?? ActiveAircraft;
     public string? ProfileOverride { get; set; }
     public DcsSession? Session { get; set; }
     public string? ServerOverride { get; set; }

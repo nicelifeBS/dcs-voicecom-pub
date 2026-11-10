@@ -229,6 +229,18 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public void A_variant_using_the_shared_profile_marks_it_active()
+    {
+        using var ws = new Workspace();
+        ws.SaveTestJet(Gear());
+        var runtime = new FakeRuntime { DcsAircraft = "TestJet-Two", SharedProfile = "TestJet" };
+        var vm = Create(ws, new FakeDialogs(), runtime);
+
+        Assert.True(vm.Profiles[0].IsActive);
+        Assert.Contains("TestJet", vm.ActiveProfileText);
+    }
+
+    [Fact]
     public void Profile_override_goes_to_the_runtime_and_is_reported()
     {
         using var ws = new Workspace();

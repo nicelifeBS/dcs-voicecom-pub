@@ -31,21 +31,44 @@ public sealed class DefinitionLoader
     public DateTime LastModifiedUtc =>
         Exists ? Directory.EnumerateFiles(JsonDirectory, "*.json").Select(File.GetLastWriteTimeUtc).DefaultIfEmpty().Max() : default;
 
-    public IReadOnlyDictionary<string, IReadOnlyList<string>> LoadAliases()
+    /// <summary>The parsed aliases file and its groups, kept until the file changes.</summary>
+    private sealed record AliasCache(DateTime WriteTimeUtc, long Length,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> Aliases, IReadOnlyDictionary<string, string> BaseNames);
+
+    private volatile AliasCache? _aliasCache;
+
+    private static readonly AliasCache NoAliases = new(default, -1,
+        new Dictionary<string, IReadOnlyList<string>>(), new Dictionary<string, string>());
+
+    /// <summary>The aliases file, read again only when its time or size changes (a DCS-BIOS update).</summary>
+    private AliasCache Aliases()
     {
-        var path = Path.Combine(JsonDirectory, AliasesFile);
-        if (!File.Exists(path)) return new Dictionary<string, IReadOnlyList<string>>();
-        using var stream = File.OpenRead(path);
+        var file = new FileInfo(Path.Combine(JsonDirectory, AliasesFile));
+        if (!file.Exists) return _aliasCache = NoAliases;
+        if (_aliasCache is { } cached && cached.WriteTimeUtc == file.LastWriteTimeUtc && cached.Length == file.Length) return cached;
+        using var stream = file.OpenRead();
         var raw = JsonSerializer.Deserialize<Dictionary<string, List<string>>>(stream, JsonOptions) ?? [];
-        return raw.ToDictionary(kv => kv.Key, kv => (IReadOnlyList<string>)kv.Value, StringComparer.OrdinalIgnoreCase);
+        var aliases = raw.ToDictionary(kv => kv.Key, kv => (IReadOnlyList<string>)kv.Value, StringComparer.OrdinalIgnoreCase);
+        return _aliasCache = new AliasCache(file.LastWriteTimeUtc, file.Length, aliases, AircraftFamilies.BaseNames(aliases));
     }
 
-    public IReadOnlyList<string> AvailableAircraft() => LoadAliases().Keys.Order(StringComparer.OrdinalIgnoreCase).ToList();
+    public IReadOnlyDictionary<string, IReadOnlyList<string>> LoadAliases() => Aliases().Aliases;
+
+    /// <summary>One name per jet: variants with the same control files are left out (see <see cref="AircraftFamilies"/>).</summary>
+    public IReadOnlyList<string> AvailableAircraft() => AircraftFamilies.Main(Aliases().BaseNames);
+
+    /// <summary>The profile name shared by this aircraft's variants, e.g. F-16D_52 → F-16C_50, F-14BU → F-14. The name itself when unknown.</summary>
+    public string BaseAircraft(string aircraft) =>
+        Aliases().BaseNames.TryGetValue(aircraft, out var main) ? main : aircraft;
 
     public ControlCatalog LoadAircraft(string aircraft)
     {
-        var aliases = LoadAliases();
-        var modules = aliases.TryGetValue(aircraft, out var m) ? m.ToList() : [aircraft];
+        var (_, _, aliases, baseNames) = Aliases();
+        // A shared profile like "F-14" isn't a name in the aliases: use the files of a plane in its group.
+        var modules = aliases.TryGetValue(aircraft, out var m) ? m.ToList()
+            : baseNames.FirstOrDefault(kv => kv.Value.Equals(aircraft, StringComparison.OrdinalIgnoreCase)).Key
+                is { } member ? aliases[member].ToList()
+            : [aircraft];
         foreach (var shared in SharedModules)
         {
             if (!modules.Contains(shared, StringComparer.OrdinalIgnoreCase)) modules.Add(shared);

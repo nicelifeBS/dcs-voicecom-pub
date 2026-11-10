@@ -30,6 +30,7 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
     private ControlCatalog _catalog = ControlCatalog.Empty;
     private string? _override;
     private string? _serverOverride;
+    private (string Aircraft, string Profile)? _activeProfile;
     private IReadOnlyList<string> _activeServerProfiles = [];
     private bool _listening;
     private readonly CatalogBiosSender _sender;
@@ -83,6 +84,15 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
 
     /// <summary>The aircraft whose profile should be active.</summary>
     public string? ActiveAircraft => _override ?? (IsRealAircraft(_dcsBios.Aircraft) ? _dcsBios.Aircraft : null);
+
+    /// <summary>
+    /// The aircraft profile in use: the active aircraft's own file, else the one its variants share
+    /// (F-16D_52 uses F-16C_50). Null before an aircraft is known.
+    /// </summary>
+    public string? ActiveProfile =>
+        ActiveAircraft is { } aircraft && _activeProfile is { } p && p.Aircraft.Equals(aircraft, StringComparison.OrdinalIgnoreCase)
+            ? p.Profile
+            : ActiveAircraft;
 
     public DcsSession? Session => _hook.Session;
     public string? ServerOverride => _serverOverride;
@@ -165,7 +175,12 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
             if (!names.SequenceEqual(_activeServerProfiles, StringComparer.OrdinalIgnoreCase))
                 Log(names.Count == 0 ? "Server profile: none" : $"Server profile: {string.Join(", ", names)}");
             _activeServerProfiles = names;
-            var profile = _profiles.LoadMerged(aircraft, servers) ?? new Profile { Aircraft = aircraft };
+            var profileName = ResolveProfile(aircraft);
+            if (!profileName.Equals(aircraft, StringComparison.OrdinalIgnoreCase) &&
+                !profileName.Equals(ActiveProfile, StringComparison.OrdinalIgnoreCase))
+                Log($"No profile for {aircraft}; using {profileName}");
+            _activeProfile = (aircraft, profileName);
+            var profile = _profiles.LoadMerged(profileName, servers) ?? new Profile { Aircraft = profileName };
             var compiled = CompiledProfile.Compile(profile);
             foreach (var problem in compiled.Problems) Log($"Profile problem: {problem}");
             if (_catalog.Count > 0)
@@ -178,13 +193,28 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
             if (_speech is { } speech)
             {
                 var count = speech.LoadPhrases(_settings.Language, compiled.Entries, compiled.Keywords);
-                Log($"Profile {aircraft}: {compiled.Profile.Commands.Count(c => c.Enabled)} commands, {count} phrases, {_catalog.Count} controls");
+                Log($"Profile {profileName}: {compiled.Profile.Commands.Count(c => c.Enabled)} commands, {count} phrases, {_catalog.Count} controls");
             }
             ProfileLoaded?.Invoke(compiled);
         }
         finally
         {
             _switchLock.Release();
+        }
+    }
+
+    /// <summary>The aircraft's own profile, else its variants' shared one when that file exists, else the aircraft.</summary>
+    private string ResolveProfile(string aircraft)
+    {
+        if (_override is not null || _profiles.Exists(aircraft) || !_definitions.Exists) return aircraft;
+        try
+        {
+            var main = _definitions.BaseAircraft(aircraft);
+            return _profiles.Exists(main) ? main : aircraft;
+        }
+        catch (Exception ex) when (ex is IOException or System.Text.Json.JsonException or UnauthorizedAccessException)
+        {
+            return aircraft; // a broken aliases file: the catalog load reports it
         }
     }
 

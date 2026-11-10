@@ -40,7 +40,7 @@ UsedUserAreasWarning=no
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
-Name: "profiles"; Description: "Install sample profiles (F-14B Upgraded, common)"; GroupDescription: "Profiles:"
+Name: "profiles"; Description: "Install sample profiles (F-14 Tomcat, common)"; GroupDescription: "Profiles:"
 
 [Files]
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs

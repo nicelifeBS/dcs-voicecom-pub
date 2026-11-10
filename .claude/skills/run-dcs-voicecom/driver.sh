@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Build and drive the WPF app (DcsVoiceCom.exe) under Wine on a headless Xvfb display.
 #
-#   driver.sh setup            one-time: Microsoft .NET SDK, Wine prefix, fonts, sample profiles
+#   driver.sh setup            one-time: apt tools (wine, xvfb, xdotool, imagemagick, fonts), .NET SDK,
+#                              Wine prefix (an unfinished one is rebuilt), fonts, sample profiles
 #   driver.sh build            dotnet publish -r win-x64 --self-contained
 #   driver.sh launch           start Xvfb + the app, wait for the main window, pin it at 0,0
 #   driver.sh ss [name]        screenshot of the main window -> $DCSVC_WORK/shots/<name>.png
@@ -49,8 +50,35 @@ cmd_setup() {
   fi
   ls "$SDK/sdk/"10.*/Sdks/Microsoft.NET.Sdk.WindowsDesktop >/dev/null
 
+  # Many containers ship without Wine and the X tools. Install whatever is missing (the Ubuntu archive is reachable).
+  local missing=()
+  for t in wine:wine Xvfb:xvfb xdotool:xdotool import:imagemagick convert:imagemagick; do
+    command -v "${t%%:*}" >/dev/null || missing+=("${t#*:}")
+  done
+  [ -d /usr/share/fonts/truetype/liberation ] || missing+=(fonts-liberation)
+  [ -d /usr/share/fonts/truetype/jetbrains-mono ] || missing+=(fonts-jetbrains-mono)
+  [ -d /usr/share/fonts/truetype/dejavu ] || missing+=(fonts-dejavu-core)
+  if ((${#missing[@]})); then
+    echo "installing: ${missing[*]}"
+    apt-get install -y $(printf '%s\n' "${missing[@]}" | sort -u) >/dev/null || {
+      apt-get update >/dev/null && apt-get install -y $(printf '%s\n' "${missing[@]}" | sort -u) >/dev/null; }
+  fi
+
   ensure_xvfb
-  [ -d "$WINEPREFIX/drive_c" ] || wineboot -i >/dev/null 2>&1
+  # A prefix from a failed run (no Wine at the time, or a killed wineboot) has no Fonts folder or a broken
+  # system; the font step then fails with FileNotFoundError. Only a prefix marked ready by a finished setup is kept.
+  if [ -d "$WINEPREFIX" ] && [ ! -f "$WINEPREFIX/.dcsvc-ready" ]; then
+    echo "removing unfinished Wine prefix"
+    wineserver -k 2>/dev/null || true
+    pkill -f DcsVoiceCom.exe 2>/dev/null || true
+    rm -rf "$WINEPREFIX"
+  fi
+  if [ ! -d "$WINEPREFIX/drive_c" ]; then
+    echo "creating Wine prefix (about 30 s)"
+    wineboot -i >"$W/wineboot.log" 2>&1 || { tail -20 "$W/wineboot.log"; exit 1; }
+    wineserver -w
+  fi
+  mkdir -p "$WINEPREFIX/drive_c/windows/Fonts"
 
   # WPF FailFasts in TypefaceMap.MapUnresolvedCharacters when no font resolves. Install Linux fonts
   # renamed to the Windows family names the app and WPF's fallback chain ask for, and register them.
@@ -88,6 +116,7 @@ EOF
   # Sample profiles so the lists are not empty (settings.json is created by the app on first launch).
   mkdir -p "$APPDATA_DIR/profiles"
   cp "$REPO"/profiles/*.json "$APPDATA_DIR/profiles/"
+  touch "$WINEPREFIX/.dcsvc-ready"
   echo "setup done: $W"
 }
 
@@ -148,5 +177,5 @@ case ${1:-} in
              echo "$w $(xdotool getwindowgeometry "$w" | sed -n 's/.*Position: \([^ ]*\).*/\1/p;s/.*Geometry: //p' | tr '\n' ' ') $(xdotool getwindowname "$w")"; done ;;
   log)     tail -n "${2:-30}" "$W/app.log" ;;
   quit)    wineserver -k 2>/dev/null || true; echo stopped ;;
-  *)       sed -n '2,22p' "$0"; exit 1 ;;
+  *)       sed -n '2,23p' "$0"; exit 1 ;;
 esac

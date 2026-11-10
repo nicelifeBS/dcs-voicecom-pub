@@ -414,7 +414,7 @@ public class SampleProfileTests
 {
     private static async Task<(CommandOutcome Outcome, FakeCockpit Cockpit)> Run(string phrase, string slots)
     {
-        var path = Path.Combine(AppContext.BaseDirectory, "profiles", "F-14BU.json");
+        var path = Path.Combine(AppContext.BaseDirectory, "profiles", "F-14.json");
         var cockpit = new FakeCockpit();
         var engine = new CommandEngine(cockpit, cockpit, cockpit, cockpit)
         {
