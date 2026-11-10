@@ -74,4 +74,23 @@ public class AircraftFamiliesTests
         Assert.Equal(["F-14"], loader.LoadAircraft("F-14").Modules);
         Assert.NotNull(loader.LoadAircraft("F-14").Find("gear_lever"));
     }
+
+    [Fact]
+    public void Aliases_are_read_again_when_the_file_changes()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "dcsvoicecom-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var path = Path.Combine(dir, DefinitionLoader.AliasesFile);
+        File.WriteAllText(path, """{ "F-16C_50": ["F-16C_50"] }""");
+        var loader = new DefinitionLoader(dir);
+
+        Assert.Same(loader.LoadAliases(), loader.LoadAliases());
+        Assert.Equal(["F-16C_50"], loader.AvailableAircraft());
+
+        File.WriteAllText(path, """{ "F-16C_50": ["F-16C_50"], "A-10C": ["A-10C"] }""");
+        Assert.Equal(["A-10C", "F-16C_50"], loader.AvailableAircraft());
+
+        File.Delete(path);
+        Assert.Empty(loader.AvailableAircraft());
+    }
 }

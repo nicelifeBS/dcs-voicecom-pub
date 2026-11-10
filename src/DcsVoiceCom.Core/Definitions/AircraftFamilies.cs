@@ -35,8 +35,11 @@ public static class AircraftFamilies
     private static readonly string[] HiddenPrefixes = ["VSN_"];
 
     /// <summary>One name per group, sorted, without the hidden mods. A hidden name still works when typed.</summary>
-    public static IReadOnlyList<string> Main(IReadOnlyDictionary<string, IReadOnlyList<string>> aliases) =>
-        BaseNames(aliases).Values
+    public static IReadOnlyList<string> Main(IReadOnlyDictionary<string, IReadOnlyList<string>> aliases) => Main(BaseNames(aliases));
+
+    /// <summary>The same, from groups already made with <see cref="BaseNames"/>.</summary>
+    public static IReadOnlyList<string> Main(IReadOnlyDictionary<string, string> baseNames) =>
+        baseNames.Values
             .Where(n => !HiddenPrefixes.Any(p => n.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
             .Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase).ToList();
 
