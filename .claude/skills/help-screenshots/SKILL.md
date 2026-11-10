@@ -11,7 +11,7 @@ To check whether a release needs new screenshots, see the UI changes since the l
 git diff --stat $(git log -1 --format=%h -- docs/help/images) -- src/DcsVoiceCom.App
 ```
 
-This runs the real app under Wine through `.claude/skills/run-dcs-voicecom/driver.sh` (see that skill for driving
+Retaking runs the real app under Wine through `.claude/skills/run-dcs-voicecom/driver.sh` (see that skill for driving
 the app by hand). From the repo root:
 
 ```bash
