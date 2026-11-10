@@ -25,11 +25,10 @@ public class AircraftFamiliesTests
     };
 
     [Fact]
-    public void Lists_one_name_per_jet_but_keeps_F14_and_Mirage_F1_variants_and_hides_VSN_mods()
+    public void Lists_one_name_per_jet_and_hides_VSN_mods()
     {
         Assert.Equal(
-            ["AH-64D_BLK_II", "F-14A-135-GR", "F-14B", "F-14BU", "F-15C", "F-16C_50", "Mirage-F1BE", "Mirage-F1CE",
-             "Mirage-F1EE", "NS430", "Su-27", "Supercarrier"],
+            ["AH-64D_BLK_II", "F-14", "F-15C", "F-16C_50", "MirageF1", "NS430", "Su-27", "Supercarrier"],
             AircraftFamilies.Main(Aliases));
     }
 
@@ -39,10 +38,11 @@ public class AircraftFamiliesTests
     [InlineData("F-16C_50", "F-16C_50")]
     [InlineData("Su-27", "Su-27")]
     [InlineData("VSN_F22", "VSN_F22")]
-    [InlineData("F-14A-135-GR-Early", "F-14A-135-GR")]
-    [InlineData("F-14B", "F-14B")]
-    [InlineData("F-14BU", "F-14BU")]
-    [InlineData("Mirage-F1EE", "Mirage-F1EE")]
+    [InlineData("F-14A-135-GR-Early", "F-14")]
+    [InlineData("F-14B", "F-14")]
+    [InlineData("F-14BU", "F-14")]
+    [InlineData("Mirage-F1EE", "MirageF1")]
+    [InlineData("AH-64D_BLK_II", "AH-64D_BLK_II")]
     public void Variants_share_the_main_name(string aircraft, string expected) =>
         Assert.Equal(expected, AircraftFamilies.BaseNames(Aliases)[aircraft]);
 
@@ -58,5 +58,20 @@ public class AircraftFamiliesTests
         Assert.Equal(["F-16C_50"], loader.AvailableAircraft());
         Assert.Equal("F-16C_50", loader.BaseAircraft("F-16D_52"));
         Assert.Equal("Unknown", loader.BaseAircraft("Unknown"));
+    }
+
+    [Fact]
+    public void A_shared_profile_loads_the_controls_of_its_group()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "dcsvoicecom-tests", Guid.NewGuid().ToString("N"));
+        TestCatalog.WriteDefinitions(dir, aircraft: "F-14B", module: "F-14");
+        File.WriteAllText(Path.Combine(dir, DefinitionLoader.AliasesFile),
+            """{ "F-14B": ["CommonData", "F-14", "NS430"], "F-14BU": ["CommonData", "F-14", "NS430"] }""");
+        var loader = new DefinitionLoader(dir);
+
+        Assert.Equal(["F-14"], loader.AvailableAircraft());
+        Assert.Equal("F-14", loader.BaseAircraft("F-14BU"));
+        Assert.Equal(["F-14"], loader.LoadAircraft("F-14").Modules);
+        Assert.NotNull(loader.LoadAircraft("F-14").Find("gear_lever"));
     }
 }

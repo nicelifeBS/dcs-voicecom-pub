@@ -11,8 +11,8 @@ group: Start
    Log, Settings and Help. On a narrow window the status text gets shorter; the buttons always stay.
 2. **Profiles.** One per aircraft, [server profiles](11-server-profiles.md), and *common* for every aircraft.
    The active ones have a green dot. Common and server profiles are purple and always listed below the aircraft. Below the list: the multiplayer server you're on, and the server profile pin.
-   Variants of one jet share a profile: an F-16D_52 uses the F-16C_50 profile, unless it has its own.
-   The F-14A, F-14B, F-14B(U) and Mirage F1CE, F1EE, F1BE each get their own.
+   Variants of one jet share a profile: an F-16D_52 uses F-16C_50, every Tomcat uses F-14.
+   A variant's own profile comes first: name it as DCS-BIOS reports it, e.g. F-14BU.
    *Matching* below the list sets the scores a command needs and the keywords.
 3. **Commands.** All commands of the profile, sorted A–Z by voice line. Tick a box to enable a command. Right-click for duplicate and delete.
 4. **Editor.** The voice line and the actions of the selected command.

@@ -43,14 +43,18 @@ public sealed class DefinitionLoader
     /// <summary>One name per jet: variants with the same control files are left out (see <see cref="AircraftFamilies"/>).</summary>
     public IReadOnlyList<string> AvailableAircraft() => AircraftFamilies.Main(LoadAliases());
 
-    /// <summary>The profile name shared by this aircraft's variants, e.g. F-16D_52 → F-16C_50. The name itself when unknown.</summary>
+    /// <summary>The profile name shared by this aircraft's variants, e.g. F-16D_52 → F-16C_50, F-14BU → F-14. The name itself when unknown.</summary>
     public string BaseAircraft(string aircraft) =>
         AircraftFamilies.BaseNames(LoadAliases()).TryGetValue(aircraft, out var main) ? main : aircraft;
 
     public ControlCatalog LoadAircraft(string aircraft)
     {
         var aliases = LoadAliases();
-        var modules = aliases.TryGetValue(aircraft, out var m) ? m.ToList() : [aircraft];
+        // A shared profile like "F-14" isn't a name in the aliases: use the files of a plane in its group.
+        var modules = aliases.TryGetValue(aircraft, out var m) ? m.ToList()
+            : AircraftFamilies.BaseNames(aliases).FirstOrDefault(kv => kv.Value.Equals(aircraft, StringComparison.OrdinalIgnoreCase)).Key
+                is { } member ? aliases[member].ToList()
+            : [aircraft];
         foreach (var shared in SharedModules)
         {
             if (!modules.Contains(shared, StringComparer.OrdinalIgnoreCase)) modules.Add(shared);
