@@ -5,7 +5,7 @@ they are the user guide. This page is a short tour for developers.
 
 The window follows the [UI mockup](https://claude.ai/artifact/Mpfk1gufrjqJuZPS88tqmr).
 
-![Main window with the F-14BU profile and the "gear up" command selected](images/main-window.png)
+![Main window with the F-14 profile and the "gear up" command selected](images/main-window.png)
 
 ![Main window on first launch, before a profile is selected](images/main-window-empty.png)
 

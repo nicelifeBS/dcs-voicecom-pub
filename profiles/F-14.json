@@ -1,5 +1,5 @@
 {
-  "aircraft": "F-14BU",
+  "aircraft": "F-14",
   "threshold": 85,
   "critical_threshold": 95,
   "keywords": ["TACAN"],

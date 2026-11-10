@@ -134,7 +134,7 @@ public class F14UhfProfileTests
     [Fact]
     public async Task The_sample_profile_enters_a_frequency_from_the_display()
     {
-        var path = Path.Combine(AppContext.BaseDirectory, "profiles", "F-14BU.json");
+        var path = Path.Combine(AppContext.BaseDirectory, "profiles", "F-14.json");
         var compiled = CompiledProfile.Compile(ProfileSerializer.Deserialize(File.ReadAllText(path)));
 
         var cockpit = new FakeCockpit();

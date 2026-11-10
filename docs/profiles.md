@@ -1,7 +1,8 @@
 # Profile format
 
-One JSON file per aircraft, named after its DCS-BIOS `_ACFT_NAME` (`F-14BU.json`, `FA-18C_hornet.json`), in
-`%LOCALAPPDATA%\DcsVoiceCom\profiles\`. `common.json` has the same format and is merged under every aircraft
+One JSON file per aircraft, named after its DCS-BIOS `_ACFT_NAME` (`F-16C_50.json`, `FA-18C_hornet.json`), in
+`%LOCALAPPDATA%\DcsVoiceCom\profiles\`. Variants with the same DCS-BIOS control files share a profile: `F-14.json`
+covers every Tomcat, and `F-16C_50.json` also covers the F-16D. A file named after the variant (`F-14BU.json`) comes first. `common.json` has the same format and is merged under every aircraft
 profile: its commands are added unless the aircraft profile has a command with the same name.
 
 **Server profiles** (`server-<name>.json`) have the same format plus `servers`: the multiplayer servers they are
@@ -17,7 +18,7 @@ A `servers` line is a server name or address, ignoring case and outer spaces. `*
 
 ```json
 {
-  "aircraft": "F-14BU",
+  "aircraft": "F-14",
   "threshold": 85,
   "critical_threshold": 95,
   "keywords": ["TACAN"],

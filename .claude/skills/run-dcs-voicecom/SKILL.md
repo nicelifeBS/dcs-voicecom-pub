@@ -31,7 +31,7 @@ Re-run `build` after every code or XAML change, then `quit` and `launch`.
 ```bash
 D=.claude/skills/run-dcs-voicecom/driver.sh
 $D launch                  # waits for the "DCS VoiceCom" window and moves it to 0,0 (1432x866)
-$D click 120 104           # select the F-14BU profile (first row of the profile list)
+$D click 120 104           # select the F-14 profile (first row of the profile list)
 $D click 400 180           # select its first command -> the editor fills in
 $D ss main                 # -> /tmp/dcs-voicecom-run/shots/main.png (main window only)
 $D click 600 651           # Log panel test box
@@ -84,7 +84,7 @@ dotnet test     # Core and ViewModels tests; the App project fails with MSB4019 
   `launch` (`| tail`) never returns, and killing it kills the app. Detach it:
   `setsid nohup $D launch > launch.log 2>&1 < /dev/null &`, then wait for `window` in `launch.log`.
 - **A ComboBox dropdown crashed Wine once** (`X Error ... RENDER ... RenderCreatePicture`, app gone). To pin a profile
-  without the dropdown, set `"profileOverride": "F-14BU"` in the prefix's `settings.json` before `launch`.
+  without the dropdown, set `"profileOverride": "F-14"` in the prefix's `settings.json` before `launch`.
 - **SDK:** Ubuntu's `dotnet-sdk-10.0` (in `/usr/lib/dotnet`) includes the WPF `Microsoft.NET.Sdk.WindowsDesktop`
   targets, so `setup` only installs it when missing. (Ubuntu's 8.0 SDK lacked them, MSB4019.) Set `DCSVC_SDK` to
   use another SDK folder. The Windows runtime packs come from nuget.org through a normal restore.

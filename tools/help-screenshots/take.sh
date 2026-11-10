@@ -45,24 +45,24 @@ check() {
 
 if [[ "${1:-}" != "--no-build" ]]; then "$D" build; fi
 
-# Fresh state: sample profiles, the sample DCS-BIOS module, F-14BU pinned.
+# Fresh state: sample profiles, the sample DCS-BIOS module, F-14 pinned.
 "$D" quit >/dev/null 2>&1 || true
 mkdir -p "$PREFIX/AppData/Local/DcsVoiceCom/profiles" "$PREFIX/Saved Games/DCS/Scripts/DCS-BIOS/doc/json"
 cp "$ROOT"/profiles/*.json "$PREFIX/AppData/Local/DcsVoiceCom/profiles/"
 cp "$ROOT"/tools/help-screenshots/sample-dcs-bios/*.json "$PREFIX/Saved Games/DCS/Scripts/DCS-BIOS/doc/json/"
-# Pin F-14BU, so typed tests match without DCS (the app writes settings.json on its first start).
+# Pin F-14, so typed tests match without DCS (the app writes settings.json on its first start).
 SETTINGS="$PREFIX/AppData/Local/DcsVoiceCom/settings.json"
 if [[ -f "$SETTINGS" ]]; then
-  python3 -c 'import json,sys; p=sys.argv[1]; s=json.load(open(p, encoding="utf-8-sig")); s["profileOverride"]="F-14BU"; json.dump(s, open(p,"w"), indent=2)' "$SETTINGS"
+  python3 -c 'import json,sys; p=sys.argv[1]; s=json.load(open(p, encoding="utf-8-sig")); s["profileOverride"]="F-14"; json.dump(s, open(p,"w"), indent=2)' "$SETTINGS"
 else
-  echo '{ "profileOverride": "F-14BU" }' > "$SETTINGS"
+  echo '{ "profileOverride": "F-14" }' > "$SETTINGS"
 fi
 
 setsid nohup "$D" launch > "$WORK/launch.log" 2>&1 < /dev/null &
 for _ in $(seq 1 60); do grep -q Geometry "$WORK/launch.log" 2>/dev/null && break; sleep 2; done
 grep -q Geometry "$WORK/launch.log" || { cat "$WORK/launch.log"; exit 1; }
 
-# Main window: F-14BU, "gear up" selected.
+# Main window: F-14, "gear up" selected.
 "$D" click 120 104; "$D" wait 1
 "$D" click 400 180; "$D" wait 2
 "$D" ss main >/dev/null; check "$SHOTS/main.png"
