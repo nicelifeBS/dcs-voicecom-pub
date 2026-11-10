@@ -13,8 +13,9 @@ repo root. All state lives in `/tmp/dcs-voicecom-run` (override with `DCSVC_WORK
 ## Prerequisites
 
 `wine` (9.0, 64-bit only), `xvfb`, `xdotool`, `imagemagick`, and the Liberation, JetBrains Mono and DejaVu fonts.
-Some containers lack some of them; `apt-get install -y wine xvfb xdotool imagemagick` fixes that (the Ubuntu
-archive is reachable). `setup` pip-installs `fonttools` if it is missing.
+Most containers lack them; `setup` installs the missing ones with apt, and pip-installs `fonttools`.
+It also deletes a Wine prefix that a failed run left half made and builds a new one. To retake the help
+screenshots, use the `help-screenshots` skill.
 
 ## Setup and build (about 1 minute, once per container)
 

@@ -15,7 +15,7 @@ panel, button or layout) since the last screenshot commit:
 
 If there are any, **ask the user before retaking**. On yes:
 
-1. `.claude/skills/run-dcs-voicecom/driver.sh setup` (once per container)
+1. `.claude/skills/run-dcs-voicecom/driver.sh setup` (installs Wine and the X tools when missing; see the `help-screenshots` skill)
 2. `tools/help-screenshots/take.sh`
 3. Read every PNG. Fix coordinates in `take.sh` if a click missed. Markers in `main-window.png` must match `docs/help/02-main-window.md`.
 4. Commit the images with the release.
