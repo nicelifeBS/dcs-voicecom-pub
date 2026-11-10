@@ -753,7 +753,7 @@ public sealed class MainViewModel : ObservableObject
             : [];
         var flying = _runtime?.DcsAircraft is { Length: > 0 } reported ? SafeBaseAircraft(reported) : null;
         var initial = !string.IsNullOrEmpty(flying) && !flying.Equals("NONE", StringComparison.OrdinalIgnoreCase) && !existing.Contains(flying) ? flying : "";
-        var name = _dialogs.Prompt("New profile", "Aircraft name as DCS-BIOS reports it (_ACFT_NAME)", initial, suggestions)?.Trim();
+        var name = _dialogs.Prompt("New profile", "Pick a jet. For one variant only, type its DCS-BIOS name (e.g. F-14BU).", initial, suggestions)?.Trim();
         if (string.IsNullOrEmpty(name)) return;
         if (existing.Contains(name))
         {

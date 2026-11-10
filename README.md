@@ -26,7 +26,8 @@ HOTAS button ──DirectInput──► .NET app: mic (WASAPI) → Whistle (libn
 4. It runs the steps: DCS-BIOS lines, scan-code key presses, waits on cockpit state.
 5. It plays an audio cue (accepted / no match / refused) and logs the result.
 
-The app follows `_ACFT_NAME` from the export stream and loads that aircraft's profile; a profile can be pinned instead.
+The app follows `_ACFT_NAME` from the export stream and loads that aircraft's profile, else the profile its variants
+share (`F-14` for every Tomcat); a profile can be pinned instead.
 
 ## Install
 

@@ -14,8 +14,9 @@ stand-ins, and DCS, DCS-BIOS definitions and speech are offline.
 
 - **Top bar:** push-to-talk binding, Listening/Idle, DCS-BIOS and speech status, profile override (Auto or a
   pinned profile), Save (Ctrl+S), Log, Settings, Help (F1).
-- **Airframe profiles:** one per `_ACFT_NAME`, plus `common` for all aircraft; the active one has a green dot.
-  + New profile offers the aircraft DCS-BIOS knows, the one you are flying first. Threshold, critical threshold and
+- **Airframe profiles:** one per jet (variants share it, see [profiles](profiles.md)), plus `common` for all
+  aircraft; the active one has a green dot. + New profile offers one name per jet, the one you are flying first;
+  type a variant's `_ACFT_NAME` (`F-14BU`) for a profile of its own. Threshold, critical threshold and
   keywords sit below the list.
 - **Commands:** first phrase and steps per command, an Enabled box, critical and seeded badges, a filter box and
   *Hide seeded*. Right-click or Del deletes (after asking); Duplicate is in the same menu.
