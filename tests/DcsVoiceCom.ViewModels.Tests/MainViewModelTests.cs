@@ -291,4 +291,58 @@ public class MainViewModelTests
         Assert.Equal("Listening: speak now", vm.ListeningTip);
         Assert.Contains(vm.Log.Entries, e => e.Tag == "PTT");
     }
+
+    [Fact]
+    public void New_F14_profile_with_a_command_saves_to_F14_json_only()
+    {
+        using var ws = new Workspace();
+        var dialogs = new FakeDialogs();
+        dialogs.PromptAnswers.Enqueue("F14");
+        var vm = new MainViewModel(ws.Store, ws.Definitions, dialogs, InlineUiThread.Instance);
+
+        vm.NewProfileCommand.Execute(null);
+        Assert.Equal("F14", vm.SelectedProfile!.Name);
+
+        vm.NewCommandCommand.Execute(null);
+        var editor = vm.Editor!;
+        editor.VoiceLine = "gear up";
+        editor.AlternativesText = "wheels up";
+        dialogs.PromptAnswers.Enqueue("rctrl+g");
+        editor.AddKeyCommand.Execute(null);
+        dialogs.PromptAnswers.Enqueue("250");
+        editor.AddWaitCommand.Execute(null);
+        Assert.True(vm.IsDirty);
+        vm.SaveCommand.Execute(null);
+        Assert.False(vm.IsDirty);
+
+        var files = Directory.GetFiles(ws.Store.Directory, "F14*").Select(Path.GetFileName);
+        Assert.Equal(["F14.json"], files);
+
+        var saved = ProfileSerializer.Deserialize(File.ReadAllText(Path.Combine(ws.Store.Directory, "F14.json")));
+        Assert.Equal("F14", saved.Aircraft);
+        var command = Assert.Single(saved.Commands);
+        Assert.Equal("gear up", command.Name);
+        Assert.Equal(["gear up", "wheels up"], command.Phrases);
+        Assert.Collection(command.Steps,
+            s => Assert.Equal("RCtrl+G", Assert.IsType<KeyStep>(s).Keys),
+            s => Assert.Equal(250, Assert.IsType<WaitStep>(s).Ms));
+    }
+
+    [Fact]
+    public void A_copied_profile_file_saves_back_to_itself()
+    {
+        using var ws = new Workspace();
+        Directory.CreateDirectory(ws.Store.Directory);
+        // F-14.json copied from another profile: "aircraft" inside still says F-14A-95-GR.
+        File.WriteAllText(ws.Store.PathFor("F-14"), ProfileSerializer.Serialize(new Profile { Aircraft = "F-14A-95-GR" }));
+        var vm = new MainViewModel(ws.Store, ws.Definitions, new FakeDialogs(), InlineUiThread.Instance);
+        vm.SelectedProfile = vm.Profiles.First(p => p.Name == "F-14");
+
+        vm.NewCommandCommand.Execute(null);
+        vm.Editor!.VoiceLine = "gear up";
+        vm.SaveCommand.Execute(null);
+
+        Assert.Equal(["F-14.json"], Directory.GetFiles(ws.Store.Directory, "F-14*").Select(Path.GetFileName));
+        Assert.Equal("gear up", Assert.Single(ws.Store.TryLoad("F-14")!.Commands).Name);
+    }
 }
