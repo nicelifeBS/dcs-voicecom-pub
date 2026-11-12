@@ -108,7 +108,7 @@
               </StackPanel>
             </Grid>
             <Label Content="Keywords" Margin="0,8,0,0" />
-            <TextBox Text="{Binding KeywordsText, UpdateSourceTrigger=LostFocus}" TextWrapping="Wrap"
+            <TextBox Text="{Binding KeywordsText, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap"
                      ToolTip="Comma separated. Only words the recognizer gets wrong (e.g. TACAN, Shkval)." />
           </StackPanel>
         </Border>

@@ -348,8 +348,7 @@ public sealed class MainViewModel : ObservableObject
             var keywords = value.Split(',').Select(k => k.Trim()).Where(k => k.Length > 0).ToList();
             if (keywords.SequenceEqual(_profile.Keywords)) return;
             _profile.Keywords = keywords;
-            OnPropertyChanged();
-            IsDirty = true;
+            IsDirty = true; // no OnPropertyChanged: the box is committed as you type and must not be rewritten
         }
     }
 
