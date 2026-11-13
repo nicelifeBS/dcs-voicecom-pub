@@ -143,6 +143,23 @@ public class ProfileTests
     }
 
     [Fact]
+    public void A_renamed_file_saves_back_to_its_own_file()
+    {
+        // F-14BU.json copied to F-14.json still says "aircraft": "F-14BU" inside.
+        var store = new ProfileStore(Path.Combine(Path.GetTempPath(), "dcsvoicecom-tests", Guid.NewGuid().ToString("N")));
+        Directory.CreateDirectory(store.Directory);
+        File.WriteAllText(store.PathFor("F-14"), ProfileSerializer.Serialize(new Profile { Aircraft = "F-14BU" }));
+
+        var profile = store.TryLoad("F-14")!;
+        Assert.Equal("F-14", profile.Aircraft);
+        profile.Commands.Add(new Command { Name = "Gear up" });
+        store.Save(profile);
+
+        Assert.False(store.Exists("F-14BU"));
+        Assert.Single(store.TryLoad("F-14")!.Commands);
+    }
+
+    [Fact]
     public void Sample_profiles_compile_without_problems()
     {
         var dir = Path.Combine(AppContext.BaseDirectory, "profiles");

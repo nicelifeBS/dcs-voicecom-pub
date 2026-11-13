@@ -77,12 +77,16 @@ public sealed class ProfileStore
 
     public bool Exists(string aircraft) => File.Exists(PathFor(aircraft));
 
+    /// <summary>
+    /// The profile in <paramref name="aircraft"/>'s file, named after that file: a copied or renamed file whose
+    /// "aircraft" still says something else must save back to the file it came from.
+    /// </summary>
     public Profile? TryLoad(string aircraft)
     {
         var path = PathFor(aircraft);
         if (!File.Exists(path)) return null;
         var profile = ProfileSerializer.Deserialize(File.ReadAllText(path));
-        if (string.IsNullOrEmpty(profile.Aircraft)) profile.Aircraft = aircraft;
+        profile.Aircraft = aircraft;
         return profile;
     }
 
