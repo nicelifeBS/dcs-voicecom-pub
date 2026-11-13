@@ -89,6 +89,15 @@ public class PhraseMatcherTests
         Assert.Contains("not heard", Make("jester radar on", "jester radar off").Decide("jester radar high").Reject);
 
     [Theory]
+    [InlineData("jester target 1", "Jester, target one.")]
+    [InlineData("jester target one", "jester target 1")]
+    public void Number_heard_as_word_or_digit_counts(string phrase, string said)
+    {
+        var d = Make(phrase, "jester target 2").Decide(said);
+        Assert.Equal((phrase, 100.0, (string?)null), (d.Matches[0].Phrase, d.Matches[0].Score, d.Reject));
+    }
+
+    [Theory]
     [InlineData("jester music on")]
     [InlineData("jester music off")]
     public void Near_tie_settled_by_the_words_that_differ(string said)

@@ -107,7 +107,10 @@ public sealed partial class PhraseMatcher
     private static PhraseMatch? Score(MatchTemplate template, string[] tokens)
     {
         if (!template.HasSlots)
+        {
+            tokens = AsWritten(tokens, template);
             return new PhraseMatch(template.Phrase, Similarity(tokens, template.LiteralText, template.LiteralKey), "", template.LiteralCount, template.Group, tokens, template);
+        }
 
         int k = template.Prefix.Length, m = template.Suffix.Length;
         var literal = template.Literals;
@@ -118,7 +121,7 @@ public sealed partial class PhraseMatcher
             foreach (var mp in Around(m))
             {
                 if (kp + mp >= tokens.Length) continue; // at least one word must be left for the slots
-                var heard = tokens[..kp].Concat(mp > 0 ? tokens[^mp..] : []).ToArray();
+                var heard = AsWritten(tokens[..kp].Concat(mp > 0 ? tokens[^mp..] : []).ToArray(), template);
                 var score = literal.Length > 0 ? Similarity(heard, template.LiteralText, template.LiteralKey) : 0.0; // a slot-only phrase would match anything
                 if (best is null || score > best.Score)
                 {
@@ -128,6 +131,16 @@ public sealed partial class PhraseMatcher
             }
         }
         return best;
+    }
+
+    /// <summary>
+    /// Numbers heard as the phrase writes them: "jester target one" against <c>jester target 1</c> gives "1", and
+    /// "1" against <c>gear one</c> gives "one". Other words stay as they are.
+    /// </summary>
+    private static string[] AsWritten(string[] tokens, MatchTemplate template)
+    {
+        if (template.Numbers.Count == 0) return tokens;
+        return tokens.Select(t => NumberParser.TryParse([t], out var value) && template.Numbers.TryGetValue(value, out var written) ? written : t).ToArray();
     }
 
     // n first, then n-1 and n+1 (never below 0).
@@ -149,6 +162,7 @@ public sealed partial class PhraseMatcher
     {
         var theirs = rival.Template.Literals.ToHashSet(StringComparer.Ordinal);
         var own = match.Template.Literals.Where(w => !theirs.Contains(w)).ToList();
+        tokens = AsWritten(tokens, match.Template);
         return own.Count == 0 ? NoOwnWords : own.Sum(w => WordHeardScore(w, match.Template.SoundKeys[w], tokens)) / own.Count;
     }
 
@@ -270,6 +284,20 @@ internal sealed record MatchTemplate(string Phrase, string[] Prefix, string[] Su
     public string LiteralKey { get; } = PhraseMatcher.PhraseKey(Prefix.Concat(Suffix));
     public IReadOnlyDictionary<string, string> SoundKeys { get; } =
         Prefix.Concat(Suffix).Distinct(StringComparer.Ordinal).ToDictionary(w => w, PhraseMatcher.SoundKey, StringComparer.Ordinal);
+
+    // Literal words that are numbers ("1", "one"), by value, so a number heard in the other form still counts.
+    public IReadOnlyDictionary<string, string> Numbers { get; } = NumberWords(Prefix.Concat(Suffix));
+
+    private static Dictionary<string, string> NumberWords(IEnumerable<string> words)
+    {
+        var numbers = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var word in words)
+        {
+            if (PhraseMatcher.Fillers.Contains(word)) continue; // "oh" is a filler before it is a zero
+            if (NumberParser.TryParse([word], out var value)) numbers.TryAdd(value, word);
+        }
+        return numbers;
+    }
 
     public static MatchTemplate Parse(string phrase, string? group = null)
     {
