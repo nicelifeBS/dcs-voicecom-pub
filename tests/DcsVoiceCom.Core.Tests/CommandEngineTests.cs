@@ -111,6 +111,25 @@ public class CommandEngineTests
     }
 
     [Fact]
+    public async Task Uses_the_thresholds_from_the_options()
+    {
+        var cockpit = new FakeCockpit();
+        var engine = new CommandEngine(cockpit, cockpit, cockpit, cockpit, new EngineOptions { Threshold = 70, CriticalThreshold = 80 })
+        {
+            Profile = CompiledProfile.Compile(new Profile
+            {
+                Aircraft = "TestJet",
+                Commands = [Gear, new Command { Name = "Jettison", Critical = true, Phrases = ["emergency jettison"], Steps = [new BiosStep { Control = "EMERG_JETT", Arg = "1" }] }],
+            }),
+        };
+
+        Assert.Equal(OutcomeStatus.NoMatch, (await engine.HandleAsync(Heard("gear up", 69))).Status);
+        Assert.Equal(OutcomeStatus.Completed, (await engine.HandleAsync(Heard("gear up", 70))).Status);
+        Assert.Equal(OutcomeStatus.Refused, (await engine.HandleAsync(Heard("emergency jettison", 79))).Status);
+        Assert.Equal(OutcomeStatus.Completed, (await engine.HandleAsync(Heard("emergency jettison", 80))).Status);
+    }
+
+    [Fact]
     public async Task Critical_command_below_critical_threshold_is_refused()
     {
         var jettison = new Command

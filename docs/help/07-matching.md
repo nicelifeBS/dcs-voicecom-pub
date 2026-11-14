@@ -9,7 +9,7 @@ group: Speech
    It gets the profile's phrase words and keywords as hints.
 3. The app compares the text with every phrase. It scores spelling and sound, so "cheer down" still finds
    "gear down".
-4. The best phrase runs if its score reaches the **threshold** (85, or 95 for critical commands).
+4. The best phrase runs if its score reaches the **threshold** (85, or 95 for critical commands). Change both in [Settings](10-settings.md); they count for every profile.
 
 ![The log shows what was heard and the score](images/log.png)
 

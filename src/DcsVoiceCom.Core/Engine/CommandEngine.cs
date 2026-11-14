@@ -9,6 +9,15 @@ namespace DcsVoiceCom.Engine;
 
 public sealed record EngineOptions
 {
+    public const int DefaultThreshold = 85;
+    public const int DefaultCriticalThreshold = 95;
+
+    /// <summary>Score (0-100) a command needs, for every profile.</summary>
+    public int Threshold { get; init; } = DefaultThreshold;
+
+    /// <summary>Score a critical command needs.</summary>
+    public int CriticalThreshold { get; init; } = DefaultCriticalThreshold;
+
     public TimeSpan KeyHold { get; init; } = TimeSpan.FromMilliseconds(50);
     public TimeSpan PollInterval { get; init; } = TimeSpan.FromMilliseconds(20);
 }
@@ -94,7 +103,7 @@ public sealed class CommandEngine
         string? firstCommand = null;
         foreach (var candidate in candidates)
         {
-            if (candidate.Score < profile.Profile.Threshold) break;
+            if (candidate.Score < _options.Threshold) break;
             var found = profile.Find(candidate.Phrase);
             if (found is null) continue;
             firstCommand ??= found.Command.Name;
@@ -113,15 +122,15 @@ public sealed class CommandEngine
             cues.Play(Cue.NoMatch);
             var why = recognition.Error ?? firstSlotError ?? (recognition.Phrase is null || profile.Find(recognition.Phrase) is null
                 ? "no phrase matched"
-                : $"score {recognition.Score:0} below {profile.Profile.Threshold}");
+                : $"score {recognition.Score:0} below {_options.Threshold}");
             return Finish(OutcomeStatus.NoMatch, firstCommand, empty, [], why);
         }
 
         var command = entry.Command;
-        if (command.Critical && chosen.Score < profile.Profile.CriticalThreshold)
+        if (command.Critical && chosen.Score < _options.CriticalThreshold)
         {
             cues.Play(Cue.Refused);
-            return Finish(OutcomeStatus.Refused, command.Name, empty, [], $"critical command, score {chosen.Score:0} below {profile.Profile.CriticalThreshold}");
+            return Finish(OutcomeStatus.Refused, command.Name, empty, [], $"critical command, score {chosen.Score:0} below {_options.CriticalThreshold}");
         }
 
         // A new command replaces the running one.
