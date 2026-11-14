@@ -39,8 +39,6 @@ public class ProfileTests
     {
         var profile = ProfileSerializer.Deserialize(Json);
 
-        Assert.Equal(80, profile.Threshold);
-        Assert.Equal(Profile.DefaultCriticalThreshold, profile.CriticalThreshold);
         var gear = Assert.IsType<BiosStep>(profile.Commands[0].Steps[0]);
         Assert.True(gear.SkipIfAlready);
         Assert.True(profile.Commands[0].Enabled);

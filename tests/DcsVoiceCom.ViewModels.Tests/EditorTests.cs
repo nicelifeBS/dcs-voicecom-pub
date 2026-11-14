@@ -20,6 +20,24 @@ public class EditorTests
     }
 
     [Fact]
+    public void Settings_build_keeps_matching_scores_and_rejects_bad_ones()
+    {
+        var vm = new SettingsViewModel(new AppSettings());
+        Assert.Equal("85", vm.Threshold);
+        Assert.Equal("95", vm.CriticalThreshold);
+
+        vm.Threshold = "70";
+        vm.CriticalThreshold = "90";
+        var built = vm.Build();
+        Assert.Equal(70, built!.Threshold);
+        Assert.Equal(90, built.CriticalThreshold);
+
+        vm.Threshold = "20";
+        Assert.Null(vm.Build());
+        Assert.Contains("50 to 100", vm.Error);
+    }
+
+    [Fact]
     public void Reports_phrase_problems()
     {
         var (editor, command, _, _) = Create();

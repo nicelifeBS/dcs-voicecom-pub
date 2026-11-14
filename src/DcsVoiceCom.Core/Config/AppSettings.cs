@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using DcsVoiceCom.DcsBios;
 using DcsVoiceCom.DcsHook;
 using DcsVoiceCom.Definitions;
+using DcsVoiceCom.Engine;
 using DcsVoiceCom.Profiles;
 using DcsVoiceCom.Speech;
 
@@ -45,6 +46,12 @@ public sealed record AppSettings
     public PttSettings Ptt { get; init; } = new();
     public CueSettings Cues { get; init; } = new();
     public int KeyHoldMs { get; init; } = 50;
+
+    /// <summary>Score a command needs to run, for every profile.</summary>
+    public int Threshold { get; init; } = EngineOptions.DefaultThreshold;
+
+    /// <summary>Score a critical command needs, for every profile.</summary>
+    public int CriticalThreshold { get; init; } = EngineOptions.DefaultCriticalThreshold;
 
     /// <summary>Pinned profile; null follows the aircraft DCS-BIOS reports ("Auto").</summary>
     public string? ProfileOverride { get; init; }

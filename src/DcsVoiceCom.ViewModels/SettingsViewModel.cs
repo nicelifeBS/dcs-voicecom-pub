@@ -38,6 +38,8 @@ public sealed class SettingsViewModel : ObservableObject
         Microphone = settings.Speech.Device ?? "";
         KeyHoldMs = settings.KeyHoldMs.ToString(CultureInfo.InvariantCulture);
         CuesEnabled = settings.Cues.Enabled;
+        Threshold = settings.Threshold.ToString(CultureInfo.InvariantCulture);
+        CriticalThreshold = settings.CriticalThreshold.ToString(CultureInfo.InvariantCulture);
         _allMicrophones = (microphones ?? []).ToList();
         if (Microphone.Length > 0 && !_allMicrophones.Contains(Microphone, StringComparer.OrdinalIgnoreCase))
             _allMicrophones.Add(Microphone); // typed by hand, or the microphone is unplugged
@@ -230,6 +232,22 @@ public sealed class SettingsViewModel : ObservableObject
         get => _keyHoldMs;
         set => SetProperty(ref _keyHoldMs, value);
     }
+    private string _threshold = "";
+
+    /// <summary>Score a command needs, for every profile.</summary>
+    public string Threshold
+    {
+        get => _threshold;
+        set => SetProperty(ref _threshold, value);
+    }
+    private string _criticalThreshold = "";
+
+    /// <summary>Score a critical command needs, for every profile.</summary>
+    public string CriticalThreshold
+    {
+        get => _criticalThreshold;
+        set => SetProperty(ref _criticalThreshold, value);
+    }
     private bool _cuesEnabled = false;
 
     public bool CuesEnabled
@@ -264,6 +282,7 @@ public sealed class SettingsViewModel : ObservableObject
             Error = "Key hold must be 10–2000 ms.";
             return null;
         }
+        if (!TryScore(Threshold, "Threshold", out var threshold) || !TryScore(CriticalThreshold, "Critical", out var critical)) return null;
         Error = null;
         return _original with
         {
@@ -284,6 +303,8 @@ public sealed class SettingsViewModel : ObservableObject
             },
             Ptt = _ptt,
             KeyHoldMs = hold,
+            Threshold = threshold,
+            CriticalThreshold = critical,
             Cues = _original.Cues with { Enabled = CuesEnabled },
         };
     }
@@ -317,6 +338,13 @@ public sealed class SettingsViewModel : ObservableObject
     {
         if (int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out port) && port is > 0 and < 65536) return true;
         Error = $"{name} must be a number from 1 to 65535.";
+        return false;
+    }
+
+    private bool TryScore(string text, string name, out int score)
+    {
+        if (int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out score) && score is >= 50 and <= 100) return true;
+        Error = $"{name} must be a number from 50 to 100.";
         return false;
     }
 
