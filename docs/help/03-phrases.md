@@ -15,6 +15,7 @@ The voice line is what you say. Case and punctuation do not matter.
 | `[please;] gear up` | "please" is optional. |
 | `channel {channel:1-126}` | A spoken number from 1 to 126. |
 | `uhf {freq}` | A frequency: "two five one decimal zero". |
+| `jester range 50` | A number in the phrase also matches "fifty" (or "fünfzig"). |
 
 For one of a few words, list them: `tacan band {band:X|Y}`. Say "x-ray" for X.
 

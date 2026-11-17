@@ -38,11 +38,14 @@ public sealed partial class PhraseMatcher
 
     private List<MatchTemplate> _templates = [];
 
-    public PhraseMatcher(double margin = DefaultMargin) => Margin = margin;
+    /// <param name="spellNumbers">Also match the numbers in a phrase spoken as words; off only to compare with the Python matcher.</param>
+    public PhraseMatcher(double margin = DefaultMargin, bool spellNumbers = true) => (Margin, _spellNumbers) = (margin, spellNumbers);
+
+    private readonly bool _spellNumbers;
 
     public double Margin { get; }
 
-    public int Count => _templates.Count;
+    public int Count => _phraseCount;
 
     /// <summary>Loads the phrases; <paramref name="groups"/> names each phrase's command, and phrases of one command never compete.</summary>
     public int Load(IReadOnlyList<string> phrases, IReadOnlyList<string>? groups = null)
@@ -55,11 +58,16 @@ public sealed partial class PhraseMatcher
         {
             var phrase = phrases[i];
             if (string.IsNullOrWhiteSpace(phrase) || !seen.Add(phrase)) continue;
-            templates.Add(MatchTemplate.Parse(phrase, groups?[i]));
+            var template = MatchTemplate.Parse(phrase, groups?[i]);
+            templates.Add(template);
+            if (_spellNumbers) templates.AddRange(template.NumbersSpelled());
         }
         _templates = templates;
-        return templates.Count;
+        _phraseCount = seen.Count;
+        return _phraseCount;
     }
+
+    private int _phraseCount;
 
     /// <summary>
     /// The words of every phrase with slots cut out, as keywords for the recognizer:
@@ -74,6 +82,7 @@ public sealed partial class PhraseMatcher
         var tokens = Tokens(transcript);
         if (tokens.Length == 0) return [];
         return _templates.Select(t => Score(t, tokens)).OfType<PhraseMatch>()
+            .GroupBy(m => m.Phrase).Select(g => g.MaxBy(m => m.Score)!) // a phrase and its numbers spelled out count once
             .OrderByDescending(m => m.Score).ThenByDescending(m => m.LiteralCount).ThenByDescending(m => m.Slots.Length == 0)
             .Take(limit).ToList();
     }
@@ -270,6 +279,24 @@ internal sealed record MatchTemplate(string Phrase, string[] Prefix, string[] Su
     public string LiteralKey { get; } = PhraseMatcher.PhraseKey(Prefix.Concat(Suffix));
     public IReadOnlyDictionary<string, string> SoundKeys { get; } =
         Prefix.Concat(Suffix).Distinct(StringComparer.Ordinal).ToDictionary(w => w, PhraseMatcher.SoundKey, StringComparer.Ordinal);
+
+    /// <summary>
+    /// The same phrase with its literal numbers written as words, one twin per language: "jester range 50" also
+    /// matches "jester range fifty". Slots are left alone; they parse spoken numbers themselves.
+    /// </summary>
+    public IEnumerable<MatchTemplate> NumbersSpelled()
+    {
+        if (!Literals.Any(w => NumberWords.Spell(w).Count > 0)) yield break;
+        for (var language = 0; language < 2; language++)
+        {
+            var lang = language;
+            string[] Spelled(string[] words) => words.SelectMany(w => NumberWords.Spell(w) is { Count: > 0 } s
+                ? s[Math.Min(lang, s.Count - 1)].Split(' ') : [w]).ToArray();
+            // Not `with`: that would copy the cached LiteralText and keys of this phrase.
+            var twin = new MatchTemplate(Phrase, Spelled(Prefix), Spelled(Suffix), HasSlots, LiteralCount, Group);
+            if (twin.LiteralText != LiteralText) yield return twin;
+        }
+    }
 
     public static MatchTemplate Parse(string phrase, string? group = null)
     {
