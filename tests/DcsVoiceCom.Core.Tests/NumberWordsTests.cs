@@ -22,15 +22,25 @@ public class NumberWordsTests
     [InlineData("tacan")]
     public void Leaves_other_words_alone(string word) => Assert.Empty(NumberWords.Spell(word));
 
-    [Theory]
-    [InlineData(25)]
-    [InlineData(73)]
-    [InlineData(126)]
-    [InlineData(4321)]
-    public void Spelled_numbers_parse_back(int n)
+    [Fact]
+    public void Spelled_numbers_parse_back()
     {
-        Assert.True(NumberParser.TryParse(NumberWords.English(n), out var en));
-        Assert.True(NumberParser.TryParse(NumberWords.German(n), out var de));
-        Assert.Equal((n.ToString(), n.ToString()), (en, de));
+        for (var n = 0; n <= 9999; n++)
+        {
+            Assert.True(NumberParser.TryParse(NumberWords.English(n), out var en), NumberWords.English(n));
+            Assert.True(NumberParser.TryParse(NumberWords.German(n), out var de), NumberWords.German(n));
+            Assert.Equal((n.ToString(), n.ToString()), (en, de));
+        }
+    }
+
+    [Theory]
+    [InlineData("fuenf", "5")]
+    [InlineData("zwoelf", "12")]
+    [InlineData("dreissig", "30")]
+    [InlineData("fuenfundzwanzig", "25")]
+    public void German_words_without_umlauts_parse(string word, string digits)
+    {
+        Assert.True(NumberParser.TryParse(word, out var value));
+        Assert.Equal(digits, value);
     }
 }

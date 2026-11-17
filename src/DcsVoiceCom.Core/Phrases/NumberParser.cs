@@ -26,59 +26,35 @@ public static class NumberParser
             foreach (var word in words) w[word] = new Atom(kind, value);
         }
 
-        // English
-        Add(AtomKind.Digit, 0, "zero", "oh", "o");
-        Add(AtomKind.Digit, 1, "one");
-        Add(AtomKind.Digit, 2, "two");
-        Add(AtomKind.Digit, 3, "three", "tree");
-        Add(AtomKind.Digit, 4, "four", "fower");
-        Add(AtomKind.Digit, 5, "five", "fife");
-        Add(AtomKind.Digit, 6, "six");
-        Add(AtomKind.Digit, 7, "seven");
-        Add(AtomKind.Digit, 8, "eight");
-        Add(AtomKind.Digit, 9, "nine", "niner");
-        string[] teens = ["ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"];
-        for (var i = 0; i < teens.Length; i++) Add(AtomKind.Teen, 10 + i, teens[i]);
-        string[] tens = ["twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
-        for (var i = 0; i < tens.Length; i++) Add(AtomKind.Tens, 20 + 10 * i, tens[i]);
-        Add(AtomKind.Hundred, 100, "hundred");
-        Add(AtomKind.Thousand, 1000, "thousand");
-        Add(AtomKind.Separator, 0, "decimal", "point", "dot");
-        Add(AtomKind.And, 0, "and");
+        foreach (var language in NumberVocabulary.All)
+        {
+            for (var i = 0; i < 10; i++)
+            {
+                Add(AtomKind.Digit, i, language.Ones[i]);
+                Add(AtomKind.Teen, 10 + i, language.Teens[i]);
+                if (i >= 2) Add(AtomKind.Tens, 10 * i, language.Tens[i]);
+            }
+            Add(AtomKind.Hundred, 100, language.Hundred);
+            Add(AtomKind.Thousand, 1000, language.Thousand);
+        }
 
-        // German
-        Add(AtomKind.Digit, 0, "null");
-        Add(AtomKind.Digit, 1, "eins", "ein", "eine");
-        Add(AtomKind.Digit, 2, "zwei", "zwo");
-        Add(AtomKind.Digit, 3, "drei");
-        Add(AtomKind.Digit, 4, "vier");
-        Add(AtomKind.Digit, 5, "fünf", "fuenf");
-        Add(AtomKind.Digit, 6, "sechs");
-        Add(AtomKind.Digit, 7, "sieben");
-        Add(AtomKind.Digit, 8, "acht");
-        Add(AtomKind.Digit, 9, "neun");
-        Add(AtomKind.Teen, 10, "zehn");
-        Add(AtomKind.Teen, 11, "elf");
-        Add(AtomKind.Teen, 12, "zwölf", "zwoelf");
-        Add(AtomKind.Teen, 13, "dreizehn");
-        Add(AtomKind.Teen, 14, "vierzehn");
-        Add(AtomKind.Teen, 15, "fünfzehn", "fuenfzehn");
-        Add(AtomKind.Teen, 16, "sechzehn");
-        Add(AtomKind.Teen, 17, "siebzehn");
-        Add(AtomKind.Teen, 18, "achtzehn");
-        Add(AtomKind.Teen, 19, "neunzehn");
-        Add(AtomKind.Tens, 20, "zwanzig");
-        Add(AtomKind.Tens, 30, "dreißig", "dreissig");
-        Add(AtomKind.Tens, 40, "vierzig");
-        Add(AtomKind.Tens, 50, "fünfzig", "fuenfzig");
-        Add(AtomKind.Tens, 60, "sechzig");
-        Add(AtomKind.Tens, 70, "siebzig");
-        Add(AtomKind.Tens, 80, "achtzig");
-        Add(AtomKind.Tens, 90, "neunzig");
-        Add(AtomKind.Hundred, 100, "hundert");
-        Add(AtomKind.Thousand, 1000, "tausend");
-        Add(AtomKind.Separator, 0, "komma", "punkt");
-        Add(AtomKind.And, 0, "und");
+        // Extra spellings: radio speech ("niner"), short forms ("ein", "zwo").
+        Add(AtomKind.Digit, 0, "oh", "o");
+        Add(AtomKind.Digit, 1, "ein", "eine");
+        Add(AtomKind.Digit, 2, "zwo");
+        Add(AtomKind.Digit, 3, "tree");
+        Add(AtomKind.Digit, 4, "fower");
+        Add(AtomKind.Digit, 5, "fife");
+        Add(AtomKind.Digit, 9, "niner");
+        Add(AtomKind.Separator, 0, "decimal", "point", "dot", "komma", "punkt");
+        Add(AtomKind.And, 0, "and", "und");
+
+        // German words typed without umlauts: "fuenf", "zwoelf", "dreissig".
+        foreach (var (word, atom) in w.ToList())
+        {
+            var plain = word.Replace("ü", "ue").Replace("ö", "oe").Replace("ä", "ae").Replace("ß", "ss");
+            if (plain != word) w.TryAdd(plain, atom);
+        }
         return w;
     }
 
