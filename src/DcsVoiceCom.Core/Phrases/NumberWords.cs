@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace DcsVoiceCom.Phrases;
 
 /// <summary>
@@ -6,8 +8,6 @@ namespace DcsVoiceCom.Phrases;
 /// </summary>
 public static class NumberWords
 {
-    private const int Max = 9999;
-
     private static readonly string[] EnOnes = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
     private static readonly string[] EnTeens = ["ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"];
     private static readonly string[] EnTens = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
@@ -22,8 +22,8 @@ public static class NumberWords
     /// </summary>
     public static IReadOnlyList<string> Spell(string digits)
     {
-        if (digits.Length == 0 || !digits.All(char.IsAsciiDigit) || (digits.Length > 1 && digits[0] == '0')) return [];
-        if (digits.Length > 4 || int.Parse(digits) is var n && n > Max) return [];
+        if (digits.Length is 0 or > 4 || digits.Length > 1 && digits[0] == '0' || !digits.All(char.IsAsciiDigit)) return [];
+        var n = int.Parse(digits, CultureInfo.InvariantCulture);
         return new[] { English(n), German(n) }.Distinct().ToList();
     }
 

@@ -37,11 +37,11 @@ public sealed partial class PhraseMatcher
     internal const double NoOwnWords = 60.0;
 
     private List<MatchTemplate> _templates = [];
+    private int _phraseCount;
+    private readonly bool _spellNumbers;
 
     /// <param name="spellNumbers">Also match the numbers in a phrase heard in their other form ("50" and "fifty"); off only to compare with the Python matcher.</param>
     public PhraseMatcher(double margin = DefaultMargin, bool spellNumbers = true) => (Margin, _spellNumbers) = (margin, spellNumbers);
-
-    private readonly bool _spellNumbers;
 
     public double Margin { get; }
 
@@ -63,18 +63,15 @@ public sealed partial class PhraseMatcher
             if (_spellNumbers) templates.AddRange(template.NumberTwins());
         }
         _templates = templates;
-        _phraseCount = seen.Count;
-        return _phraseCount;
+        return _phraseCount = seen.Count;
     }
-
-    private int _phraseCount;
 
     /// <summary>
     /// The words of every phrase with slots cut out, as keywords for the recognizer:
     /// <c>tacan mode {mode:t r|a a}</c> gives <c>tacan mode</c>; the slot values are spoken free-form.
     /// </summary>
     public IReadOnlyList<string> LiteralRuns() =>
-        _templates.SelectMany(t => SlotPattern().Split(t.Phrase)).Select(PhraseText.Normalize).Where(r => r.Length > 0).Distinct().ToList();
+        _templates.Select(t => t.Phrase).Distinct().SelectMany(p => SlotPattern().Split(p)).Select(PhraseText.Normalize).Where(r => r.Length > 0).Distinct().ToList();
 
     /// <summary>Best matches first. Ties prefer the phrase with more literal words, then one without slots.</summary>
     public IReadOnlyList<PhraseMatch> Match(string transcript, int limit = 5)
@@ -293,24 +290,23 @@ internal sealed record MatchTemplate(string Phrase, string[] Prefix, string[] Su
     public IEnumerable<MatchTemplate> NumberTwins()
     {
         var seen = new HashSet<string>(StringComparer.Ordinal) { LiteralText };
-        if (Literals.Any(w => NumberWords.Spell(w).Count > 0))
+        var spellings = Literals.Distinct(StringComparer.Ordinal).ToDictionary(w => w, NumberWords.Spell, StringComparer.Ordinal);
+        for (var language = 0; language < 2; language++)
         {
-            for (var language = 0; language < 2; language++)
-            {
-                var lang = language;
-                string[] Spelled(string[] words) => words.SelectMany(w => NumberWords.Spell(w) is { Count: > 0 } s
-                    ? s[Math.Min(lang, s.Count - 1)].Split(' ') : [w]).ToArray();
-                if (Twin(Spelled(Prefix), Spelled(Suffix)) is { } twin && seen.Add(twin.LiteralText)) yield return twin;
-            }
+            var lang = language;
+            string[] Spelled(string[] words) =>
+                [.. words.SelectMany(w => spellings[w] is { Count: > 0 } s ? s[Math.Min(lang, s.Count - 1)].Split(' ') : [w])];
+            if (Twin(Spelled(Prefix), Spelled(Suffix), seen) is { } twin) yield return twin;
         }
-        if (Twin(AsDigits(Prefix), AsDigits(Suffix)) is { } digits && seen.Add(digits.LiteralText))
-            yield return digits with { ForHeardDigits = true }; // `with` is fine here: it only sets the flag
+        if (Twin(AsDigits(Prefix), AsDigits(Suffix), seen, forHeardDigits: true) is { } digits) yield return digits;
     }
 
-    // Not `with`: that would copy the cached LiteralText and keys of this phrase.
-    private MatchTemplate? Twin(string[] prefix, string[] suffix) =>
-        prefix.SequenceEqual(Prefix) && suffix.SequenceEqual(Suffix) ? null
-            : new MatchTemplate(Phrase, prefix, suffix, HasSlots, LiteralCount, Group);
+    // Built new, not with `with`, which would copy the cached LiteralText and keys of this phrase. Null when the
+    // words are the same as this phrase or an earlier twin.
+    private MatchTemplate? Twin(string[] prefix, string[] suffix, HashSet<string> seen, bool forHeardDigits = false) =>
+        seen.Add(string.Join(' ', prefix.Concat(suffix)))
+            ? new MatchTemplate(Phrase, prefix, suffix, HasSlots, LiteralCount, Group) { ForHeardDigits = forHeardDigits }
+            : null;
 
     /// <summary>Runs of number words as digits: "gear one" gives "gear 1", "range two hundred" gives "range 200".</summary>
     private static string[] AsDigits(string[] words)
@@ -319,13 +315,11 @@ internal sealed record MatchTemplate(string Phrase, string[] Prefix, string[] Su
         for (var i = 0; i < words.Length;)
         {
             // The longest run of number words from here; a filler ("oh") is a filler before it is a zero.
-            var end = words.Length;
-            string value = "";
-            for (; end > i; end--)
-            {
-                var run = words[i..end];
-                if (!run.Any(w => PhraseMatcher.Fillers.Contains(w) || w.Any(char.IsDigit)) && NumberParser.TryParse(run, out value)) break;
-            }
+            var stop = i;
+            while (stop < words.Length && !PhraseMatcher.Fillers.Contains(words[stop]) && !words[stop].Any(char.IsDigit)) stop++;
+            var end = stop;
+            var value = "";
+            while (end > i && !NumberParser.TryParse(words[i..end], out value)) end--;
             if (end > i)
             {
                 result.Add(value);

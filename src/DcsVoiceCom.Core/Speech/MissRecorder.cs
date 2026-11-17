@@ -23,7 +23,10 @@ public sealed class MissRecorder : IAsyncDisposable
     private readonly Task _writer;
     private readonly int _maxClips;
 
-    private sealed record Clip(float[] Samples, DateTime At, RecognitionResult Recognition, string Reason);
+    private sealed record Clip(RecognitionResult Recognition, DateTime At, string Reason)
+    {
+        public float[] Samples => Recognition.Audio!;
+    }
 
     public MissRecorder(string directory, Action<string>? log = null, int maxClips = MaxClips)
     {
@@ -36,8 +39,8 @@ public sealed class MissRecorder : IAsyncDisposable
     /// <summary>Queues a missed clip. Returns at once and never throws.</summary>
     public void Save(RecognitionResult recognition, string reason)
     {
-        if (recognition.Audio is not { Length: > 0 } samples) return;
-        _queue.Writer.TryWrite(new Clip(samples, DateTime.Now, recognition, reason));
+        if (recognition.Audio is not { Length: > 0 }) return;
+        _queue.Writer.TryWrite(new Clip(recognition, DateTime.Now, reason));
     }
 
     private async Task WriteLoop()
