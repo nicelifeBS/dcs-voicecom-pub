@@ -67,7 +67,7 @@ grep -q Geometry "$WORK/launch.log" || { cat "$WORK/launch.log"; exit 1; }
 "$D" click 400 180; "$D" wait 2
 "$D" ss main >/dev/null; check "$SHOTS/main.png"
 marker "$SHOTS/main.png" "$OUT/main-window.png" \
-  770 36 1   212 77 2   372 83 3   712 95 4   1240 93 5   42 636 6
+  795 13 1   212 77 2   372 83 3   712 95 4   1240 93 5   42 636 6
 
 # Log: two typed tests (Dry run is on, so nothing is sent).
 "$D" click 600 653; "$D" type "landing gear up"; "$D" key Return; "$D" wait 1

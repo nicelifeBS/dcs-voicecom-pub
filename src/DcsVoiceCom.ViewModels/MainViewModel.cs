@@ -314,30 +314,6 @@ public sealed class MainViewModel : ObservableObject
 
     public string WindowTitle => "DCS VoiceCom" + (_profile is null ? "" : $" — {SelectedProfile?.Display}{(IsDirty ? " •" : "")}");
 
-    public int Threshold
-    {
-        get => _profile?.Threshold ?? Profile.DefaultThreshold;
-        set
-        {
-            if (_profile is null || _profile.Threshold == value) return;
-            _profile.Threshold = Math.Clamp(value, 50, 100);
-            OnPropertyChanged();
-            IsDirty = true;
-        }
-    }
-
-    public int CriticalThreshold
-    {
-        get => _profile?.CriticalThreshold ?? Profile.DefaultCriticalThreshold;
-        set
-        {
-            if (_profile is null || _profile.CriticalThreshold == value) return;
-            _profile.CriticalThreshold = Math.Clamp(value, 50, 100);
-            OnPropertyChanged();
-            IsDirty = true;
-        }
-    }
-
     /// <summary>Recognizer keywords, comma separated: only words Whistle gets wrong.</summary>
     public string KeywordsText
     {
@@ -611,8 +587,6 @@ public sealed class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(ServersText));
         OnPropertyChanged(nameof(ProfileTitle));
         OnPropertyChanged(nameof(WindowTitle));
-        OnPropertyChanged(nameof(Threshold));
-        OnPropertyChanged(nameof(CriticalThreshold));
         OnPropertyChanged(nameof(KeywordsText));
         SelectedCommand = Commands.FirstOrDefault();
         if (_profile != null) ReportMissingControls(_profile, Browser.Catalog);

@@ -9,9 +9,6 @@ namespace DcsVoiceCom.Profiles;
 /// </summary>
 public sealed class Profile
 {
-    public const int DefaultThreshold = 85;
-    public const int DefaultCriticalThreshold = 95;
-
     /// <summary>The DCS-BIOS _ACFT_NAME this profile is for ("common" for the shared file, "server-…" for a server profile).</summary>
     public string Aircraft { get; set; } = "";
 
@@ -23,9 +20,6 @@ public sealed class Profile
 
     /// <summary>DCS-BIOS version the control IDs were checked against.</summary>
     public string? ModuleVersion { get; set; }
-
-    public int Threshold { get; set; } = DefaultThreshold;
-    public int CriticalThreshold { get; set; } = DefaultCriticalThreshold;
 
     /// <summary>Domain words for the recognizer: add only what it gets wrong.</summary>
     public List<string> Keywords { get; set; } = [];
@@ -43,7 +37,7 @@ public sealed class Command
 
     public List<Step> Steps { get; set; } = [];
 
-    /// <summary>Critical commands need the stricter <see cref="Profile.CriticalThreshold"/>.</summary>
+    /// <summary>Critical commands need the stricter critical threshold from Settings.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool Critical { get; set; }
 

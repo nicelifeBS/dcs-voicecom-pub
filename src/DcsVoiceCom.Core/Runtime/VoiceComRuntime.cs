@@ -53,7 +53,12 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
             () => DateTimeOffset.UtcNow - _dcsBios.LastFrameAt < TimeSpan.FromSeconds(2));
         _sender = new CatalogBiosSender(_dcsBios, () => _catalog);
         _engine = new CommandEngine(_sender, keys, state, cues,
-            new EngineOptions { KeyHold = TimeSpan.FromMilliseconds(settings.KeyHoldMs) });
+            new EngineOptions
+            {
+                KeyHold = TimeSpan.FromMilliseconds(settings.KeyHoldMs),
+                Threshold = settings.Threshold,
+                CriticalThreshold = settings.CriticalThreshold,
+            });
         _engine.Executed += OnExecuted;
         StateReader = state;
 
