@@ -97,6 +97,38 @@ public class PhraseMatcherTests
         Assert.Equal((said, (string?)null), (d.Matches[0].Phrase, d.Reject));
     }
 
+    [Theory]
+    [InlineData("Jester range fifty", 100.0)]
+    [InlineData("Just a range fifty.", 95.2)] // a real miss: "auto" won on sound before
+    [InlineData("Jester range 50", 100.0)]
+    public void Numbers_in_a_phrase_match_spoken_as_words(string said, double score)
+    {
+        var m = Make("jester range 25", "jester range 50", "jester range 200", "jester range auto", "jester music on", "jester music off");
+        var d = m.Decide(said);
+        Assert.Equal(("jester range 50", (string?)null), (d.Matches[0].Phrase, d.Reject));
+        Assert.Equal(score, d.Matches[0].Score, 1);
+        Assert.Single(d.Matches, x => x.Phrase == "jester range 50"); // the spelled twin is not listed twice
+        Assert.Equal(6, m.Count);
+    }
+
+    [Theory]
+    [InlineData("gear one", "gear 1")]
+    [InlineData("jester target one", "Jester, target 1.")]
+    [InlineData("range two hundred", "range 200")]
+    [InlineData("jester target 1", "Jester, target one.")]
+    public void Number_heard_as_digits_or_words_counts(string phrase, string said)
+    {
+        var d = Make(phrase, "jester target 2", "gear up").Decide(said);
+        Assert.Equal((phrase, 100.0, (string?)null), (d.Matches[0].Phrase, d.Matches[0].Score, d.Reject));
+    }
+
+    [Fact]
+    public void Spelled_numbers_cover_german()
+    {
+        var best = Make("tacan kanal 73", "tacan kanal 25").Decide("tacan kanal dreiundsiebzig");
+        Assert.Equal(("tacan kanal 73", (string?)null), (best.Matches[0].Phrase, best.Reject));
+    }
+
     [Fact]
     public void Near_tie_with_slots_prefers_the_phrase_whose_own_words_were_heard()
     {
@@ -177,8 +209,10 @@ public class PhraseMatcherTests
             var phrases = c.GetProperty("phrases").EnumerateArray().Select(p => p.GetString()!).ToList();
             var groups = c.GetProperty("groups").ValueKind == JsonValueKind.Null ? null
                 : c.GetProperty("groups").EnumerateArray().Select(p => p.GetString()!).ToList();
-            var m = new PhraseMatcher();
+            var m = new PhraseMatcher(spellNumbers: false); // the Python matcher has no spelled numbers
             m.Load(phrases, groups);
+            var spelling = new PhraseMatcher();
+            spelling.Load(phrases, groups);
             Assert.Equal(c.GetProperty("literalRuns").EnumerateArray().Select(r => r.GetString()), m.LiteralRuns());
             foreach (var t in c.GetProperty("transcripts").EnumerateArray())
             {
@@ -186,6 +220,11 @@ public class PhraseMatcherTests
                 var d = m.Decide(text);
                 var where = $"{name}: \"{text}\"";
                 Assert.True(t.GetProperty("reject").GetString() == d.Reject, $"{where}: reject {d.Reject} != {t.GetProperty("reject")}");
+                // Number twins may move runners-up or name a missing number as digits ("9" for "nine"), but never
+                // change what is picked or whether it is turned down.
+                var s = spelling.Decide(text);
+                Assert.True((d.Matches.FirstOrDefault()?.Phrase, d.Reject is null) == (s.Matches.FirstOrDefault()?.Phrase, s.Reject is null),
+                    $"{where}: spelled numbers changed the pick to {s.Matches.FirstOrDefault()?.Phrase} [{s.Reject}]");
                 var expected = t.GetProperty("matches").EnumerateArray().ToList();
                 Assert.True(expected.Count == d.Matches.Count, $"{where}: {d.Matches.Count} matches, expected {expected.Count}");
                 for (var i = 0; i < expected.Count; i++)

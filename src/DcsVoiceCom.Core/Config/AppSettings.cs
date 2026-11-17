@@ -47,6 +47,11 @@ public sealed record AppSettings
     public CueSettings Cues { get; init; } = new();
     public int KeyHoldMs { get; init; } = 50;
 
+    /// <summary>Debugging: save the audio of every missed command to <see cref="DebugDirectory"/>. Off by default.</summary>
+    public bool SaveMissedAudio { get; init; }
+
+    public static string DebugDirectory => Path.Combine(DefaultDirectory, "debugging");
+
     /// <summary>Score a command needs to run, for every profile.</summary>
     public int Threshold { get; init; } = EngineOptions.DefaultThreshold;
 

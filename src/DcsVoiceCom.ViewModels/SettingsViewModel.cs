@@ -38,6 +38,7 @@ public sealed class SettingsViewModel : ObservableObject
         Microphone = settings.Speech.Device ?? "";
         KeyHoldMs = settings.KeyHoldMs.ToString(CultureInfo.InvariantCulture);
         CuesEnabled = settings.Cues.Enabled;
+        SaveMissedAudio = settings.SaveMissedAudio;
         Threshold = settings.Threshold.ToString(CultureInfo.InvariantCulture);
         CriticalThreshold = settings.CriticalThreshold.ToString(CultureInfo.InvariantCulture);
         _allMicrophones = (microphones ?? []).ToList();
@@ -256,6 +257,14 @@ public sealed class SettingsViewModel : ObservableObject
         set => SetProperty(ref _cuesEnabled, value);
     }
 
+    private bool _saveMissedAudio;
+
+    public bool SaveMissedAudio
+    {
+        get => _saveMissedAudio;
+        set => SetProperty(ref _saveMissedAudio, value);
+    }
+
     public string PttText => Describe(_ptt);
 
     public string BindStatus
@@ -303,6 +312,7 @@ public sealed class SettingsViewModel : ObservableObject
             },
             Ptt = _ptt,
             KeyHoldMs = hold,
+            SaveMissedAudio = SaveMissedAudio,
             Threshold = threshold,
             CriticalThreshold = critical,
             Cues = _original.Cues with { Enabled = CuesEnabled },

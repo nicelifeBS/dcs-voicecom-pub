@@ -15,5 +15,8 @@ group: Reference
   multiplayer server you're on, for [server profiles](11-server-profiles.md). *Remove* takes it out again.
 - **Profiles and keys.** Where the profile files are kept, how long a key is held, and the sounds for accepted,
   no match and refused.
+- **Debug.** *Save the audio of missed commands* writes each miss to `%LOCALAPPDATA%\DcsVoiceCom\debugging` as a
+  `.wav` with a `.txt` note (what was heard, why it missed, mic level). Play the clip to tell a bad microphone
+  from weak recognition. Off by default; the newest 200 are kept.
 
 Saving restarts the voice engine. All settings are in `%LOCALAPPDATA%\DcsVoiceCom\settings.json`.
