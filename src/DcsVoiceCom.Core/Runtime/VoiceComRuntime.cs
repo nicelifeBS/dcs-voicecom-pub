@@ -34,6 +34,7 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
     private IReadOnlyList<string> _activeServerProfiles = [];
     private bool _listening;
     private readonly CatalogBiosSender _sender;
+    private readonly MissRecorder? _misses;
 
     /// <param name="microphones">Microphone capture; null leaves push-to-talk off (typed tests still work).</param>
     public VoiceComRuntime(AppSettings settings, IKeySender keys, ICuePlayer cues, IPushToTalk? ptt, Action<string>? log = null,
@@ -48,6 +49,7 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
         _definitions = new DefinitionLoader(settings.DcsBiosJsonPath);
         _profiles = new ProfileStore(settings.ProfilesPath);
         _microphones = microphones;
+        if (settings.SaveMissedAudio) _misses = new MissRecorder(AppSettings.DebugDirectory, m => Log("[debug] " + m));
 
         var state = new CatalogStateReader(_dcsBios.State, () => _catalog,
             () => DateTimeOffset.UtcNow - _dcsBios.LastFrameAt < TimeSpan.FromSeconds(2));
@@ -277,7 +279,10 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
             var recognition = speech is null
                 ? new RecognitionResult { Error = "speech is still starting" }
                 : await Task.Run(speech.Stop, ct).ConfigureAwait(false);
-            await _engine.HandleAsync(recognition).ConfigureAwait(false);
+            var outcome = await _engine.HandleAsync(recognition).ConfigureAwait(false);
+            // Queued only; the writer runs on its own thread, so the next command is never held up.
+            if (outcome.Status is OutcomeStatus.NoMatch or OutcomeStatus.Refused)
+                _misses?.Save(recognition, outcome.Message ?? outcome.Status.ToString());
         });
     }
 
@@ -311,6 +316,7 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
         _ptt?.Dispose();
         _engine.Cancel();
         _speech?.Dispose();
+        if (_misses is not null) await _misses.DisposeAsync().ConfigureAwait(false);
         await _hook.DisposeAsync().ConfigureAwait(false);
         await _dcsBios.DisposeAsync().ConfigureAwait(false);
     }

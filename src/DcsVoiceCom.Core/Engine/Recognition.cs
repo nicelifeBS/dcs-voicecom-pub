@@ -17,6 +17,9 @@ public sealed record RecognitionResult
 
     /// <summary>Runner-up matches, best first; tried in order when the best one's spoken values don't parse.</summary>
     [JsonPropertyName("candidates")] public IReadOnlyList<RecognitionCandidate> Candidates { get; init; } = [];
+
+    /// <summary>The 16 kHz mono clip that was transcribed (push-to-talk only). Kept so a miss can be saved for debugging.</summary>
+    [JsonIgnore] public float[]? Audio { get; init; }
 }
 
 public sealed record RecognitionCandidate

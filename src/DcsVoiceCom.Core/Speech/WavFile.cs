@@ -52,6 +52,31 @@ public static class WavFile
         return mono;
     }
 
+    /// <summary>Writes mono float samples in [-1, 1] as a 16-bit PCM WAV file.</summary>
+    public static void WriteMono16(string path, ReadOnlySpan<float> samples, int sampleRate)
+    {
+        var bytes = new byte[44 + samples.Length * 2];
+        var span = bytes.AsSpan();
+        "RIFF"u8.CopyTo(span);
+        BinaryPrimitives.WriteInt32LittleEndian(span[4..], bytes.Length - 8);
+        "WAVEfmt "u8.CopyTo(span[8..]);
+        BinaryPrimitives.WriteInt32LittleEndian(span[16..], 16);
+        BinaryPrimitives.WriteUInt16LittleEndian(span[20..], 1); // PCM
+        BinaryPrimitives.WriteUInt16LittleEndian(span[22..], 1); // mono
+        BinaryPrimitives.WriteInt32LittleEndian(span[24..], sampleRate);
+        BinaryPrimitives.WriteInt32LittleEndian(span[28..], sampleRate * 2);
+        BinaryPrimitives.WriteUInt16LittleEndian(span[32..], 2);
+        BinaryPrimitives.WriteUInt16LittleEndian(span[34..], 16);
+        "data"u8.CopyTo(span[36..]);
+        BinaryPrimitives.WriteInt32LittleEndian(span[40..], samples.Length * 2);
+        for (var i = 0; i < samples.Length; i++)
+        {
+            var v = (int)Math.Round(Math.Clamp(samples[i], -1f, 1f) * 32767.0);
+            BinaryPrimitives.WriteInt16LittleEndian(span[(44 + i * 2)..], (short)v);
+        }
+        File.WriteAllBytes(path, bytes);
+    }
+
     private static double Sample(ReadOnlySpan<byte> s, int tag) => (tag, s.Length) switch
     {
         (3, 4) => BinaryPrimitives.ReadSingleLittleEndian(s),

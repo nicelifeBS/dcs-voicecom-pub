@@ -175,7 +175,7 @@ public sealed class SpeechService : IDisposable
         string language;
         lock (_lock) (matcher, keywords, language) = (_matcher, _keywords, Language);
         var text = _recognizer.Transcribe(samples, language, keywords);
-        var result = Result(matcher, text, started);
+        var result = Result(matcher, text, started) with { Audio = samples };
         _log($"Heard \"{text}\" → {result.Phrase ?? "-"} ({result.Score}) in {result.Ms} ms" + (result.Reject is null ? "" : $", rejected: {result.Reject}"));
         return result;
     }

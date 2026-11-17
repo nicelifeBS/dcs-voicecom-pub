@@ -237,3 +237,56 @@ public sealed class SpeechSettingsTests : IDisposable
         Assert.Equal("Headset", Config.AppSettings.Load(_path).Speech.Device);
     }
 }
+
+public sealed class MissRecorderTests : IDisposable
+{
+    private readonly string _root = Directory.CreateTempSubdirectory("misses").FullName;
+
+    public void Dispose() => Directory.Delete(_root, recursive: true);
+
+    private static DcsVoiceCom.Engine.RecognitionResult Miss(float[]? audio) =>
+        new() { Raw = "gear down", Phrase = "landing gear down", Score = 55, Audio = audio };
+
+    [Fact]
+    public void WavFile_round_trips_what_it_writes()
+    {
+        var path = Path.Combine(_root, "t.wav");
+        float[] samples = [0f, 0.5f, -0.5f, 1f, -1f];
+        WavFile.WriteMono16(path, samples, 16000);
+        var read = WavFile.ReadMono(path, out var rate);
+        Assert.Equal(16000, rate);
+        Assert.Equal(samples.Length, read.Length);
+        for (var i = 0; i < samples.Length; i++) Assert.Equal(samples[i], read[i], 3);
+    }
+
+    [Fact]
+    public async Task A_miss_is_saved_with_a_note_and_typed_text_is_not()
+    {
+        var dir = Path.Combine(_root, "debugging");
+        await using (var recorder = new MissRecorder(dir))
+        {
+            recorder.Save(Miss(new float[1600]), "score 55 below 70");
+            recorder.Save(Miss(null), "typed, no audio");
+        }
+        var wavs = Directory.GetFiles(dir, "*.wav");
+        Assert.Single(wavs);
+        var note = File.ReadAllText(Path.ChangeExtension(wavs[0], ".txt"));
+        Assert.Contains("score 55 below 70", note);
+        Assert.Contains("gear down", note);
+    }
+
+    [Fact]
+    public async Task Only_the_newest_clips_are_kept()
+    {
+        var dir = Path.Combine(_root, "debugging");
+        await using (var recorder = new MissRecorder(dir, maxClips: 2))
+        {
+            for (var i = 0; i < 4; i++)
+            {
+                recorder.Save(Miss(new float[160]), "x");
+                await Task.Delay(5);
+            }
+        }
+        Assert.InRange(Directory.GetFiles(dir, "*.wav").Length, 1, 2);
+    }
+}
