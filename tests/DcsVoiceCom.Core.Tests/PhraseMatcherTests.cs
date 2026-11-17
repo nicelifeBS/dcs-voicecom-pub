@@ -111,6 +111,17 @@ public class PhraseMatcherTests
         Assert.Equal(6, m.Count);
     }
 
+    [Theory]
+    [InlineData("gear one", "gear 1")]
+    [InlineData("jester target one", "Jester, target 1.")]
+    [InlineData("range two hundred", "range 200")]
+    [InlineData("jester target 1", "Jester, target one.")]
+    public void Number_heard_as_digits_or_words_counts(string phrase, string said)
+    {
+        var d = Make(phrase, "jester target 2", "gear up").Decide(said);
+        Assert.Equal((phrase, 100.0, (string?)null), (d.Matches[0].Phrase, d.Matches[0].Score, d.Reject));
+    }
+
     [Fact]
     public void Spelled_numbers_cover_german()
     {
@@ -209,9 +220,10 @@ public class PhraseMatcherTests
                 var d = m.Decide(text);
                 var where = $"{name}: \"{text}\"";
                 Assert.True(t.GetProperty("reject").GetString() == d.Reject, $"{where}: reject {d.Reject} != {t.GetProperty("reject")}");
-                // Spelled numbers may move runners-up, but never what is picked or turned down here.
+                // Number twins may move runners-up or name a missing number as digits ("9" for "nine"), but never
+                // change what is picked or whether it is turned down.
                 var s = spelling.Decide(text);
-                Assert.True((d.Matches.FirstOrDefault()?.Phrase, d.Reject) == (s.Matches.FirstOrDefault()?.Phrase, s.Reject),
+                Assert.True((d.Matches.FirstOrDefault()?.Phrase, d.Reject is null) == (s.Matches.FirstOrDefault()?.Phrase, s.Reject is null),
                     $"{where}: spelled numbers changed the pick to {s.Matches.FirstOrDefault()?.Phrase} [{s.Reject}]");
                 var expected = t.GetProperty("matches").EnumerateArray().ToList();
                 Assert.True(expected.Count == d.Matches.Count, $"{where}: {d.Matches.Count} matches, expected {expected.Count}");
