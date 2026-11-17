@@ -69,6 +69,28 @@
 
         <Border Style="{StaticResource Card}" Margin="0,0,0,12">
           <StackPanel>
+            <TextBlock Text="MATCHING" Style="{StaticResource Heading}" />
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="120" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="120" />
+              </Grid.ColumnDefinitions>
+              <StackPanel>
+                <Label Content="Threshold" />
+                <TextBox Text="{Binding Threshold, UpdateSourceTrigger=PropertyChanged}" ToolTip="Score a command needs (default 85)" />
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <Label Content="Critical" />
+                <TextBox Text="{Binding CriticalThreshold, UpdateSourceTrigger=PropertyChanged}" ToolTip="Score a critical command needs (default 95)" />
+              </StackPanel>
+            </Grid>
+            <TextBlock Text="How well a spoken phrase must match (50–100). Applies to every profile." Style="{StaticResource MutedText}" Margin="0,6,0,0" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+          <StackPanel>
             <TextBlock Text="DCS-BIOS CONNECTION" Style="{StaticResource Heading}" />
             <Grid>
               <Grid.ColumnDefinitions>

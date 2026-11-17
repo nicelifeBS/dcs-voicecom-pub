@@ -120,8 +120,6 @@ public sealed class ProfileStore
         {
             Aircraft = aircraft.Aircraft,
             ModuleVersion = aircraft.ModuleVersion,
-            Threshold = aircraft.Threshold,
-            CriticalThreshold = aircraft.CriticalThreshold,
             Keywords = aircraft.Keywords.Concat(common.Keywords).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
             Commands = aircraft.Commands.Concat(common.Commands.Where(c => !names.Contains(c.Name))).ToList(),
         };
