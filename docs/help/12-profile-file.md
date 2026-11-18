@@ -62,8 +62,8 @@ Each step has a `type`:
 | `bios_until` | Turns a knob until a value is reached | `control`, `target`, `output`, `scale`, `tolerance`, `inc`, `dec`, `max_steps`, `delay_ms` |
 | `key` | Presses a key chord, like `RCtrl+G`. DCS must have focus | `keys`, `hold_ms` |
 | `wait` | Waits | `ms` |
-| `wait_for` | Waits until a [condition](#conditions) is true. On timeout the command is refused | `until`, `timeout_ms` |
-| `if` | Runs `then` or `else` depending on a [condition](#conditions) | `condition`, `then`, `else` |
+| `wait_for` | Waits until a condition (see Conditions below) is true. On timeout the command is refused | `until`, `timeout_ms` |
+| `if` | Runs `then` or `else` depending on a condition (see Conditions below) | `condition`, `then`, `else` |
 | `cue` | Plays a sound: `accepted`, `no_match` or `refused` | `cue` |
 | `foreach_char` | Repeats `steps` for each character of `value`, with `{char}` set. `map` renames characters (`"."` to `"DOT"`) | `value`, `map`, `steps` |
 | `enter_value` | Puts a spoken value into a radio or keypad (see [Enter value](06-enter-value.md)) | `value`, `method`, `display`, `fields` |
