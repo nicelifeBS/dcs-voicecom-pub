@@ -14,8 +14,9 @@ var options = Options.Parse(args);
 if (options is null)
 {
     Console.Error.WriteLine("""
-        usage: stt-bench --engine whistle|zipformer|whisper [--clips <folder>] [--threads N] [--boost X]
+        usage: stt-bench --engine whistle|zipformer|whisper [--real | --clips <folder>] [--threads N] [--boost X]
                          [--no-keywords] [--models <cache folder>] [--verbose]
+          --real         your real-voice clips: DCS_REAL_CLIPS, else <repo>/private-clips
           --clips        folder of <slug>__NN.wav with commands.csv (default: the repo's synthetic clips;
                          a folder without commands.csv uses the repo's one, e.g. DCS_REAL_CLIPS)
           --threads      CPU threads for the engine (default: half the logical cores, at least 2)
@@ -26,7 +27,12 @@ if (options is null)
 }
 
 var repo = Repo.Root();
-var clips = options.Clips ?? Path.Combine(repo, "tests", "DcsVoiceCom.Core.Tests", "data", "clips");
+var clips = ClipFolder(options, repo);
+if (!Directory.Exists(clips))
+{
+    Console.Error.WriteLine($"no clip folder {clips}");
+    return 1;
+}
 var commandsFile = File.Exists(Path.Combine(clips, "commands.csv")) ? Path.Combine(clips, "commands.csv")
     : Path.Combine(repo, "tests", "DcsVoiceCom.Core.Tests", "data", "clips", "commands.csv");
 var commands = File.ReadAllLines(commandsFile).Skip(1).Select(l => l.Split(','))
@@ -99,6 +105,20 @@ if (missed.Count > 0) Console.WriteLine("MISSED:\n  " + string.Join("\n  ", miss
 (engine as IDisposable)?.Dispose();
 return 0;
 
+// --real: DCS_REAL_CLIPS, else <repo>/private-clips (where tools/eval/record.py saves). --clips: a folder, relative to
+// the current folder or else to the repository. Neither: the repo's synthetic clips.
+static string ClipFolder(Options options, string repo)
+{
+    if (options.Real)
+    {
+        var real = Environment.GetEnvironmentVariable("DCS_REAL_CLIPS");
+        return Path.GetFullPath(string.IsNullOrEmpty(real) ? Path.Combine(repo, "private-clips") : real);
+    }
+    if (options.Clips is null) return Path.Combine(repo, "tests", "DcsVoiceCom.Core.Tests", "data", "clips");
+    if (Path.IsPathRooted(options.Clips) || Directory.Exists(options.Clips)) return Path.GetFullPath(options.Clips);
+    return Path.GetFullPath(Path.Combine(repo, options.Clips));
+}
+
 internal sealed class ClipMicrophone : IMicrophone
 {
     public float[] Clip = [];
@@ -108,7 +128,7 @@ internal sealed class ClipMicrophone : IMicrophone
     public void Dispose() { }
 }
 
-internal sealed record Options(string Engine, string? Clips, int Threads, float Boost, bool Keywords, string? Models, bool Verbose)
+internal sealed record Options(string Engine, string? Clips, int Threads, float Boost, bool Keywords, string? Models, bool Verbose, bool Real)
 {
     public static Options? Parse(string[] args)
     {
@@ -117,6 +137,7 @@ internal sealed record Options(string Engine, string? Clips, int Threads, float 
         var boost = 1.5f;
         var keywords = true;
         var verbose = false;
+        var real = false;
         for (var i = 0; i < args.Length; i++)
         {
             string Next() => i + 1 < args.Length ? args[++i] : throw new ArgumentException($"{args[i]} needs a value");
@@ -129,9 +150,10 @@ internal sealed record Options(string Engine, string? Clips, int Threads, float 
                 case "--no-keywords": keywords = false; break;
                 case "--models": models = Next(); break;
                 case "--verbose": verbose = true; break;
+                case "--real": real = true; break;
                 default: return null;
             }
         }
-        return engine is "whistle" or "zipformer" or "whisper" ? new Options(engine, clips, threads, boost, keywords, models, verbose) : null;
+        return engine is "whistle" or "zipformer" or "whisper" ? new Options(engine, clips, threads, boost, keywords, models, verbose, real) : null;
     }
 }

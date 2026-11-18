@@ -56,9 +56,9 @@ Notes:
 ### Run it
 ```
 dotnet run -c Release --project tools/stt-bench -- --engine zipformer --boost 4
-dotnet run -c Release --project tools/stt-bench -- --engine whistle --clips %DCS_REAL_CLIPS%
+dotnet run -c Release --project tools/stt-bench -- --engine whistle --real
 ```
-Engines: `whistle`, `zipformer`, `whisper`. Models are downloaded on first run to
+`--real` uses `DCS_REAL_CLIPS`, else `private-clips` in the repo; `--clips <folder>` takes any folder. Engines: `whistle`, `zipformer`, `whisper`. Models are downloaded on first run to
 `%LOCALAPPDATA%\DcsVoiceCom\bench-models` (SHA-256 pinned). `--verbose` prints every clip.
 
 ## Next steps
