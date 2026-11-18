@@ -61,6 +61,18 @@ dotnet run -c Release --project tools/stt-bench -- --engine whistle --real
 `--real` uses `DCS_REAL_CLIPS`, else `private-clips` in the repo; `--clips <folder>` takes any folder. Engines: `whistle`, `zipformer`, `whisper`. Models are downloaded on first run to
 `%LOCALAPPDATA%\DcsVoiceCom\bench-models` (SHA-256 pinned). `--verbose` prints every clip.
 
+### Real voice (Windows, 8 threads, 20 English clips, one take each)
+
+| Engine | Right | Wrong | Missed | Peak RAM | Latency mean / p95 |
+|---|---|---|---|---|---|
+| Whistle | (to run) | | | | |
+| Zipformer, boost 4 | **18** | 0 | 2 | 235 MB | 93 / 133 ms |
+
+Zipformer's misses: "inbound for landing" heard "in boundfort landing", and "251" heard "um one" (the hotword
+"251" has no effect: the model has no digits, see above). "AWACS", "Shkval", "TACAN" and "cage uncage" were all
+right. The first clip took 829 ms: the recognizer is rebuilt with the hotwords on the first command; the app
+should build it when the profile loads.
+
 ## Next steps
 1. **Run on real voice (Windows):** `whistle` and `zipformer --boost 4` with `--clips <real clips>`. Zipformer
    wins if right > Whistle with 0 wrong.
