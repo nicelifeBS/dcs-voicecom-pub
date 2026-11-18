@@ -56,19 +56,42 @@ A profile is a JSON file. You can edit it in a text editor, share it, or keep it
 
 Each step has a `type`:
 
-| `type` | Main fields |
-|---|---|
-| `bios` | `control`, `arg`, `skip_if_already`, `press_ms`, `release` |
-| `bios_until` | `control`, `target`, `output`, `scale`, `tolerance`, `inc`, `dec`, `max_steps`, `delay_ms` |
-| `key` | `keys`, `hold_ms` |
-| `wait` | `ms` |
-| `wait_for` | `until`, `timeout_ms` |
-| `if` | `condition`, `then`, `else` |
-| `cue` | `cue`: `accepted`, `no_match` or `refused` |
-| `foreach_char` | `value`, `map`, `steps` |
-| `enter_value` | `value`, `method`, `display`, `fields` (see [Enter value](06-enter-value.md)) |
+| `type` | What it does | Main fields |
+|---|---|---|
+| `bios` | Sends one DCS-BIOS line. With `press_ms` it is a button press | `control`, `arg`, `skip_if_already`, `press_ms`, `release` |
+| `bios_until` | Turns a knob until a value is reached | `control`, `target`, `output`, `scale`, `tolerance`, `inc`, `dec`, `max_steps`, `delay_ms` |
+| `key` | Presses a key chord, like `RCtrl+G`. DCS must have focus | `keys`, `hold_ms` |
+| `wait` | Waits | `ms` |
+| `wait_for` | Waits until a [condition](#conditions) is true. On timeout the command is refused | `until`, `timeout_ms` |
+| `if` | Runs `then` or `else` depending on a [condition](#conditions) | `condition`, `then`, `else` |
+| `cue` | Plays a sound: `accepted`, `no_match` or `refused` | `cue` |
+| `foreach_char` | Repeats `steps` for each character of `value`, with `{char}` set. `map` renames characters (`"."` to `"DOT"`) | `value`, `map`, `steps` |
+| `enter_value` | Puts a spoken value into a radio or keypad (see [Enter value](06-enter-value.md)) | `value`, `method`, `display`, `fields` |
 
-A condition is `{ "output": "…", "op": "=", "value": "…" }`. `op` can be `=`, `!=`, `<`, `<=`, `>`, `>=`.
+### bios or bios_until?
+
+`bios` sends one line and moves on. `bios_until` turns a knob step by step (`INC` or `DEC`) and reads the cockpit
+after every step, until the value reaches your target.
+
+| | `bios` | `bios_until` |
+|---|---|---|
+| Sends | One line: a value, `INC`, `DEC`, `TOGGLE` or `+3200` | `INC` or `DEC` again and again |
+| Reads the cockpit | No (only `skip_if_already` checks once) | Yes, after every step |
+| Use it for | Switches, levers, buttons | Knobs with no direct value, like a heading knob |
+| Needs a target | No | Yes, can be a spoken value like `{deg}` |
+| Stops when | The line is sent | The value is within `tolerance` of `target × scale`, or it overshoots. After `max_steps` the command is refused |
+
+For "gear up", use `bios` and send `0`. For "set heading {deg}", use `bios_until`.
+
+### Conditions
+
+`wait_for` and `if` test a cockpit output: `{ "output": "…", "op": "=", "value": "…" }`. `op` can be `=`, `!=`,
+`<`, `<=`, `>`, `>=` (default `=`). Numbers compare as numbers. Text only works with `=` and `!=`.
+
+### Placeholders
+
+A spoken value (see [Writing phrases](03-phrases.md)) can be used in `control`, `arg`, `target`, `keys` and `value`
+as `{name}`. Inside `foreach_char`, `{char}` is the current character.
 
 ## Rules
 
