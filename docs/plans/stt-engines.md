@@ -65,7 +65,7 @@ dotnet run -c Release --project tools/stt-bench -- --engine whistle --real
 
 | Engine | Right | Wrong | Missed | Peak RAM | Latency mean / p95 |
 |---|---|---|---|---|---|
-| Whistle | (to run) | | | | |
+| Whistle | **18** | 0 | 2 | 91 MB | 35 / 40 ms |
 | Zipformer, boost 4 | **18** | 0 | 2 | 235 MB | 93 / 133 ms |
 
 Zipformer's misses: "inbound for landing" heard "in boundfort landing", and "251" heard "um one" (the hotword
@@ -73,11 +73,15 @@ Zipformer's misses: "inbound for landing" heard "in boundfort landing", and "251
 right. The first clip took 829 ms: the recognizer is rebuilt with the hotwords on the first command; the app
 should build it when the profile loads.
 
+Whistle missed "AWACS bogey dope" ("A wax bowie dope") and "gear up" ("Kirapa"). **A tie, 18 to 18**, with
+different misses; Whistle is ~3× faster and uses ~40% of the RAM. 20 clips are too few to call it.
+
 ## Next steps
-1. **Run on real voice (Windows):** `whistle` and `zipformer --boost 4` with `--clips <real clips>`. Zipformer
-   wins if right > Whistle with 0 wrong.
-2. If it wins, build it in (below). If not, round 2: Moonshine v2 Small and Vosk + grammar.
-3. Either way: let the matcher accept "zero" for "000" style digits (separate change).
+1. **More real voice:** record 3–5 takes per command (`tools/eval/record.py`), plus some radio noise and a few
+   non-commands, and rerun both. 20 clips gave a tie.
+2. **Spell numbers as words for hotwords** (`NumberWords`) and rerun Zipformer: its "251" miss should go.
+3. If Zipformer wins, build it in (below). If not, round 2: Moonshine v2 Small and Vosk + grammar.
+4. Either way: let the matcher accept "zero" for "000" style digits (separate change).
 
 ## Integration design (when an engine wins)
 - `ISpeechEngine { Id, DisplayName, Languages, OpenAsync(ctx) → ISpeechToText }` in `Core/Speech`.
