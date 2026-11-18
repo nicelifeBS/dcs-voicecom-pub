@@ -86,7 +86,8 @@ await using var runtime = new VoiceComRuntime(
     new WavCuePlayer(settings.Cues),
     hasPtt ? new DirectInputPushToTalk(settings.Ptt, log: Log) : null,
     Log,
-    new WasapiMicrophoneProvider());
+    new WasapiMicrophoneProvider(),
+    new OneCoreTextToSpeech(Log));
 
 using var cts = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) =>

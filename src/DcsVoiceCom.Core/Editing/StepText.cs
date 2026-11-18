@@ -16,6 +16,7 @@ public static class StepText
         WaitForStep f => $"wait for {f.Until} ({(f.TimeoutMs / 1000.0).ToString("0.#", CultureInfo.InvariantCulture)} s)",
         IfStep i => $"if {i.Condition}: {Count(i.Then)}" + (i.Else.Count > 0 ? $", else {Count(i.Else)}" : ""),
         CueStep c => $"cue {c.Cue.ToString().ToLowerInvariant()}",
+        SayStep s => $"say \"{s.Text}\"",
         EnterValueStep v => Engine.EnterValue.Describe(v),
         ForEachCharStep e => $"for each character of {e.Value}: {Count(e.Steps)}",
         _ => step.Type,

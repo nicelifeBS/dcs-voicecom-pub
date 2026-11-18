@@ -29,6 +29,8 @@ public sealed class WpfDialogs(Func<Window?> owner) : IDialogs
 
     public bool ShowEnterValue(EnterValueEditorViewModel editor) => new EnterValueWindow(editor) { Owner = OwnerWindow() }.ShowDialog() == true;
 
+    public bool ShowSay(SayEditorViewModel editor) => new SayWindow(editor) { Owner = OwnerWindow() }.ShowDialog() == true;
+
     private MessageBoxResult Show(string title, string message, MessageBoxButton buttons) =>
         MessageWindow.Show(OwnerWindow(), title, message, buttons);
 
