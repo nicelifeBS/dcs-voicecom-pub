@@ -146,6 +146,20 @@ Every step has `type`. Defaults are used when a field is left out.
 | | `steps` | Step[] | `[]` |
 | `enter_value` | see below | | |
 
+**`bios` or `bios_until`?** `bios` sends one DCS-BIOS line and moves on. `bios_until` turns a knob step by step
+(`INC` or `DEC`) and reads the cockpit after every step, until the value reaches your target.
+
+| | `bios` | `bios_until` |
+|---|---|---|
+| What it does | Sends one line: a value, `INC`, `DEC`, `TOGGLE` or `+3200` | Sends `INC` or `DEC` again and again |
+| Reads the cockpit | No (only `skip_if_already` checks once) | Yes, after every step |
+| Use it for | Switches, levers, buttons (`press_ms`) | Knobs with no direct value, like a heading knob |
+| Needs a target | No | Yes: `target`, which can be a spoken value like `{deg}` |
+| Stops when | The line is sent | The output is within `tolerance` of `target × scale`, or it overshoots. After `max_steps` the command is refused |
+
+For "gear up", use `bios` and send `0`. For "set heading {deg}", use `bios_until`: the app turns the knob and
+reads the heading until it matches.
+
 One small example per step type (control names are examples; use the exact DCS-BIOS names for your jet):
 
 ```json
