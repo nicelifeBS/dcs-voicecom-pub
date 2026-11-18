@@ -35,12 +35,8 @@ A `servers` line is a server name or address, ignoring case and outer spaces. `*
 }
 ```
 
-| Field | Meaning |
-|---|---|
-| `keywords` | Domain words passed to the recognizer; add only words it gets wrong |
-| `module_version` | Optional: the DCS-BIOS version the control IDs were checked against |
-| command `enabled` | `false` keeps the command but leaves its phrases out of matching |
-| command `seeded` | Marks commands generated from DCS-BIOS definitions that you have not edited or enabled yet (see [Seeding](#seeding)) |
+All fields, types and defaults are in the [Schema reference](#schema-reference). Phrase syntax is under
+[Phrases](#phrases), the step types under [Steps](#steps).
 
 ## Schema reference
 
@@ -93,6 +89,9 @@ A server profile adds `servers`:
 
 ### Command
 
+Voice lines are explained under [Phrases](#phrases).
+
+
 | Field | Type | Default | Meaning |
 |---|---|---|---|
 | `name` | string | `""` | Shown in the app and the log. Unique per profile: when merging, the first command with a name wins |
@@ -114,7 +113,7 @@ A server profile adds `servers`:
 }
 ```
 
-### Steps
+### Step fields
 
 Every step has `type`. Defaults are used when a field is left out.
 
@@ -146,19 +145,7 @@ Every step has `type`. Defaults are used when a field is left out.
 | | `steps` | Step[] | `[]` |
 | `enter_value` | see below | | |
 
-**`bios` or `bios_until`?** `bios` sends one DCS-BIOS line and moves on. `bios_until` turns a knob step by step
-(`INC` or `DEC`) and reads the cockpit after every step, until the value reaches your target.
-
-| | `bios` | `bios_until` |
-|---|---|---|
-| What it does | Sends one line: a value, `INC`, `DEC`, `TOGGLE` or `+3200` | Sends `INC` or `DEC` again and again |
-| Reads the cockpit | No (only `skip_if_already` checks once) | Yes, after every step |
-| Use it for | Switches, levers, buttons (`press_ms`) | Knobs with no direct value, like a heading knob |
-| Needs a target | No | Yes: `target`, which can be a spoken value like `{deg}` |
-| Stops when | The line is sent | The output is within `tolerance` of `target × scale`, or it overshoots. After `max_steps` the command is refused |
-
-For "gear up", use `bios` and send `0`. For "set heading {deg}", use `bios_until`: the app turns the knob and
-reads the heading until it matches.
+What each type does is explained under [Steps](#steps).
 
 One small example per step type (control names are examples; use the exact DCS-BIOS names for your jet):
 
@@ -177,15 +164,13 @@ One small example per step type (control names are examples; use the exact DCS-B
   "steps": [ { "type": "bios", "control": "UFC_{char}", "arg": "1", "press_ms": 50 } ] }
 ```
 
-**Condition**: `{ "output": "PLT_GEAR_LEVER", "op": "=", "value": "1" }`. `op` is `=`, `!=`, `<`, `<=`, `>`
-or `>=` (default `=`). Integers compare as numbers; strings only with `=` and `!=`.
+**Condition** (used by `wait_for` and `if`):
 
 ```json
 { "output": "APU_STATE", "op": "!=", "value": "RUNNING" }
 ```
 
-`{slot}` placeholders work in `control`, `arg`, `target`, `keys` and `value` fields. `{char}` is available inside
-`foreach_char`.
+Ops and placeholders are explained under [Steps](#steps).
 
 ### `enter_value` fields
 
@@ -210,7 +195,7 @@ Smallest `enter_value` (a keypad, no fields):
 { "type": "enter_value", "value": "{text}", "method": "keypad", "keys": { "A": "CDU_A", "1": "CDU_1" } }
 ```
 
-With a display and fields, see the full examples under [`enter_value`](#enter_value).
+What the fields mean, the wheel modes and full examples are under [`enter_value`](#enter_value) in Steps.
 
 Field (in `fields`):
 
@@ -264,17 +249,45 @@ In steps, `{name}` inserts the value. Whole numbers also take one operation: `{c
 
 ## Steps
 
-| `type` | Fields | Notes |
+Fields, types and defaults are in the [Schema reference](#step-fields). This is what each type does.
+
+| `type` | What it does |
+|---|---|
+| `bios` | Any DCS-BIOS argument: value, `INC`, `DEC`, `TOGGLE`, `+3200`. `skip_if_already` skips when the output already equals a numeric `arg`. With `press_ms` it is a **button press**: sends `arg` (push in), waits `press_ms`, then sends `release` (default `0`). The release is sent even when the command is cancelled. `arg` and `release` must differ, and `press_ms` must be 0 or more. |
+| `bios_until` | Steps a knob and reads back until `output` (default `control`) is within `tolerance` of `target × scale`; stops when it overshoots; refused after `max_steps`. |
+| `key` | Scan-code chord such as `RCtrl+RShift+G`; left/right modifiers are distinct. DCS must have focus. |
+| `wait` | Fixed delay in `ms`. |
+| `wait_for` | Waits until a [condition](#conditions) is true (`until`); on timeout the sequence stops and plays *refused*. |
+| `if` | Runs `then` or `else` depending on a [condition](#conditions). |
+| `cue` | Plays a cue (`accepted`, `no_match`, `refused`) mid-sequence. |
+| `foreach_char` | Runs `steps` per character of `value` with `{char}` bound, e.g. one UFC key per digit; `map` renames characters (`"." → "DOT"`). |
+| `enter_value` | Puts a spoken value into the cockpit: a number on radio wheels, or text on a keypad, checked on one display. Set it up in the app (*+ Enter value*, then *Edit*). |
+
+### `bios` or `bios_until`?
+
+`bios` sends one DCS-BIOS line and moves on. `bios_until` turns a knob step by step (`INC` or `DEC`) and reads the
+cockpit after every step, until the value reaches your target.
+
+| | `bios` | `bios_until` |
 |---|---|---|
-| `bios` | `control`, `arg`, `skip_if_already`, `press_ms`, `release` | Any DCS-BIOS argument: value, `INC`, `DEC`, `TOGGLE`, `+3200`. `skip_if_already` skips when the output already equals a numeric `arg`. With `press_ms` it is a **button press**: sends `arg` (push in), waits `press_ms`, then sends `release` (default `0`). The release is sent even when the command is cancelled. `arg` and `release` must differ, and `press_ms` must be 0 or more. |
-| `bios_until` | `control`, `target`, `output`, `scale`, `tolerance`, `inc`, `dec`, `max_steps`, `delay_ms` | Steps a knob and reads back until `output` (default `control`) is within `tolerance` of `target × scale`; stops when it overshoots; refused after `max_steps`. |
-| `key` | `keys`, `hold_ms` | Scan-code chord such as `RCtrl+RShift+G`; left/right modifiers are distinct. DCS must have focus. |
-| `wait` | `ms` | Fixed delay |
-| `wait_for` | `until: {output, op, value}`, `timeout_ms` | Waits on cockpit state; on timeout the sequence stops and plays *refused*. |
-| `if` | `condition: {output, op, value}`, `then`, `else` | Ops: `=`, `!=`, `<`, `<=`, `>`, `>=` (strings: `=` and `!=` only). |
-| `cue` | `cue`: `accepted`, `no_match`, `refused` | Plays a cue mid-sequence |
-| `foreach_char` | `value`, `map`, `steps` | Runs `steps` per character of `value` with `{char}` bound, e.g. one UFC key per digit; `map` renames characters (`"." → "DOT"`). |
-| `enter_value` | `value`, `method`, `display`, `fields`, and the fields below | Puts a spoken value into the cockpit: a number on radio wheels, or text on a keypad, checked on one display. Set it up in the app (*+ Enter value*, then *Edit*). |
+| What it does | Sends one line: a value, `INC`, `DEC`, `TOGGLE` or `+3200` | Sends `INC` or `DEC` again and again |
+| Reads the cockpit | No (only `skip_if_already` checks once) | Yes, after every step |
+| Use it for | Switches, levers, buttons (`press_ms`) | Knobs with no direct value, like a heading knob |
+| Needs a target | No | Yes: `target`, which can be a spoken value like `{deg}` |
+| Stops when | The line is sent | The output is within `tolerance` of `target × scale`, or it overshoots. After `max_steps` the command is refused |
+
+For "gear up", use `bios` and send `0`. For "set heading {deg}", use `bios_until`: the app turns the knob and
+reads the heading until it matches.
+
+### Conditions
+
+`wait_for` and `if` test a cockpit output: `{ "output": "…", "op": "=", "value": "…" }`. `op` is `=`, `!=`, `<`,
+`<=`, `>` or `>=` (default `=`). Integers compare as numbers; strings only with `=` and `!=`.
+
+### Placeholders
+
+`{slot}` placeholders (see [Spoken parameters](#spoken-parameters-slots)) work in `control`, `arg`, `target`,
+`keys` and `value`. `{char}` is available inside `foreach_char`.
 
 ### `enter_value`
 
