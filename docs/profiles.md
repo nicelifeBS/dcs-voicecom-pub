@@ -84,8 +84,22 @@ In steps, `{name}` inserts the value. Whole numbers also take one operation: `{c
 | `wait_for` | `until: {output, op, value}`, `timeout_ms` | Waits on cockpit state; on timeout the sequence stops and plays *refused*. |
 | `if` | `condition: {output, op, value}`, `then`, `else` | Ops: `=`, `!=`, `<`, `<=`, `>`, `>=` (strings: `=` and `!=` only). |
 | `cue` | `cue`: `accepted`, `no_match`, `refused` | Plays a cue mid-sequence |
+| `say` | `text` | Speaks a voice reply with a Windows voice. `text` may use placeholders (`"Radio set to {freq}"`), see [`say`](#say). Doesn't wait for the speech to end, so later steps aren't delayed. With voice replies off or no voice installed, the step is skipped and the command still completes. |
 | `foreach_char` | `value`, `map`, `steps` | Runs `steps` per character of `value` with `{char}` bound, e.g. one UFC key per digit; `map` renames characters (`"." → "DOT"`). |
 | `enter_value` | `value`, `method`, `display`, `fields`, and the fields below | Puts a spoken value into the cockpit: a number on radio wheels, or text on a keypad, checked on one display. Set it up in the app (*+ Enter value*, then *Edit*). |
+
+### `say`
+
+```json
+{ "type": "say", "text": "Radio set to {freq}" }
+```
+
+`{name}` is the spoken value of a slot in the voice line, the same values `bios` and `enter_value` steps use. Say
+"set radio to two five one decimal zero" and the voice reads "Radio set to 251.0" in its own way. The operations work
+too (`{channel+1}`). The value is the parsed number, not your exact words.
+
+A new push-to-talk press stops the reply, so the app never talks over you. The voice, speed, volume and output
+device are in Settings → VOICE REPLIES (`tts` in `settings.json`).
 
 ### `enter_value`
 
