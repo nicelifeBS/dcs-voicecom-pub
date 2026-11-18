@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using DcsVoiceCom.Phrases;
 
 namespace DcsVoiceCom.Seeding;
 
@@ -32,12 +33,6 @@ public static partial class VoiceLines
         ["pos"] = "position", ["sel"] = "select", ["xmit"] = "transmit", ["rej"] = "reject",
         ["inc"] = "increase", ["dec"] = "decrease", ["hi"] = "high", ["lo"] = "low", ["tst"] = "test",
     };
-
-    private static readonly string[] SmallNumbers =
-    [
-        "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
-        "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty",
-    ];
 
     /// <summary>
     /// The spoken name of a control: crew prefix split off, panel lists after a comma joined in
@@ -95,10 +90,10 @@ public static partial class VoiceLines
         var changed = false;
         var words = line.Split(' ').Select(w =>
         {
-            if (int.TryParse(w, NumberStyles.None, CultureInfo.InvariantCulture, out var n) && n < SmallNumbers.Length)
+            if (int.TryParse(w, NumberStyles.None, CultureInfo.InvariantCulture, out var n) && n <= 20)
             {
                 changed = true;
-                return SmallNumbers[n];
+                return NumberWords.English(n);
             }
             return w;
         });
