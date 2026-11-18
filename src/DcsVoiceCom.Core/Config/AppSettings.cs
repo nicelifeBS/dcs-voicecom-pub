@@ -47,7 +47,7 @@ public sealed record AppSettings
     public CueSettings Cues { get; init; } = new();
     public int KeyHoldMs { get; init; } = 50;
 
-    /// <summary>Debugging: save the audio of every missed command to <see cref="DebugDirectory"/>. Off by default.</summary>
+    /// <summary>Debugging: save the audio of every push-to-talk command to <see cref="DebugDirectory"/>; misses are marked in the note. Off by default. Name kept for old settings files.</summary>
     public bool SaveMissedAudio { get; init; }
 
     public static string DebugDirectory => Path.Combine(DefaultDirectory, "debugging");
