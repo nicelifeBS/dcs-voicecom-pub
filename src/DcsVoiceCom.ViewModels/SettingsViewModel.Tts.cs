@@ -134,7 +134,6 @@ public sealed partial class SettingsViewModel
         var language = EffectiveTtsLanguage;
         TtsVoices.Clear();
         foreach (var voice in _allVoices.Where(v => VoiceChooser.MatchesLanguage(v.Language, language))) TtsVoices.Add(voice);
-        if (_ttsVoiceId != null && TtsVoices.All(v => v.Id != _ttsVoiceId)) _ttsVoiceId = null; // belongs to another language
         _selectedVoice = VoiceChooser.Pick(TtsVoices, language, _ttsVoiceId);
         OnPropertyChanged(nameof(SelectedVoice));
         OnPropertyChanged(nameof(EffectiveTtsLanguage));
@@ -234,7 +233,8 @@ public sealed partial class SettingsViewModel
     {
         Enabled = TtsEnabled,
         Language = _ttsLanguageTag,
-        Voice = _ttsVoiceId,
+        // The remembered pick is kept across language switches, but only saved when it is the voice shown.
+        Voice = _selectedVoice?.Id == _ttsVoiceId ? _ttsVoiceId : null,
         Rate = TtsRate,
         Volume = TtsVolume,
         Device = NullIfEmpty(_ttsDevice),
