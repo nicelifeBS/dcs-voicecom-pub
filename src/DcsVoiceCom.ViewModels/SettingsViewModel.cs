@@ -3,11 +3,12 @@ using System.Globalization;
 using DcsVoiceCom.Config;
 using DcsVoiceCom.DcsBios;
 using DcsVoiceCom.DcsHook;
+using DcsVoiceCom.Speech;
 
 namespace DcsVoiceCom.ViewModels;
 
 /// <summary>The Settings dialog: a working copy of <see cref="AppSettings"/>; <see cref="Build"/> returns the edited settings.</summary>
-public sealed class SettingsViewModel : ObservableObject
+public sealed partial class SettingsViewModel : ObservableObject
 {
     public static readonly IReadOnlyList<string> Languages = ["en", "de", "fr", "es", "it", "nl", "pl"];
 
@@ -21,7 +22,7 @@ public sealed class SettingsViewModel : ObservableObject
     private string _hookStatus = "";
 
     public SettingsViewModel(AppSettings settings, IPttBinder? binder = null, IReadOnlyList<string>? microphones = null,
-        DcsHookInstaller? hook = null)
+        DcsHookInstaller? hook = null, ITextToSpeech? tts = null, Action<string>? openUri = null)
     {
         _hook = hook;
         _original = settings;
@@ -54,6 +55,7 @@ public sealed class SettingsViewModel : ObservableObject
         InstallHookCommand = new RelayCommand(() => RunHook(h => h.Install()), () => CanInstallHook);
         RemoveHookCommand = new RelayCommand(() => RunHook(h => h.Remove()), () => CanRemoveHook);
         RefreshHook();
+        InitTts(settings, tts, openUri);
     }
 
     public AsyncCommand BindCommand { get; }
@@ -164,7 +166,10 @@ public sealed class SettingsViewModel : ObservableObject
     public string Language
     {
         get => _language;
-        set => SetProperty(ref _language, value);
+        set
+        {
+            if (SetProperty(ref _language, value)) OnRecognitionLanguageChanged();
+        }
     }
     private string _dcsBiosJsonPath = "";
 
@@ -316,6 +321,7 @@ public sealed class SettingsViewModel : ObservableObject
             Threshold = threshold,
             CriticalThreshold = critical,
             Cues = _original.Cues with { Enabled = CuesEnabled },
+            Tts = BuildTts(),
         };
     }
 

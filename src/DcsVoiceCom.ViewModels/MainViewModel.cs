@@ -261,7 +261,8 @@ public sealed class MainViewModel : ObservableObject
         set
         {
             if (!SetProperty(ref _selectedCommand, value)) return;
-            Editor = value is null ? null : new CommandEditorViewModel(value.Command, _dialogs, () => CommandChanged(value), EnterValueContext);
+            Editor = value is null ? null : new CommandEditorViewModel(value.Command, _dialogs, () => CommandChanged(value), EnterValueContext,
+                () => SayContextProvider?.Invoke() ?? SayContext.Offline);
             DuplicateCommandCommand.Refresh();
             DeleteCommandCommand.Refresh();
             TestSelectedCommand.Refresh();
@@ -509,6 +510,9 @@ public sealed class MainViewModel : ObservableObject
                 ? runtime.SendBiosAsync(control, arg)
                 : throw new InvalidOperationException("Not connected to DCS-BIOS."));
     }
+
+    /// <summary>Gives the Say window its voice and options (set by the app); without it Play is off.</summary>
+    public Func<SayContext>? SayContextProvider { get; set; }
 
     private bool IsLiveForSelected()
     {

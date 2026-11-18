@@ -285,6 +285,8 @@
                     <Button Content="+ Key" Style="{StaticResource Small}" Command="{Binding AddKeyCommand}" Margin="0,0,6,0"
                             ToolTip="Press a key chord, e.g. RCtrl+RShift+G" />
                     <Button Content="+ Wait" Style="{StaticResource Small}" Command="{Binding AddWaitCommand}" Margin="0,0,6,0" />
+                    <Button Content="+ Say" Style="{StaticResource Small}" Command="{Binding AddSayCommand}" Margin="0,0,6,0"
+                            ToolTip="Speak a voice reply, e.g. Radio set to {freq}" />
                     <Button Content="+ Enter value" Style="{StaticResource Small}" Command="{Binding AddEnterValueCommand}" Margin="0,0,6,0"
                             ToolTip="Put a spoken number on radio wheels, or spelled text on a keypad (Edit to set it up)" />
                     <Button Content="Edit as JSON" Style="{StaticResource Small}" Command="{Binding ToggleJsonCommand}"

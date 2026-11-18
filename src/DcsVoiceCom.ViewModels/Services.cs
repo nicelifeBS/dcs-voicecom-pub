@@ -17,6 +17,9 @@ public interface IDialogs
 
     /// <summary>Shows the "Enter value" window; true on OK.</summary>
     bool ShowEnterValue(EnterValueEditorViewModel editor);
+
+    /// <summary>Shows the Say window; true on OK. Without a window, nothing is added.</summary>
+    bool ShowSay(SayEditorViewModel editor) => false;
 }
 
 /// <summary>Runs work on the UI thread; runtime events arrive on background threads.</summary>

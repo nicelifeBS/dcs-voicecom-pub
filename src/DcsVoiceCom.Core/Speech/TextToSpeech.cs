@@ -12,6 +12,9 @@ public interface ITextToSpeech
     /// <summary>The installed voices; empty when there are none.</summary>
     IReadOnlyList<VoiceInfo> Voices { get; }
 
+    /// <summary>Names of the active output devices (for the Settings list); empty when unknown.</summary>
+    IReadOnlyList<string> OutputDevices { get; }
+
     /// <summary>Queues the text and completes when it has been spoken (or cut off by <see cref="Stop"/>).</summary>
     Task SpeakAsync(string text, TtsOptions options, CancellationToken ct = default);
 
@@ -23,6 +26,7 @@ public interface ITextToSpeech
 public sealed class NullTextToSpeech : ITextToSpeech
 {
     public IReadOnlyList<VoiceInfo> Voices => [];
+    public IReadOnlyList<string> OutputDevices => [];
     public Task SpeakAsync(string text, TtsOptions options, CancellationToken ct = default) => Task.CompletedTask;
     public void Stop() { }
 }

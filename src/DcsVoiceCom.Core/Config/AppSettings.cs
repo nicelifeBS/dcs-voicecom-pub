@@ -47,6 +47,17 @@ public sealed record TtsSettings
     public double Volume { get; init; } = 1.0;
     /// <summary>Output device name; null is the Windows default output.</summary>
     public string? Device { get; init; }
+
+    /// <summary>
+    /// Options for one reply, or null when voice replies are off or no voice fits the language
+    /// (<see cref="Language"/>, else <paramref name="recognitionLanguage"/>).
+    /// </summary>
+    public TtsOptions? ToOptions(IReadOnlyList<VoiceInfo> voices, string recognitionLanguage)
+    {
+        if (!Enabled) return null;
+        var voice = VoiceChooser.Pick(voices, Language ?? recognitionLanguage, Voice);
+        return voice is null ? null : new TtsOptions(voice.Id, Rate, Volume, Device);
+    }
 }
 
 /// <summary>All app settings, stored as %LOCALAPPDATA%\DcsVoiceCom\settings.json. Every path is configurable.</summary>

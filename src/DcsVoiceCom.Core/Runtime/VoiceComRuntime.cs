@@ -267,13 +267,8 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
     }
 
     /// <summary>Options for one voice reply; null when voice replies are off or no voice fits the language.</summary>
-    private TtsOptions? TtsOptionsFor()
-    {
-        var t = _settings.Tts;
-        if (!t.Enabled || _tts is null) return null;
-        var voice = VoiceChooser.Pick(_tts.Voices, t.Language ?? _settings.Language, t.Voice);
-        return voice is null ? null : new TtsOptions(voice.Id, t.Rate, t.Volume, t.Device);
-    }
+    private TtsOptions? TtsOptionsFor() =>
+        _tts is null ? null : _settings.Tts.ToOptions(_tts.Voices, _settings.Language);
 
     private void OnPttPressed()
     {

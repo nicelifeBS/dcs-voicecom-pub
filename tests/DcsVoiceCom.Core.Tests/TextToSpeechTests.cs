@@ -9,6 +9,7 @@ namespace DcsVoiceCom.Tests;
 internal sealed class RecordingTextToSpeech(params VoiceInfo[] voices) : ITextToSpeech
 {
     public IReadOnlyList<VoiceInfo> Voices { get; } = voices;
+    public IReadOnlyList<string> OutputDevices { get; set; } = [];
     public List<(string Text, TtsOptions Options)> Spoken { get; } = [];
     public TaskCompletionSource Gate { get; } = new();
     public int Stops;
@@ -229,6 +230,7 @@ public class SayStepTests
     private sealed class ThrowingTts : ITextToSpeech
     {
         public IReadOnlyList<VoiceInfo> Voices => [];
+        public IReadOnlyList<string> OutputDevices => [];
         public Task SpeakAsync(string text, TtsOptions options, CancellationToken ct = default) => throw new InvalidOperationException("boom");
         public void Stop() { }
     }
