@@ -28,7 +28,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _original = settings;
         _binder = binder;
         _ptt = settings.Ptt;
-        Language = settings.Language;
+        _language = settings.Language; // the field: the TTS lists are built once, in InitTts
         DcsBiosJsonPath = settings.DcsBiosJsonPath;
         ProfilesPath = settings.ProfilesPath;
         InputHost = settings.DcsBios.InputHost;

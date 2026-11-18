@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+using DcsVoiceCom.Engine;
 using DcsVoiceCom.Speech;
 
 namespace DcsVoiceCom.ViewModels;
@@ -11,12 +11,9 @@ public sealed record SayContext(ITextToSpeech Tts, Func<TtsOptions?> Options)
 }
 
 /// <summary>Edits the text of one Say step, with a Play button for a preview.</summary>
-public sealed partial class SayEditorViewModel : ObservableObject
+public sealed class SayEditorViewModel : ObservableObject
 {
     public const string Hint = "Use {slot} for spoken values, e.g. Radio set to {freq}";
-
-    [GeneratedRegex(@"\{([A-Za-z_][A-Za-z0-9_]*)(?:[/%*+\-]\d+)?\}")]
-    private static partial Regex Placeholder();
 
     private readonly SayContext _context;
     private string _text;
@@ -46,7 +43,7 @@ public sealed partial class SayEditorViewModel : ObservableObject
     public bool CanSave => !string.IsNullOrWhiteSpace(Text);
 
     /// <summary>What Play says: each placeholder becomes its slot name ("Radio set to {freq}" → "Radio set to freq").</summary>
-    public string PreviewSpoken => Placeholder().Replace(Text, "$1").Trim();
+    public string PreviewSpoken => Placeholders.ToSlotNames(Text).Trim();
 
     public bool CanPlay => CanSave && _context.Options() != null;
 

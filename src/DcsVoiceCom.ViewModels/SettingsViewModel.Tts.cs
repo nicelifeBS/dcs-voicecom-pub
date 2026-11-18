@@ -229,6 +229,9 @@ public sealed partial class SettingsViewModel
         _ = _tts.SpeakAsync(PreviewText.Trim(), options).ContinueWith(_ => { }, TaskScheduler.Default); // errors are logged by the voice
     }
 
+    /// <summary>Called when the dialog closes, so a long preview doesn't keep playing.</summary>
+    public void StopPreview() => _tts.Stop();
+
     private TtsSettings BuildTts() => _original.Tts with
     {
         Enabled = TtsEnabled,

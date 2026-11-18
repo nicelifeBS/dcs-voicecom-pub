@@ -210,6 +210,7 @@ public partial class App : Application
             }
         }
 
+        Tts.RefreshVoices(); // picks up voices added in Windows since the app started
         var dialog = new SettingsWindow(new SettingsViewModel(_settings, new DirectInputBinder(() => WindowHandle), microphones,
             new DcsHookInstaller(_settings.DcsHook.Port), Tts, OpenUri)) { Owner = _window };
         if (dialog.ShowDialog() != true || dialog.Result is not { } updated) return;

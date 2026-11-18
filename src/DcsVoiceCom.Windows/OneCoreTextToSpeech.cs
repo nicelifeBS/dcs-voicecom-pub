@@ -20,6 +20,9 @@ public sealed class OneCoreTextToSpeech : ITextToSpeech
     private bool _running;
     private IReadOnlyList<VoiceInfo>? _voices;
     private string? _warnedDevice;
+    // Used only by the pump (one reply at a time), so they are reused between replies.
+    private SpeechSynthesizer? _synth;
+    private MMDeviceEnumerator? _enumerator;
 
     public OneCoreTextToSpeech(Action<string>? log = null) => _log = log ?? (_ => { });
 
@@ -27,9 +30,15 @@ public sealed class OneCoreTextToSpeech : ITextToSpeech
     {
         get
         {
-            lock (_lock) return _voices ??= LoadVoices();
+            var voices = Volatile.Read(ref _voices);
+            if (voices != null) return voices;
+            voices = LoadVoices(); // outside the lock: Stop() on a push-to-talk press must never wait for this
+            return Interlocked.CompareExchange(ref _voices, voices, null) ?? voices;
         }
     }
+
+    /// <summary>Reads the installed voices again on next use (Settings calls this, so voices added in Windows show up).</summary>
+    public void RefreshVoices() => Volatile.Write(ref _voices, null);
 
     public IReadOnlyList<string> OutputDevices
     {
@@ -38,8 +47,12 @@ public sealed class OneCoreTextToSpeech : ITextToSpeech
             try
             {
                 using var enumerator = new MMDeviceEnumerator();
-                return enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active)
-                    .Select(d => d.FriendlyName).Distinct().ToList();
+                var names = new List<string>();
+                foreach (var device in enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active))
+                {
+                    using (device) names.Add(device.FriendlyName);
+                }
+                return names.Distinct().ToList();
             }
             catch (Exception ex)
             {
@@ -131,8 +144,9 @@ public sealed class OneCoreTextToSpeech : ITextToSpeech
 
     private async Task PlayAsync(Item item, CancellationToken ct)
     {
-        using var synth = new SpeechSynthesizer();
-        if (SpeechSynthesizer.AllVoices.FirstOrDefault(v => v.Id == item.Options.VoiceId) is { } voice) synth.Voice = voice;
+        var synth = _synth ??= new SpeechSynthesizer();
+        if (synth.Voice?.Id != item.Options.VoiceId)
+            synth.Voice = SpeechSynthesizer.AllVoices.FirstOrDefault(v => v.Id == item.Options.VoiceId) ?? SpeechSynthesizer.DefaultVoice;
         synth.Options.SpeakingRate = Math.Clamp(item.Options.Rate, 0.5, 2.0);
         synth.Options.AudioVolume = Math.Clamp(item.Options.Volume, 0.0, 1.0);
 
@@ -144,16 +158,23 @@ public sealed class OneCoreTextToSpeech : ITextToSpeech
         ct.ThrowIfCancellationRequested();
 
         using var reader = new WaveFileReader(wav);
-        using var enumerator = new MMDeviceEnumerator();
-        using var device = FindDevice(enumerator, item.Options.Device);
+        using var device = FindDevice(_enumerator ??= new MMDeviceEnumerator(), item.Options.Device);
         using var output = new WasapiOut(device, AudioClientShareMode.Shared, true, 100);
         var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         output.PlaybackStopped += (_, _) => finished.TrySetResult();
         output.Init(reader);
-        using (ct.Register(() => output.Stop()))
+        // Cancelling ends the wait; the finally stops the output. A Stop() that comes before Play() then still cuts it off.
+        using (ct.Register(() => finished.TrySetCanceled(ct)))
         {
-            output.Play();
-            await finished.Task.ConfigureAwait(false);
+            try
+            {
+                output.Play();
+                await finished.Task.ConfigureAwait(false);
+            }
+            finally
+            {
+                output.Stop();
+            }
         }
     }
 
@@ -166,6 +187,7 @@ public sealed class OneCoreTextToSpeech : ITextToSpeech
             var devices = enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active).ToList();
             var hit = devices.FirstOrDefault(d => d.FriendlyName.Equals(wanted, StringComparison.OrdinalIgnoreCase))
                 ?? devices.FirstOrDefault(d => d.FriendlyName.Contains(wanted, StringComparison.OrdinalIgnoreCase));
+            foreach (var other in devices.Where(d => d != hit)) other.Dispose();
             if (hit != null) return hit;
             if (_warnedDevice != wanted)
             {
