@@ -49,7 +49,7 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
         _definitions = new DefinitionLoader(settings.DcsBiosJsonPath);
         _profiles = new ProfileStore(settings.ProfilesPath);
         _microphones = microphones;
-        if (settings.SaveMissedAudio) _clips = new ClipRecorder(AppSettings.DebugDirectory, m => Log("[debug] " + m));
+        if (settings.SaveCommandAudio) _clips = new ClipRecorder(AppSettings.DebugDirectory, m => Log("[debug] " + m));
 
         var state = new CatalogStateReader(_dcsBios.State, () => _catalog,
             () => DateTimeOffset.UtcNow - _dcsBios.LastFrameAt < TimeSpan.FromSeconds(2));
