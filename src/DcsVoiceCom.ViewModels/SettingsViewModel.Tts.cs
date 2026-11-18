@@ -106,9 +106,8 @@ public sealed partial class SettingsViewModel
         set
         {
             if (value is null) return;
-            if (!SetProperty(ref _selectedVoice, value)) return;
-            _ttsVoiceId = value.Id;
-            OnPreviewStateChanged();
+            _ttsVoiceId = value.Id; // an explicit pick is saved, even when it is already the shown default
+            if (SetProperty(ref _selectedVoice, value)) OnPreviewStateChanged();
         }
     }
 
