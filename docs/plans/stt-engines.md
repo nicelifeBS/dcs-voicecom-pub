@@ -19,7 +19,7 @@ Decisions:
 |---|---|---|---|---|---|
 | Whistle 2.0.0 (today) | libneedle, own P/Invoke | 17 MB | ~105 MB | Keywords | Baseline |
 | Zipformer transducer, GigaSpeech, int8 | sherpa-onnx (`org.k2fsa.sherpa.onnx`) | 74 MB | ~250 MB | Hotwords (native) | **Round 1: best** |
-| Whisper small.en q5_1 | whisper.cpp (`Whisper.net`) | 190 MB | ~585 MB | Initial prompt | Round 1: out (RAM, speed) |
+| Whisper small.en q5_1 | whisper.cpp (`Whisper.net`) | 190 MB | ~990 MB | Initial prompt | Round 1: out (RAM, speed) |
 | Moonshine v2 Small / Medium | sherpa-onnx | 120–250 MB | ~250–500 MB (not measured) | None | Next round |
 | Vosk small + grammar | `Vosk` | ~50 MB | ~100–300 MB (not measured) | Hard grammar | Next round; slots need grammar |
 | Parakeet TDT 0.6B int8 | sherpa-onnx | ~650 MB | ~1.4 GB (reported) | None | Out (RAM) |
@@ -39,7 +39,7 @@ the app.
 | Zipformer, no hotwords | 67 | 0 | 13 | 244 MB | |
 | Zipformer, hotwords boost 1.5 | 68 | 0 | 12 | 247 MB | 114 / 148 ms |
 | Zipformer, hotwords boost 4 | **70** | 0 | 10 | 246 MB | |
-| Whisper small.en q5_1 (4 threads, 3-clip sample; full run pending) | 2 of 3 | 0 | 1 | 585 MB | ~5200 ms |
+| Whisper small.en q5_1 (4 threads) | 70 | 0 | 10 | 986 MB | 5729 / 5975 ms |
 
 Notes:
 - Zipformer's misses: "AWACS" (heard "a wax"), "Shkval" (spelled "s h k"), "cage uncage" in 2 takes, and all 4
@@ -48,7 +48,10 @@ Notes:
 - Hotwords must be in the model's alphabet: GigaSpeech has no digits, so "TACAN CHANNEL 73" gives no bias to "73".
   An integration should spell numbers as words for hotwords (`NumberWords`).
 - Whisper encodes a 30 s window for every clip, so a 2 s command takes ~5 s on this CPU. A smaller audio context
-  (`WithAudioContextSize(384)`) cut it to ~3.7 s and 421 MB but lost accuracy. Whisper is not a fit here.
+  (`WithAudioContextSize(384)`) cut it to ~3.7 s and 421 MB but lost accuracy. Whisper small ties Zipformer on
+  right answers, but at ~4× the RAM and ~50× the latency, and it once heard "navigation lights **off**" for "on"
+  (the matcher refused it). Whisper is not a fit here. faster-whisper has the same 30 s window, ~1 GB for small
+  int8, and no .NET binding.
 
 ### Run it
 ```
