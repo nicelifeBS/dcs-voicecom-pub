@@ -4,6 +4,7 @@ using DcsVoiceCom.Definitions;
 using DcsVoiceCom.Input;
 using DcsVoiceCom.Phrases;
 using DcsVoiceCom.Profiles;
+using DcsVoiceCom.Speech;
 
 namespace DcsVoiceCom.Engine;
 
@@ -34,13 +35,20 @@ public sealed class CommandEngine
     private readonly IStateReader _state;
     private readonly ICuePlayer _cues;
     private readonly EngineOptions _options;
+    private readonly ITextToSpeech? _speech;
+    private readonly Func<TtsOptions?>? _speechOptions;
     private readonly SemaphoreSlim _runLock = new(1, 1);
     private readonly object _ctsLock = new();
     private CancellationTokenSource? _running;
     private CompiledProfile _profile = CompiledProfile.Empty;
 
-    public CommandEngine(IBiosSender bios, IKeySender keys, IStateReader state, ICuePlayer cues, EngineOptions? options = null)
+    /// <param name="speech">Voice replies for "say" steps; null skips them.</param>
+    /// <param name="speechOptions">Gives the options for one reply, or null when voice replies are off or no voice is installed.</param>
+    public CommandEngine(IBiosSender bios, IKeySender keys, IStateReader state, ICuePlayer cues, EngineOptions? options = null,
+        ITextToSpeech? speech = null, Func<TtsOptions?>? speechOptions = null)
     {
+        _speech = speech;
+        _speechOptions = speechOptions;
         _bios = bios;
         _keys = keys;
         _state = state;
@@ -65,6 +73,9 @@ public sealed class CommandEngine
             _running?.Cancel();
         }
     }
+
+    /// <summary>Cuts off a voice reply that is playing and clears the queue (called on every push-to-talk press).</summary>
+    public void StopSpeech() => _speech?.Stop();
 
     /// <summary>
     /// Resolves the recognition against the active profile. With <paramref name="dryRun"/> the steps are
@@ -145,7 +156,7 @@ public sealed class CommandEngine
             var runner = new StepRunner(
                 dryRun ? NullSenders.Instance : _bios,
                 dryRun ? NullSenders.Instance : _keys,
-                _state, cues, _options, trace, dryRun);
+                _state, cues, _options, trace, dryRun, _speech, _speechOptions);
             var ok = await runner.RunAsync(command.Steps, slots.Values, cts.Token).ConfigureAwait(false);
             if (!ok)
             {
@@ -183,7 +194,9 @@ internal sealed class StepRunner(
     ICuePlayer cues,
     EngineOptions options,
     List<string> trace,
-    bool dryRun)
+    bool dryRun,
+    ITextToSpeech? speech = null,
+    Func<TtsOptions?>? speechOptions = null)
 {
     public async Task<bool> RunAsync(IEnumerable<Step> steps, IReadOnlyDictionary<string, string> values, CancellationToken ct)
     {
@@ -285,6 +298,21 @@ internal sealed class StepRunner(
                 cues.Play(c.Cue);
                 return true;
 
+            case SayStep say:
+            {
+                var text = Placeholders.Apply(say.Text, values).Trim();
+                trace.Add($"say \"{text}\"");
+                if (dryRun || text.Length == 0) return true;
+                if (speech is null || speechOptions?.Invoke() is not { } tts)
+                {
+                    trace.Add("voice reply skipped (no voice)");
+                    return true;
+                }
+                // Queued, not awaited: cockpit steps are never delayed by the speech.
+                _ = SpeakQuietlyAsync(speech, text, tts);
+                return true;
+            }
+
             case ForEachCharStep f:
             {
                 var text = Placeholders.Apply(f.Value, values);
@@ -302,6 +330,18 @@ internal sealed class StepRunner(
 
             default:
                 throw new StepException($"Unsupported step {step.Type}");
+        }
+    }
+
+    private static async Task SpeakQuietlyAsync(ITextToSpeech speech, string text, TtsOptions options)
+    {
+        try
+        {
+            await speech.SpeakAsync(text, options, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            // A voice failure must never break a command.
         }
     }
 
