@@ -232,12 +232,12 @@ Wheel modes:
 - `set`: sends the target as the `set_state` argument: the number for a span, the position in the list for a list.
   Only for wheels whose `set_state` takes that directly.
 
-The wheels are turned left to right until their characters show the target. A click that turns the wrong way swaps up
-and down; a wheel that doesn't move, passes its target or runs out of `max_steps` stops the command with *refused*.
-A jump across the end of the range (39 → 22) counts as one click. A value that can't be shown (too long, more
-decimals than the display, outside a wheel's range, a character without a key) stops the command before anything is
-sent. If the display already shows the value, the step does nothing. Keypad text is never cleared first: add a CLR
-press as its own step when needed.
+The app turns the wheels from left to right until the display shows your value. If a click turns a wheel the wrong
+way, the app flips up and down for that wheel. If a wheel doesn't move, goes past its target, or needs more than
+`max_steps` clicks, the command stops with *refused*. A jump over the end of the range (39 → 22) counts as one
+click. If the value can't be shown, nothing is sent. That happens when it is too long, has more decimals than the
+display, is outside a wheel's range, or has a character with no key. If the display already shows the value, the step
+does nothing. Keypads are never cleared first. Add a CLR press as its own step if you need it.
 
 In a voice line, a text slot stops at the next word of the phrase. When a number slot follows right after
 (`callsign {cs:text} {chan:number}`), the trailing number words go to that slot: "alpha bravo two five" → AB, 25.
