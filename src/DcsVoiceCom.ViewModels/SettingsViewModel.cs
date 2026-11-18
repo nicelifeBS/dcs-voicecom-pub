@@ -39,7 +39,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         Microphone = settings.Speech.Device ?? "";
         KeyHoldMs = settings.KeyHoldMs.ToString(CultureInfo.InvariantCulture);
         CuesEnabled = settings.Cues.Enabled;
-        SaveMissedAudio = settings.SaveMissedAudio;
+        SaveCommandAudio = settings.SaveCommandAudio;
         Threshold = settings.Threshold.ToString(CultureInfo.InvariantCulture);
         CriticalThreshold = settings.CriticalThreshold.ToString(CultureInfo.InvariantCulture);
         _allMicrophones = (microphones ?? []).ToList();
@@ -262,12 +262,12 @@ public sealed partial class SettingsViewModel : ObservableObject
         set => SetProperty(ref _cuesEnabled, value);
     }
 
-    private bool _saveMissedAudio;
+    private bool _saveCommandAudio;
 
-    public bool SaveMissedAudio
+    public bool SaveCommandAudio
     {
-        get => _saveMissedAudio;
-        set => SetProperty(ref _saveMissedAudio, value);
+        get => _saveCommandAudio;
+        set => SetProperty(ref _saveCommandAudio, value);
     }
 
     public string PttText => Describe(_ptt);
@@ -317,7 +317,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             },
             Ptt = _ptt,
             KeyHoldMs = hold,
-            SaveMissedAudio = SaveMissedAudio,
+            SaveCommandAudio = SaveCommandAudio,
             Threshold = threshold,
             CriticalThreshold = critical,
             Cues = _original.Cues with { Enabled = CuesEnabled },

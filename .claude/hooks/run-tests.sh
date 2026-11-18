@@ -37,7 +37,7 @@ if [ $ok = 1 ]; then
 fi
 
 {
-  echo "Tests are failing. Fix the implementation. Do not edit, skip, or delete tests."
+  echo "Tests are failing. Fix the implementation first. Change a test only when the test itself is wrong (e.g. the intended behavior changed), never just to make it pass. Never skip or delete tests to get green. If you change a test, tell the user which one and why."
   grep -E "error|Failed|failed|Assert|Expected|Actual" "$log" | head -60
   echo "--- last lines ---"
   tail -15 "$log"
