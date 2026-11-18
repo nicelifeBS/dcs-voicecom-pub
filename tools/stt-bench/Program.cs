@@ -38,11 +38,14 @@ var commandsFile = File.Exists(Path.Combine(clips, "commands.csv")) ? Path.Combi
 var commands = File.ReadAllLines(commandsFile).Skip(1).Select(l => l.Split(','))
     .Where(r => r.Length >= 3 && r[1] == "en")
     .ToDictionary(r => r[0], r => r[2]);
-var files = Directory.GetFiles(clips, "*.wav").Order(StringComparer.Ordinal)
-    .Where(f => commands.ContainsKey(Path.GetFileName(f).Split("__")[0])).ToList();
+// Subfolders count too (e.g. a recordings\ folder). A clip is <slug>__NN.wav with an English slug of commands.csv.
+var wavs = Directory.GetFiles(clips, "*.wav", SearchOption.AllDirectories).Order(StringComparer.Ordinal).ToList();
+var files = wavs.Where(f => commands.ContainsKey(Path.GetFileName(f).Split("__")[0])).ToList();
 if (files.Count == 0)
 {
     Console.Error.WriteLine($"no English clips of {commandsFile} in {clips}");
+    Console.Error.WriteLine($"  {wavs.Count} .wav files found{(wavs.Count == 0 ? "" : ", e.g. " + string.Join(", ", wavs.Take(5).Select(f => Path.GetRelativePath(clips, f))))}");
+    Console.Error.WriteLine($"  expected names like {commands.Keys.First()}__01.wav; slugs: {string.Join(", ", commands.Keys)}");
     return 1;
 }
 
