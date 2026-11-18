@@ -24,8 +24,6 @@ A `servers` line is a server name or address, ignoring case and outer spaces. `*
 ```json
 {
   "aircraft": "F-14",
-  "threshold": 85,
-  "critical_threshold": 95,
   "keywords": ["TACAN"],
   "commands": [
     {
@@ -39,12 +37,118 @@ A `servers` line is a server name or address, ignoring case and outer spaces. `*
 
 | Field | Meaning |
 |---|---|
-| `threshold` | Minimum match score (0-100) for any command |
-| `critical_threshold` | Minimum score for commands with `"critical": true`; between the two the command is refused |
 | `keywords` | Domain words passed to the recognizer; add only words it gets wrong |
 | `module_version` | Optional: the DCS-BIOS version the control IDs were checked against |
 | command `enabled` | `false` keeps the command but leaves its phrases out of matching |
 | command `seeded` | Marks commands generated from DCS-BIOS definitions that you have not edited or enabled yet (see [Seeding](#seeding)) |
+
+## Schema reference
+
+### File rules
+
+- UTF-8 JSON. Property names are `snake_case` and read case-insensitively. Enum values are `snake_case` strings
+  (`"wheels"`, `"no_match"`).
+- `//` comments and trailing commas are accepted when reading; the app writes plain, indented JSON without them.
+- Unknown properties are ignored. Match thresholds are app settings (Settings), not profile fields.
+- A missing optional property takes its default; properties with the default value or `null` may be left out.
+- A step is an object with a `"type"` (any position in the object). A missing or unknown `type` makes the file fail
+  to load.
+- Problems that do not stop loading (an unknown slot type, two commands with the same phrase, a button press with equal
+  `arg` and `release`) are listed in the app's log as `Profile problem: …`; the affected phrase is left out or the first command wins.
+
+### Profile (top level)
+
+| Field | Type | Default | Meaning |
+|---|---|---|---|
+| `aircraft` | string | `""` | DCS-BIOS `_ACFT_NAME`, `"common"` for `common.json`, `"server-…"` for a server profile |
+| `servers` | string[] | none | Server profiles only: names or addresses it turns on for (`*` = any text) |
+| `module_version` | string | none | DCS-BIOS version the control IDs were checked against |
+| `keywords` | string[] | `[]` | Extra words for the recognizer |
+| `commands` | Command[] | `[]` | The commands |
+
+### Command
+
+| Field | Type | Default | Meaning |
+|---|---|---|---|
+| `name` | string | `""` | Shown in the app and the log. Unique per profile: when merging, the first command with a name wins |
+| `description` | string | none | Free text for you |
+| `phrases` | string[] | `[]` | Voice lines, see [Phrases](#phrases) |
+| `steps` | Step[] | `[]` | Run in order when a phrase matches |
+| `critical` | bool | `false` | Needs the critical threshold from Settings |
+| `enabled` | bool | `true` | `false` leaves the phrases out of matching |
+| `seeded` | bool | `false` | Generated and not yet edited or enabled |
+
+### Steps
+
+Every step has `type`. Defaults are used when a field is left out.
+
+| `type` | Field | Type | Default |
+|---|---|---|---|
+| `bios` | `control` | string | `""` |
+| | `arg` | string | `""` |
+| | `skip_if_already` | bool | `false` |
+| | `press_ms` | int | none (plain line) |
+| | `release` | string | `"0"` |
+| `bios_until` | `control` | string | `""` |
+| | `output` | string | `control` |
+| | `target` | string | `""` (may be `{slot}`) |
+| | `scale` | number | `1` |
+| | `tolerance` | int | `0` |
+| | `inc`, `dec` | string | `"INC"`, `"DEC"` |
+| | `max_steps` | int | `60` |
+| | `delay_ms` | int | `80` |
+| `key` | `keys` | string | `""` |
+| | `hold_ms` | int | none (app setting) |
+| `wait` | `ms` | int | `0` |
+| `wait_for` | `until` | Condition | empty |
+| | `timeout_ms` | int | `10000` |
+| `if` | `condition` | Condition | empty |
+| | `then`, `else` | Step[] | `[]` |
+| `cue` | `cue` | `accepted` \| `no_match` \| `refused` | `accepted` |
+| `foreach_char` | `value` | string | `""` |
+| | `map` | object (string → string) | `{}` |
+| | `steps` | Step[] | `[]` |
+| `enter_value` | see below | | |
+
+**Condition**: `{ "output": "PLT_GEAR_LEVER", "op": "=", "value": "1" }`. `op` is `=`, `!=`, `<`, `<=`, `>`
+or `>=` (default `=`). Integers compare as numbers; strings only with `=` and `!=`.
+
+`{slot}` placeholders work in `arg`, `target`, `keys` and `value` fields. `{char}` is available inside
+`foreach_char`.
+
+### `enter_value` fields
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `value` | string | `""` | Required, e.g. `{freq}` |
+| `method` | `wheels` \| `keypad` | `wheels` | |
+| `display` | string | none | DCS-BIOS string output |
+| `sample` | string | none | Display text at set-up time |
+| `fields` | Field[] | none | Display layout (current format) |
+| `decimals` | int | none | Implied decimals |
+| `timeout_ms` | int | `1500` | Wait for the display |
+| `up`, `down` | string[] | `["2","1"]`, `["0","1"]` | One click, wheels |
+| `max_steps` | int | `40` | Most clicks per wheel |
+| `delay_ms` | int | `80` | Delay after each line sent |
+| `press` | string[] | `["1","0"]` | One key press, keypad |
+| `keys` | object (char → control) | none | Keypad; `""` skips the character |
+
+Field (in `fields`):
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `at` | int | `0` | First character, from 0 |
+| `len` | int | `1` | Characters |
+| `kind` | `wheel` \| `keypad` \| `read_only` | `wheel` | |
+| `control` | string | none | Wheel |
+| `range` | string | none | Wheel: `0-9`, `22-39` or `X,Y` |
+| `mode` | `click` \| `step` \| `set` | `click` | Wheel |
+| `flip` | bool | `false` | Wheel: swap up and down (set by test clicks) |
+| `align` | `left` \| `right` | `left` | Keypad |
+
+Older `enter_value` fields (still read, see [Older steps](#enter_value)): `min`, `max`, `wheels[]`
+(`control`, `place`, `width`, `read`, `read_scale`, `mode`, `flip`), `verify` (`output`, `timeout_ms`), `before`,
+`after`.
 
 ## Phrases
 
