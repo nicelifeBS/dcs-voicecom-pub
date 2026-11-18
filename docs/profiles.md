@@ -56,6 +56,16 @@ A `servers` line is a server name or address, ignoring case and outer spaces. `*
 - Problems that do not stop loading (an unknown slot type, two commands with the same phrase, a button press with equal
   `arg` and `release`) are listed in the app's log as `Profile problem: …`; the affected phrase is left out or the first command wins.
 
+```json
+{
+  // comments and trailing commas are fine
+  "aircraft": "F-14",
+  "commands": [
+    { "name": "Wait", "phrases": ["hold on"], "steps": [ { "type": "wait", "ms": 500, }, ] }
+  ]
+}
+```
+
 ### Profile (top level)
 
 | Field | Type | Default | Meaning |
@@ -65,6 +75,21 @@ A `servers` line is a server name or address, ignoring case and outer spaces. `*
 | `module_version` | string | none | DCS-BIOS version the control IDs were checked against |
 | `keywords` | string[] | `[]` | Extra words for the recognizer |
 | `commands` | Command[] | `[]` | The commands |
+
+```json
+{
+  "aircraft": "F-16C_50",
+  "module_version": "0.9.1",
+  "keywords": ["TACAN", "bullseye"],
+  "commands": [ ]
+}
+```
+
+A server profile adds `servers`:
+
+```json
+{ "aircraft": "server-ShadowReapers", "servers": ["ShadowReapers*"], "commands": [ ] }
+```
 
 ### Command
 
@@ -77,6 +102,17 @@ A `servers` line is a server name or address, ignoring case and outer spaces. `*
 | `critical` | bool | `false` | Needs the critical threshold from Settings |
 | `enabled` | bool | `true` | `false` leaves the phrases out of matching |
 | `seeded` | bool | `false` | Generated and not yet edited or enabled |
+
+```json
+{
+  "name": "Master arm on",
+  "description": "Checked on the F-16C",
+  "phrases": ["master arm on", "arm the jet"],
+  "critical": true,
+  "enabled": true,
+  "steps": [ { "type": "bios", "control": "MASTER_ARM_SW", "arg": "1" } ]
+}
+```
 
 ### Steps
 
@@ -110,10 +146,31 @@ Every step has `type`. Defaults are used when a field is left out.
 | | `steps` | Step[] | `[]` |
 | `enter_value` | see below | | |
 
+One small example per step type (control names are examples; use the exact DCS-BIOS names for your jet):
+
+```json
+{ "type": "bios", "control": "PLT_GEAR_LEVER", "arg": "0", "skip_if_already": true }
+{ "type": "bios", "control": "UFC_ENT", "arg": "1", "press_ms": 50, "release": "0" }
+{ "type": "bios_until", "control": "HSI_HDG_KNOB", "target": "{deg}", "scale": 182, "tolerance": 2, "max_steps": 80 }
+{ "type": "key", "keys": "RCtrl+RShift+G", "hold_ms": 100 }
+{ "type": "wait", "ms": 300 }
+{ "type": "wait_for", "until": { "output": "ENGINE_RPM", "op": ">=", "value": "60" }, "timeout_ms": 20000 }
+{ "type": "if", "condition": { "output": "GEAR_LEVER", "op": "=", "value": "1" },
+  "then": [ { "type": "cue", "cue": "accepted" } ],
+  "else": [ { "type": "bios", "control": "GEAR_LEVER", "arg": "1" } ] }
+{ "type": "cue", "cue": "refused" }
+{ "type": "foreach_char", "value": "{code}", "map": { ".": "DOT" },
+  "steps": [ { "type": "bios", "control": "UFC_{char}", "arg": "1", "press_ms": 50 } ] }
+```
+
 **Condition**: `{ "output": "PLT_GEAR_LEVER", "op": "=", "value": "1" }`. `op` is `=`, `!=`, `<`, `<=`, `>`
 or `>=` (default `=`). Integers compare as numbers; strings only with `=` and `!=`.
 
-`{slot}` placeholders work in `arg`, `target`, `keys` and `value` fields. `{char}` is available inside
+```json
+{ "output": "APU_STATE", "op": "!=", "value": "RUNNING" }
+```
+
+`{slot}` placeholders work in `control`, `arg`, `target`, `keys` and `value` fields. `{char}` is available inside
 `foreach_char`.
 
 ### `enter_value` fields
@@ -133,6 +190,14 @@ or `>=` (default `=`). Integers compare as numbers; strings only with `=` and `!
 | `press` | string[] | `["1","0"]` | One key press, keypad |
 | `keys` | object (char → control) | none | Keypad; `""` skips the character |
 
+Smallest `enter_value` (a keypad, no fields):
+
+```json
+{ "type": "enter_value", "value": "{text}", "method": "keypad", "keys": { "A": "CDU_A", "1": "CDU_1" } }
+```
+
+With a display and fields, see the full examples under [`enter_value`](#enter_value).
+
 Field (in `fields`):
 
 | Field | Type | Default | Notes |
@@ -145,6 +210,12 @@ Field (in `fields`):
 | `mode` | `click` \| `step` \| `set` | `click` | Wheel |
 | `flip` | bool | `false` | Wheel: swap up and down (set by test clicks) |
 | `align` | `left` \| `right` | `left` | Keypad |
+
+```json
+{ "at": 0, "len": 2, "kind": "wheel", "control": "PLT_UHF1_110_DIAL", "range": "22-39", "mode": "click" }
+{ "at": 3, "len": 1, "kind": "read_only" }
+{ "at": 1, "len": 22, "kind": "keypad", "align": "left" }
+```
 
 Older `enter_value` fields (still read, see [Older steps](#enter_value)): `min`, `max`, `wheels[]`
 (`control`, `place`, `width`, `read`, `read_scale`, `mode`, `flip`), `verify` (`output`, `timeout_ms`), `before`,
