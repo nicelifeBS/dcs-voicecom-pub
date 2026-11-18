@@ -303,9 +303,14 @@ internal sealed class StepRunner(
                 var text = Placeholders.Apply(say.Text, values).Trim();
                 trace.Add($"say \"{text}\"");
                 if (dryRun || text.Length == 0) return true;
-                if (speech is null || speechOptions?.Invoke() is not { } tts)
+                if (speech is null)
                 {
                     trace.Add("voice reply skipped (no voice)");
+                    return true;
+                }
+                if (speechOptions?.Invoke() is not { } tts)
+                {
+                    trace.Add("voice reply skipped (voice replies off, or no voice for the language)");
                     return true;
                 }
                 // Queued, not awaited: cockpit steps are never delayed by the speech.

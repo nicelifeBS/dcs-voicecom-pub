@@ -32,64 +32,40 @@ public class VoiceChooserTests
         new("en2", "George", "en-GB"),
     ];
 
-    [Fact]
-    public void Picks_the_saved_voice_when_installed() =>
-        Assert.Equal("en2", VoiceChooser.Pick(Voices, "en", "en2")?.Id);
+    [Theory]
+    [InlineData("en", "en2", "en2")]  // the saved voice, when installed
+    [InlineData("en", "gone", "en1")] // else the first voice for the language
+    [InlineData("de-DE", null, "de1")]
+    [InlineData("fr", null, null)]    // no voice for the language
+    public void Picks_the_saved_voice_else_the_first_for_the_language(string language, string? saved, string? expected) =>
+        Assert.Equal(expected, VoiceChooser.Pick(Voices, language, saved)?.Id);
 
     [Fact]
-    public void Falls_back_to_the_first_voice_for_the_language()
-    {
-        Assert.Equal("en1", VoiceChooser.Pick(Voices, "en", "gone")?.Id);
-        Assert.Equal("de1", VoiceChooser.Pick(Voices, "de-DE", null)?.Id);
-    }
+    public void Picks_nothing_without_voices() => Assert.Null(VoiceChooser.Pick([], "en", null));
 
-    [Fact]
-    public void Language_matches_whole_tags_only()
-    {
-        Assert.True(VoiceChooser.MatchesLanguage("en-US", "en"));
-        Assert.False(VoiceChooser.MatchesLanguage("end-XX", "en"));
-    }
-
-    [Fact]
-    public void Returns_null_without_a_match()
-    {
-        Assert.Null(VoiceChooser.Pick(Voices, "fr", null));
-        Assert.Null(VoiceChooser.Pick([], "en", null));
-    }
+    [Theory]
+    [InlineData("en-US", "en", true)]
+    [InlineData("en-US", "EN-us", true)]
+    [InlineData("end-XX", "en", false)]
+    public void Language_matches_whole_tags_only(string voiceLanguage, string language, bool expected) =>
+        Assert.Equal(expected, VoiceChooser.MatchesLanguage(voiceLanguage, language));
 }
 
 public class TtsSettingsTests
 {
     [Fact]
-    public void Settings_without_a_tts_block_get_the_defaults()
+    public void Tts_block_defaults_when_missing_and_round_trips()
     {
         var path = Path.Combine(Path.GetTempPath(), $"settings-{Guid.NewGuid():N}.json");
-        File.WriteAllText(path, """{ "language": "de" }""");
         try
         {
-            var tts = AppSettings.Load(path).Tts;
-            Assert.True(tts.Enabled);
-            Assert.Null(tts.Language);
-            Assert.Null(tts.Voice);
-            Assert.Null(tts.Device);
-            Assert.Equal(1.0, tts.Rate);
-            Assert.Equal(1.0, tts.Volume);
-        }
-        finally { File.Delete(path); }
-    }
+            File.WriteAllText(path, """{ "language": "de" }""");
+            Assert.Equal(new TtsSettings(), AppSettings.Load(path).Tts);
 
-    [Fact]
-    public void Tts_block_round_trips()
-    {
-        var path = Path.Combine(Path.GetTempPath(), $"settings-{Guid.NewGuid():N}.json");
-        try
-        {
-            new AppSettings { Tts = new TtsSettings { Enabled = false, Voice = "v", Rate = 1.5 } }.Save(path);
+            var saved = new TtsSettings { Enabled = false, Voice = "v", Rate = 1.5, Volume = 0.4, Device = "Headset" };
+            new AppSettings { Tts = saved }.Save(path);
             Assert.Contains("\"tts\"", File.ReadAllText(path));
-            var tts = AppSettings.Load(path).Tts;
-            Assert.False(tts.Enabled);
-            Assert.Equal("v", tts.Voice);
-            Assert.Equal(1.5, tts.Rate);
+            Assert.Equal(saved, AppSettings.Load(path).Tts);
         }
         finally { File.Delete(path); }
     }
@@ -99,7 +75,10 @@ public class SayStepTests
 {
     private static readonly VoiceInfo Voice = new("en1", "David", "en-US");
 
-    private static (CommandEngine Engine, FakeCockpit Cockpit) Create(ITextToSpeech? tts, Func<TtsOptions?>? options, params Step[] steps)
+    private static (CommandEngine Engine, FakeCockpit Cockpit) Create(ITextToSpeech? tts, Func<TtsOptions?>? options, params Step[] steps) =>
+        Create("test", tts, options, steps);
+
+    private static (CommandEngine Engine, FakeCockpit Cockpit) Create(string phrase, ITextToSpeech? tts, Func<TtsOptions?>? options, params Step[] steps)
     {
         var cockpit = new FakeCockpit();
         var engine = new CommandEngine(cockpit, cockpit, cockpit, cockpit,
@@ -108,7 +87,7 @@ public class SayStepTests
             Profile = CompiledProfile.Compile(new Profile
             {
                 Aircraft = "TestJet",
-                Commands = [new Command { Name = "Test", Phrases = ["test"], Steps = [.. steps] }],
+                Commands = [new Command { Name = "Test", Phrases = [phrase], Steps = [.. steps] }],
             }),
         };
         return (engine, cockpit);
@@ -117,7 +96,7 @@ public class SayStepTests
     private static RecognitionResult Heard() => new() { Phrase = "test", Score = 100, Raw = "test" };
 
     [Fact]
-    public void Say_step_round_trips_as_json()
+    public void Say_step_round_trips_as_json_and_reads_as_say_text()
     {
         var profile = new Profile
         {
@@ -129,11 +108,8 @@ public class SayStepTests
         Assert.Contains("\"text\": \"Gear up\"", json);
         var back = Assert.IsType<SayStep>(Assert.Single(ProfileSerializer.Deserialize(json).Commands[0].Steps));
         Assert.Equal("Gear up", back.Text);
+        Assert.Equal("say \"Gear up\"", DcsVoiceCom.Editing.StepText.Describe(back));
     }
-
-    [Fact]
-    public void Say_step_reads_in_the_editor_as_say_text() =>
-        Assert.Equal("say \"Gear up\"", DcsVoiceCom.Editing.StepText.Describe(new SayStep { Text = "Gear up" }));
 
     [Fact]
     public async Task Queues_the_text_and_does_not_wait_for_the_speech()
@@ -158,23 +134,8 @@ public class SayStepTests
     {
         var tts = new RecordingTextToSpeech(Voice);
         tts.Gate.SetResult();
-        var cockpit = new FakeCockpit();
-        var engine = new CommandEngine(cockpit, cockpit, cockpit, cockpit, null, tts, () => new TtsOptions("en1"))
-        {
-            Profile = CompiledProfile.Compile(new Profile
-            {
-                Aircraft = "TestJet",
-                Commands =
-                [
-                    new Command
-                    {
-                        Name = "Radio",
-                        Phrases = ["set radio to {channel:1-20}"],
-                        Steps = [new SayStep { Text = "Channel {channel+1}" }],
-                    },
-                ],
-            }),
-        };
+        var (engine, _) = Create("set radio to {channel:1-20}", tts, () => new TtsOptions("en1"),
+            new SayStep { Text = "Channel {channel+1}" });
 
         var outcome = await engine.HandleAsync(new RecognitionResult { Phrase = "set radio to {channel:1-20}", Score = 100, Slots = "five" });
 
@@ -183,9 +144,9 @@ public class SayStepTests
     }
 
     [Theory]
-    [InlineData(false)] // no TTS at all
-    [InlineData(true)]  // TTS present, but voice replies off / no voice: options are null
-    public async Task Skips_without_a_voice_and_still_completes(bool withEngine)
+    [InlineData(false, "voice reply skipped (no voice)")] // no TTS at all
+    [InlineData(true, "voice reply skipped (voice replies off, or no voice for the language)")] // TTS present, options null
+    public async Task Skips_without_a_voice_and_still_completes(bool withEngine, string expectedTrace)
     {
         var tts = withEngine ? new RecordingTextToSpeech() : null;
         var (engine, cockpit) = Create(tts, () => null, new SayStep { Text = "Gear up" }, new BiosStep { Control = "GEAR_LEVER", Arg = "0" });
@@ -193,7 +154,7 @@ public class SayStepTests
         var outcome = await engine.HandleAsync(Heard());
 
         Assert.Equal(OutcomeStatus.Completed, outcome.Status);
-        Assert.Contains("voice reply skipped (no voice)", outcome.Trace);
+        Assert.Contains(expectedTrace, outcome.Trace);
         Assert.Equal(["GEAR_LEVER 0"], cockpit.Sent);
         if (tts != null) Assert.Empty(tts.Spoken);
     }
@@ -226,6 +187,10 @@ public class SayStepTests
         engine.StopSpeech();
         Assert.Equal(1, tts.Stops);
     }
+
+    [Fact]
+    public void Slot_names_replace_placeholders_for_a_preview() =>
+        Assert.Equal("Radio set to freq, channel channel", Placeholders.ToSlotNames("Radio set to {freq}, channel {channel+1}"));
 
     private sealed class ThrowingTts : ITextToSpeech
     {
