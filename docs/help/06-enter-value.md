@@ -14,6 +14,11 @@ on a keypad. Add it with **+ Enter value**, then click **Edit**. DCS must be run
 3. Click characters on the display (Shift+click to widen) and make each part a *Wheel*, the *Keypad* field
    or *Read-only*.
 4. For a wheel, pick its control and range (`0-9`, `22-39`, `X,Y`). ▲ / ▼ send one test click.
+   For the keypad field, pick where the text sits: **Left**, **Right** or **Scratchpad**.
+
+**Scratchpad** is for a line with a label and a blinking cursor, like the AH-64D KU (`IDENT:ABC#`). Make the
+keypad field the whole line. The check finds the text after any label (`FREE:`, `UTM LAT/LONG:`), and long text
+may scroll off to the left: then the end of the text is enough.
 
 *Fill from radio…* finds a radio's wheels from their names.
 *Learn from display…* works it out from the live display instead (DCS must be running): tick the controls to try, press

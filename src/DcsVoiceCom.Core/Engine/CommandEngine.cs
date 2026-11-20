@@ -421,7 +421,7 @@ internal sealed class StepRunner(
         if (problem != null) throw new StepException(problem);
         if (e.Method == EnterMethod.Keypad) ThrowOnMissingKeys(e, text);
 
-        if (!dryRun && state.IsLive && state.TryReadString(display, out var before) && DisplayLayout.ShowsAll(before, targets))
+        if (!dryRun && state.IsLive && state.TryReadString(display, out var before) && DisplayLayout.ShowsAll(before, targets, scrolled: false))
         {
             trace.Add($"skip: {display} already shows {text}");
             return true;

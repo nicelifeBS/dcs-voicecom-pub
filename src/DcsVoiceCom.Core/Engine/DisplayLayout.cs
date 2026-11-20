@@ -54,8 +54,11 @@ public sealed class ValueRange
     public override string ToString() => Items is null ? $"{Low}-{High}" : string.Join(",", Items);
 }
 
-/// <summary>The text one field of the display must show.</summary>
-public sealed record FieldTarget(DisplayField Field, string Text);
+/// <summary>
+/// The text one field of the display must show. <see cref="Entry"/>: the whole typed text of a scratchpad field
+/// (<see cref="Text"/> is then only what fits, for previews).
+/// </summary>
+public sealed record FieldTarget(DisplayField Field, string Text, string? Entry = null);
 
 /// <summary>
 /// The pure parts of an <see cref="EnterValueStep"/> with <see cref="EnterValueStep.Fields"/>: where the value goes
@@ -99,10 +102,19 @@ public static class DisplayLayout
         return field.At < 0 ? "" : padded.Substring(field.At, field.Len);
     }
 
-    /// <summary>True when the field shows the target: wheels by position in their range ("09" = " 9"), keypad text ignoring case and padding.</summary>
-    public static bool Shows(string display, FieldTarget target)
+    /// <summary>The scratchpad cursor as DCS-BIOS exports it; it blinks, so it is there in some reads and not in others.</summary>
+    public const char Cursor = '#';
+
+    /// <summary>
+    /// True when the field shows the target: wheels by position in their range ("09" = " 9"), keypad text ignoring
+    /// case and padding, a scratchpad as in <see cref="ScratchpadShows"/>. <paramref name="scrolled"/>: a scratchpad
+    /// may show only the end of the text (false for "already shows", where an old entry could end the same way).
+    /// </summary>
+    public static bool Shows(string display, FieldTarget target, bool scrolled = true)
     {
         var shown = Read(display, target.Field);
+        if (target.Field.Kind == FieldKind.Keypad && target.Field.Align == TextAlign.Scratchpad)
+            return ScratchpadShows(shown, target.Entry ?? target.Text.Trim(), target.Field.Len, scrolled);
         if (target.Field.Kind == FieldKind.Wheel)
         {
             var range = RangeOf(target.Field);
@@ -112,7 +124,42 @@ public static class DisplayLayout
         return string.Equals(shown.Trim(), target.Text.Trim(), StringComparison.OrdinalIgnoreCase);
     }
 
-    public static bool ShowsAll(string display, IEnumerable<FieldTarget> targets) => targets.All(t => Shows(display, t));
+    public static bool ShowsAll(string display, IEnumerable<FieldTarget> targets, bool scrolled = true) =>
+        targets.All(t => Shows(display, t, scrolled));
+
+    /// <summary>
+    /// True when a scratchpad line shows <paramref name="text"/> after its label ("IDENT:ABC", "UTM LAT/LONG:123"),
+    /// ignoring case and a cursor at the end. A full line (<paramref name="width"/>, or one less for the cursor) that
+    /// has scrolled left counts when it ends with the end of the text, after the rest of a label or nothing:
+    /// "NT:ABCDEFGHIJKLMNOPQRS", "CDEFGHIJKLMNOPQRST". A cursor over a letter ("ABC#EF") matches that letter.
+    /// </summary>
+    public static bool ScratchpadShows(string line, string text, int width, bool scrolled = true)
+    {
+        var shown = line.TrimEnd();
+        if (shown.EndsWith(Cursor)) shown = shown[..^1].TrimEnd();
+        text = text.Trim();
+        if (EndsWith(shown, text) && IsLabel(shown[..^text.Length])) return true;
+        if (!scrolled || shown.Length < width - 1) return false;
+        for (var k = Math.Min(text.Length - 1, shown.Length); k >= 1; k--)
+        {
+            if (EndsWith(shown, text[^k..]) && IsLabel(shown[..^k])) return true;
+        }
+        return false;
+
+        // Nothing, or a label (or what is left of one) ending in ':'.
+        static bool IsLabel(string before) => before.TrimEnd() is var b && (b.Length == 0 || b[^1] == ':');
+
+        static bool EndsWith(string s, string end)
+        {
+            if (end.Length > s.Length) return false;
+            for (var i = 0; i < end.Length; i++)
+            {
+                var c = s[s.Length - end.Length + i];
+                if (c != Cursor && char.ToUpperInvariant(c) != char.ToUpperInvariant(end[i])) return false;
+            }
+            return true;
+        }
+    }
 
     /// <summary>
     /// What every wheel or keypad field must show for <paramref name="value"/>, or why the value can't be entered
@@ -131,6 +178,12 @@ public static class DisplayLayout
             {
                 problem = "enter_value has no keypad field";
                 return [];
+            }
+            if (field.Align == TextAlign.Scratchpad)
+            {
+                // Any length: the line scrolls left as more is typed. Text: what fits, for previews.
+                var visible = text.Length > field.Len ? text[^field.Len..] : text.PadRight(field.Len);
+                return [new FieldTarget(field, visible, text)];
             }
             if (text.Length > field.Len)
             {
