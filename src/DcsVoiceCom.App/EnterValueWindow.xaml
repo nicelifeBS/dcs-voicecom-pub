@@ -299,7 +299,9 @@
                           <StackPanel Orientation="Horizontal" Visibility="{Binding IsKeypad, Converter={StaticResource Visible}}">
                             <TextBlock Text="Text sits" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="0,0,8,0" />
                             <ToggleButton Content="Left" IsChecked="{Binding AlignLeft}" Padding="10,3" Margin="0,0,4,0" />
-                            <ToggleButton Content="Right" IsChecked="{Binding AlignRight}" Padding="10,3" Margin="0,0,14,0" />
+                            <ToggleButton Content="Right" IsChecked="{Binding AlignRight}" Padding="10,3" Margin="0,0,4,0" />
+                            <ToggleButton Content="Scratchpad" IsChecked="{Binding AlignScratchpad}" Padding="10,3" Margin="0,0,14,0"
+                                          ToolTip="A line with a label and a blinking cursor, like the AH-64D KU (IDENT:ABC#). Make the field the whole line. Long text may scroll off to the left." />
                             <TextBlock Text="Never cleared automatically. Add a CLR press in the main window if needed." Style="{StaticResource MutedText}" VerticalAlignment="Center" />
                           </StackPanel>
                           <!-- Read-only -->
