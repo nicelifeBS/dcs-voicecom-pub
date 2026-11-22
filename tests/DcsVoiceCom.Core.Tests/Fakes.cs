@@ -18,6 +18,9 @@ internal sealed class FakeCockpit : IBiosSender, IKeySender, IStateReader, ICueP
     public List<Cue> Cues { get; } = [];
     public bool IsLive { get; set; } = true;
 
+    /// <summary>Process name of the active window, checked like the real key sender does.</summary>
+    public string? ActiveProcess { get; set; } = "DCS";
+
     /// <summary>Applies a sent line to the state, e.g. set_state or INC/DEC.</summary>
     public Action<FakeCockpit, string, string>? OnSend { get; set; } = (c, id, arg) =>
     {
@@ -36,6 +39,7 @@ internal sealed class FakeCockpit : IBiosSender, IKeySender, IStateReader, ICueP
 
     public Task SendAsync(KeyChord chord, TimeSpan hold, CancellationToken cancellationToken = default)
     {
+        DcsWindow.EnsureActive(ActiveProcess, chord);
         lock (_lock) Keys.Add(chord.ToString());
         return Task.CompletedTask;
     }
