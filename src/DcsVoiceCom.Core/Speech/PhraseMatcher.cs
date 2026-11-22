@@ -288,7 +288,8 @@ internal sealed record MatchTemplate(string Phrase, string[] Prefix, string[] Su
     /// <summary>
     /// The same phrase with its literal numbers written the other way, so a number counts however the recognizer
     /// writes it: "jester range 50" also matches "jester range fifty" (one twin per language), and "gear one" also
-    /// matches "gear 1". Slots are left alone; they parse spoken numbers themselves.
+    /// matches "gear 1". Numbers of two or more digits also get a twin read digit by digit ("radio 251 decimal 000"
+    /// matches "radio two five one decimal zero zero zero"). Slots are left alone; they parse spoken numbers themselves.
     /// </summary>
     public IEnumerable<MatchTemplate> NumberTwins()
     {
@@ -301,6 +302,27 @@ internal sealed record MatchTemplate(string Phrase, string[] Prefix, string[] Su
                 string[] Spelled(string[] words) => words.SelectMany(w => NumberWords.Spell(w) is { Count: > 0 } s
                     ? s[Math.Min(lang, s.Count - 1)].Split(' ') : [w]).ToArray();
                 if (Twin(Spelled(Prefix), Spelled(Suffix)) is { } twin && seen.Add(twin.LiteralText)) yield return twin;
+            }
+        }
+        // Read digit by digit: any of the phrase's multi-digit numbers (up to three of them), the others left as digits
+        // or spelled out, as a recognizer mixes styles ("two hundred and fifty one decimal zero zero zero").
+        var count = Prefix.Concat(Suffix).Count(w => NumberWords.EnglishDigits(w) is not null);
+        if (count is > 0 and <= 3)
+        {
+            for (var spellOthers = 0; spellOthers < 2; spellOthers++)
+            {
+                for (var mask = 1; mask < 1 << count; mask++)
+                {
+                    var index = 0;
+                    string[] Read(string[] words) => words.SelectMany(w =>
+                    {
+                        if (NumberWords.EnglishDigits(w) is not { } byDigit) return [w];
+                        if ((mask >> index++ & 1) == 1) return byDigit.Split(' ');
+                        return spellOthers == 1 && NumberWords.Spell(w) is { Count: > 0 } spelled ? spelled[0].Split(' ') : [w];
+                    }).ToArray();
+                    var prefix = Read(Prefix);
+                    if (Twin(prefix, Read(Suffix)) is { } twin && seen.Add(twin.LiteralText)) yield return twin;
+                }
             }
         }
         if (Twin(AsDigits(Prefix), AsDigits(Suffix)) is { } digits && seen.Add(digits.LiteralText))
