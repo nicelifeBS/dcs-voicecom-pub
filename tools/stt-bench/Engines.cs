@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using DcsVoiceCom.Phrases;
 using DcsVoiceCom.Speech;
 using SherpaOnnx;
 using Whisper.net;
@@ -108,8 +109,8 @@ internal sealed class ZipformerRecognizer : ISpeechToText, IDisposable
 
     private void Build(IReadOnlyList<string> keywords)
     {
-        // GigaSpeech's tokens are upper case; hotwords must be too.
-        var words = keywords.Select(k => k.Trim().ToUpperInvariant()).Where(k => k.Length > 0).Distinct().ToList();
+        // GigaSpeech's tokens are upper case and have no digits: hotwords are upper case, with numbers spelled out.
+        var words = keywords.SelectMany(Hotwords.Forms).Select(k => k.ToUpperInvariant()).Distinct().ToList();
         var key = string.Join('\n', words);
         if (_recognizer is not null && key == _keywordKey) return;
 
@@ -141,6 +142,39 @@ internal sealed class ZipformerRecognizer : ISpeechToText, IDisposable
     }
 
     public void Dispose() => _recognizer?.Dispose();
+}
+
+/// <summary>
+/// Spells the numbers in a keyword the ways they are spoken, since a model without digits cannot be biased towards
+/// "251": "two hundred fifty one", "two five one" and, for three digits, "two fifty one". "000" gives "zero zero
+/// zero". A keyword with several numbers gives every combination, up to <see cref="MaxForms"/>.
+/// </summary>
+internal static class Hotwords
+{
+    private const int MaxForms = 8;
+
+    public static IEnumerable<string> Forms(string keyword)
+    {
+        var forms = new List<string> { "" };
+        foreach (var word in keyword.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var spoken = word.All(char.IsAsciiDigit) ? Number(word) : [word];
+            forms = forms.SelectMany(f => spoken.Select(w => f.Length == 0 ? w : f + " " + w)).Take(MaxForms).ToList();
+        }
+        return forms.Where(f => f.Length > 0);
+    }
+
+    private static List<string> Number(string digits)
+    {
+        var forms = new List<string>();
+        var n = int.Parse(digits, System.Globalization.CultureInfo.InvariantCulture);
+        if (digits.Length <= 4 && (digits.Length == 1 || digits[0] != '0')) forms.Add(NumberWords.English(n).Replace(" hundred ", " hundred and ")); // keep "and": "two hundred and fifty one"
+        if (digits.Length <= 4 && (digits.Length == 1 || digits[0] != '0')) forms.Add(NumberWords.English(n));
+        if (digits.Length > 1) forms.Add(string.Join(' ', digits.Select(d => NumberWords.English(d - '0'))));
+        if (digits.Length == 3 && digits[0] != '0' && digits[1] != '0')
+            forms.Add(NumberWords.English(digits[0] - '0') + " " + NumberWords.English(int.Parse(digits[1..], System.Globalization.CultureInfo.InvariantCulture)));
+        return forms.Distinct().ToList();
+    }
 }
 
 /// <summary>Whisper through whisper.cpp (Whisper.net), biased with the profile words as the initial prompt.</summary>
