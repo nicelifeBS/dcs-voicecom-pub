@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using DcsVoiceCom.Phrases;
+using DcsVoiceCom.Profiles;
 using DcsVoiceCom.Speech;
 using SttBench;
 
@@ -16,6 +17,7 @@ if (options is null)
     Console.Error.WriteLine("""
         usage: stt-bench --engine whistle|zipformer|whisper [--real | --clips <folder>] [--threads N] [--boost X]
                          [--no-keywords] [--models <cache folder>] [--verbose]
+          --profile      profile JSON for a clip set with clips.csv (file,lang,command,said)
           --real         your real-voice clips: DCS_REAL_CLIPS, else <repo>/private-clips
           --clips        folder of <slug>__NN.wav with commands.csv (default: the repo's synthetic clips;
                          a folder without commands.csv uses the repo's one, e.g. DCS_REAL_CLIPS)
@@ -33,21 +35,59 @@ if (!Directory.Exists(clips))
     Console.Error.WriteLine($"no clip folder {clips}");
     return 1;
 }
-var commandsFile = File.Exists(Path.Combine(clips, "commands.csv")) ? Path.Combine(clips, "commands.csv")
-    : Path.Combine(repo, "tests", "DcsVoiceCom.Core.Tests", "data", "clips", "commands.csv");
-var commands = File.ReadAllLines(commandsFile).Skip(1).Select(l => l.Split(','))
-    .Where(r => r.Length >= 3 && r[1] == "en")
-    .ToDictionary(r => r[0], r => r[2]);
-// Subfolders count too (e.g. a recordings\ folder). A clip is <slug>__NN.wav with an English slug of commands.csv.
+// Two kinds of clip set:
+// - clips.csv (file,lang,command,said) plus --profile: each clip names the profile command it should run, and the
+//   whole profile is loaded, as in the app, so its other commands can be confused with it.
+// - commands.csv (slug,lang,phrase) and <slug>__NN.wav: the profile is just those phrases.
+// Subfolders count too (e.g. a recordings\ folder).
 var wavs = Directory.GetFiles(clips, "*.wav", SearchOption.AllDirectories).Order(StringComparer.Ordinal).ToList();
-var files = wavs.Where(f => commands.ContainsKey(Path.GetFileName(f).Split("__")[0])).ToList();
-if (files.Count == 0)
+var labels = Path.Combine(clips, "clips.csv");
+List<(string File, string Command, string Said)> tests;
+List<(string Phrase, string Command)> phrases;
+IReadOnlyList<string> profileKeywords = [];
+if (File.Exists(labels))
 {
-    Console.Error.WriteLine($"no English clips of {commandsFile} in {clips}");
-    Console.Error.WriteLine($"  {wavs.Count} .wav files found{(wavs.Count == 0 ? "" : ", e.g. " + string.Join(", ", wavs.Take(5).Select(f => Path.GetRelativePath(clips, f))))}");
-    Console.Error.WriteLine($"  expected names like {commands.Keys.First()}__01.wav; slugs: {string.Join(", ", commands.Keys)}");
-    return 1;
+    if (options.Profile is null)
+    {
+        Console.Error.WriteLine($"{labels} names profile commands: pass --profile <F-14.json>");
+        return 1;
+    }
+    var profileFile = Path.GetFullPath(options.Profile);
+    var profile = new ProfileStore(Path.GetDirectoryName(profileFile)!).LoadMerged(Path.GetFileNameWithoutExtension(profileFile))
+        ?? throw new FileNotFoundException(profileFile);
+    var compiled = CompiledProfile.Compile(profile);
+    phrases = compiled.Entries.ToList();
+    profileKeywords = compiled.Keywords;
+    var known = phrases.Select(p => p.Command).ToHashSet();
+    var byName = wavs.ToDictionary(f => Path.GetFileName(f), StringComparer.OrdinalIgnoreCase);
+    tests = [];
+    foreach (var row in File.ReadAllLines(labels).Skip(1).Select(l => l.Split(',')).Where(r => r.Length >= 4 && r[1] == "en"))
+    {
+        if (!known.Contains(row[2])) Console.Error.WriteLine($"warning: {row[0]}: no command \"{row[2]}\" in the profile");
+        else if (!byName.TryGetValue(row[0], out var file)) Console.Error.WriteLine($"warning: {row[0]} not found");
+        else tests.Add((file, row[2], row[3]));
+    }
 }
+else
+{
+    var commandsFile = File.Exists(Path.Combine(clips, "commands.csv")) ? Path.Combine(clips, "commands.csv")
+        : Path.Combine(repo, "tests", "DcsVoiceCom.Core.Tests", "data", "clips", "commands.csv");
+    var commands = File.ReadAllLines(commandsFile).Skip(1).Select(l => l.Split(','))
+        .Where(r => r.Length >= 3 && r[1] == "en")
+        .ToDictionary(r => r[0], r => r[2]);
+    phrases = commands.Values.Select(p => (PhraseText.Normalize(p), p)).ToList();
+    tests = [];
+    foreach (var f in wavs)
+        if (commands.TryGetValue(Path.GetFileName(f).Split("__")[0], out var phrase)) tests.Add((f, phrase, phrase));
+    if (tests.Count == 0)
+    {
+        Console.Error.WriteLine($"no English clips of {commandsFile} in {clips}");
+        Console.Error.WriteLine($"  {wavs.Count} .wav files found{(wavs.Count == 0 ? "" : ", e.g. " + string.Join(", ", wavs.Take(5).Select(f => Path.GetRelativePath(clips, f))))}");
+        Console.Error.WriteLine($"  expected names like {commands.Keys.First()}__01.wav; slugs: {string.Join(", ", commands.Keys)}");
+        return 1;
+    }
+}
+var commandOf = phrases.GroupBy(p => p.Phrase).ToDictionary(g => g.Key, g => g.First().Command);
 
 var cache = options.Models ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DcsVoiceCom", "bench-models");
 using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
@@ -69,15 +109,14 @@ var loadMs = load.ElapsedMilliseconds;
 
 var microphone = new ClipMicrophone();
 using var speech = new SpeechService(engine, microphone, "en", log, phraseKeywords: options.Keywords);
-speech.LoadPhrases("en", commands.Values.Select(p => (PhraseText.Normalize(p), p)), []);
+speech.LoadPhrases("en", phrases, profileKeywords);
 
 var right = 0;
 var missed = new List<string>();
 var wrong = new List<string>();
 var latencies = new List<double>();
-foreach (var clip in files)
+foreach (var (clip, expected, said) in tests)
 {
-    var said = commands[Path.GetFileName(clip).Split("__")[0]];
     microphone.Clip = WavFile.ReadMono(clip, out _);
     speech.Start();
     var result = speech.Stop();
@@ -85,7 +124,7 @@ foreach (var clip in files)
     var line = $"{Path.GetFileName(clip)}: \"{said}\" heard \"{result.Raw}\" → {result.Phrase ?? "-"} ({result.Score}) {result.Reject ?? result.Error}";
     if (options.Verbose) Console.WriteLine("  " + line);
     if (result.Error is not null || result.Reject is not null || result.Score < 85) missed.Add(line);
-    else if (result.Phrase == PhraseText.Normalize(said)) right++;
+    else if (result.Phrase is { } heard && commandOf.GetValueOrDefault(heard) == expected) right++;
     else wrong.Add(line);
 }
 
@@ -95,7 +134,7 @@ latencies.Sort();
 var mb = (long bytes) => (bytes / 1048576.0).ToString("0", CultureInfo.InvariantCulture);
 Console.WriteLine($"""
     engine      {options.Engine}{(options.Keywords ? "" : " (no keywords)")}, {options.Threads} threads
-    clips       {files.Count} from {clips}
+    clips       {tests.Count} from {clips}
     right       {right}
     wrong       {wrong.Count}
     missed      {missed.Count}
@@ -131,7 +170,7 @@ internal sealed class ClipMicrophone : IMicrophone
     public void Dispose() { }
 }
 
-internal sealed record Options(string Engine, string? Clips, int Threads, float Boost, bool Keywords, string? Models, bool Verbose, bool Real)
+internal sealed record Options(string Engine, string? Clips, int Threads, float Boost, bool Keywords, string? Models, bool Verbose, bool Real, string? Profile)
 {
     public static Options? Parse(string[] args)
     {
@@ -141,6 +180,7 @@ internal sealed record Options(string Engine, string? Clips, int Threads, float 
         var keywords = true;
         var verbose = false;
         var real = false;
+        string? profile = null;
         for (var i = 0; i < args.Length; i++)
         {
             string Next() => i + 1 < args.Length ? args[++i] : throw new ArgumentException($"{args[i]} needs a value");
@@ -154,9 +194,10 @@ internal sealed record Options(string Engine, string? Clips, int Threads, float 
                 case "--models": models = Next(); break;
                 case "--verbose": verbose = true; break;
                 case "--real": real = true; break;
+                case "--profile": profile = Next(); break;
                 default: return null;
             }
         }
-        return engine is "whistle" or "zipformer" or "whisper" ? new Options(engine, clips, threads, boost, keywords, models, verbose, real) : null;
+        return engine is "whistle" or "zipformer" or "whisper" ? new Options(engine, clips, threads, boost, keywords, models, verbose, real, profile) : null;
     }
 }

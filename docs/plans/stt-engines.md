@@ -76,10 +76,27 @@ should build it when the profile loads.
 Whistle missed "AWACS bogey dope" ("A wax bowie dope") and "gear up" ("Kirapa"). **A tie, 18 to 18**, with
 different misses; Whistle is ~3× faster and uses ~40% of the RAM. 20 clips are too few to call it.
 
+### Real voice, F-14 Jester set (28 clips, full F-14 profile, 47 commands)
+`dcs-voicecom-voicelines/recordings/take_02` with `clips.csv` (file, lang, command, said) and the user's F-14
+profile (`--profile`), so every other command in the profile can be confused with the right one. 2 threads.
+
+| Engine | Right | Wrong | Missed | Peak RAM | Latency mean / p95 |
+|---|---|---|---|---|---|
+| Whistle | 20 | 0 | 8 | 107 MB | 64 / 105 ms |
+| Zipformer, boost 1.5 | **26** | 0 | 2 | ~220 MB | |
+| Zipformer, boost 4 | 25 | 0 | 3 | 221 MB | 83 / 68 ms |
+
+Whistle's 20 is exactly what the app did when the clips were recorded, so the bench matches the app. Whistle
+hears "Jester" as "Just" in almost every clip; Zipformer hears "jester". Zipformer's misses at boost 1.5: "jester
+go active" heard "just a active" (Whistle heard "Just active" too) and "jester rws" heard "jester r ws" (too close
+to TWS). Boost 4 also turned "jester radar on" into "jester right". **Boost 1.5 is the better setting here.**
+
 ## Next steps
 1. **More real voice:** record 3–5 takes per command (`tools/eval/record.py`), plus some radio noise and a few
    non-commands, and rerun both. 20 clips gave a tie.
-2. **Spell numbers as words for hotwords** (`NumberWords`) and rerun Zipformer: its "251" miss should go.
+2. ~~Spell numbers as words for hotwords~~ done: "251" now also gives "two fifty one", "two five one" and
+   "two hundred (and) fifty one". On the synthetic set Zipformer now hears "two hundred and fifty one decimal zero
+   zero zero"; the matcher still wants "000" (step 4).
 3. If Zipformer wins, build it in (below). If not, round 2: Moonshine v2 Small and Vosk + grammar.
 4. Either way: let the matcher accept "zero" for "000" style digits (separate change).
 
