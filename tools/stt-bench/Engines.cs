@@ -1,8 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
-using DcsVoiceCom.Phrases;
 using DcsVoiceCom.Speech;
-using SherpaOnnx;
 using Whisper.net;
 
 namespace SttBench;
@@ -10,18 +8,6 @@ namespace SttBench;
 /// <summary>The engines under test, each as <see cref="ISpeechToText"/>, the seam the app already uses.</summary>
 internal static class Engines
 {
-    // k2-fsa/sherpa-onnx-zipformer-gigaspeech-2023-12-12 (Apache-2.0): offline Zipformer transducer, int8,
-    // trained on GigaSpeech (10k h of podcasts and YouTube, English).
-    private const string ZipformerUrl = "https://huggingface.co/k2-fsa/sherpa-onnx-zipformer-gigaspeech-2023-12-12/resolve/main/";
-    private static readonly (string Name, string Sha256)[] ZipformerFiles =
-    [
-        ("encoder-epoch-30-avg-1.int8.onnx", "62be226a7b28a38e82cc522184ee01c46751df06bdd070dc9e1572a836ebbe78"),
-        ("decoder-epoch-30-avg-1.int8.onnx", "2b0580feb757696fa929922670b7126aaee609630349a1809fd5a2aee926d56e"),
-        ("joiner-epoch-30-avg-1.int8.onnx", "80160e45cca71dd52f6b0a6d3d12be18126f5308b2d4ba03f001300fea377c64"),
-        ("tokens.txt", "0ef7d736bf4de3ef947292e4b119ef13f6808cd5f3aec225a843a7135ac1c2ce"),
-        ("bpe.model", "c8a2a0129c4ab8e463164c142f82d25649661b122c8cd0b7aab5c9e80b90ad24"),
-    ];
-
     // ggerganov/whisper.cpp (MIT): Whisper small.en, 5-bit quantised.
     private const string WhisperUrl = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/";
     private static readonly (string Name, string Sha256) WhisperFile =
@@ -37,7 +23,7 @@ internal static class Engines
     public static async Task<ISpeechToText> ZipformerAsync(string cache, HttpClient http, int threads, float boost, Action<string> log)
     {
         var folder = Path.Combine(cache, "zipformer-gigaspeech");
-        foreach (var (name, sha) in ZipformerFiles) await FetchAsync(http, ZipformerUrl + name, folder, name, sha, log);
+        if (!ZipformerModel.IsComplete(folder)) await ZipformerModel.DownloadAsync(folder, http, m => Console.WriteLine(m));
         return new ZipformerRecognizer(folder, threads, boost, log);
     }
 
@@ -73,107 +59,6 @@ internal static class Engines
     {
         using var file = File.OpenRead(path);
         return Convert.ToHexString(SHA256.HashData(file)).ToLowerInvariant();
-    }
-}
-
-/// <summary>
-/// Zipformer transducer through sherpa-onnx, biased towards the profile words with hotwords (modified beam search
-/// plus an Aho-Corasick graph of the words). sherpa-onnx takes hotwords per recognizer, so the recognizer is
-/// rebuilt when the word list changes (once per profile load).
-/// </summary>
-internal sealed class ZipformerRecognizer : ISpeechToText, IDisposable
-{
-    private readonly string _folder;
-    private readonly int _threads;
-    private readonly float _boost;
-    private readonly Action<string> _log;
-    private OfflineRecognizer? _recognizer;
-    private string? _keywordKey;
-
-    public ZipformerRecognizer(string folder, int threads, float boost, Action<string> log)
-    {
-        (_folder, _threads, _boost, _log) = (folder, threads, boost, log);
-        BpeVocab.Write(Path.Combine(folder, "bpe.model"), Path.Combine(folder, "bpe.vocab"));
-        Build([]);
-    }
-
-    public string Transcribe(float[] samples, string language, IReadOnlyList<string> keywords)
-    {
-        if (samples.Length < WhistleRecognizer.MinAudioSeconds * WhistleModel.SampleRate) return "";
-        Build(keywords);
-        using var stream = _recognizer!.CreateStream();
-        stream.AcceptWaveform(WhistleModel.SampleRate, samples);
-        _recognizer.Decode(stream);
-        return stream.Result.Text.Trim().ToLowerInvariant();
-    }
-
-    private void Build(IReadOnlyList<string> keywords)
-    {
-        // GigaSpeech's tokens are upper case and have no digits: hotwords are upper case, with numbers spelled out.
-        var words = keywords.SelectMany(Hotwords.Forms).Select(k => k.ToUpperInvariant()).Distinct().ToList();
-        var key = string.Join('\n', words);
-        if (_recognizer is not null && key == _keywordKey) return;
-
-        var config = new OfflineRecognizerConfig();
-        config.FeatConfig.SampleRate = WhistleModel.SampleRate;
-        config.FeatConfig.FeatureDim = 80;
-        config.ModelConfig.Transducer.Encoder = Path.Combine(_folder, "encoder-epoch-30-avg-1.int8.onnx");
-        config.ModelConfig.Transducer.Decoder = Path.Combine(_folder, "decoder-epoch-30-avg-1.int8.onnx");
-        config.ModelConfig.Transducer.Joiner = Path.Combine(_folder, "joiner-epoch-30-avg-1.int8.onnx");
-        config.ModelConfig.Tokens = Path.Combine(_folder, "tokens.txt");
-        config.ModelConfig.NumThreads = _threads;
-        config.ModelConfig.Provider = "cpu";
-        config.ModelConfig.ModelType = "transducer";
-        config.DecodingMethod = "modified_beam_search";
-        config.MaxActivePaths = 4;
-        if (words.Count > 0)
-        {
-            var file = Path.Combine(_folder, "hotwords.txt");
-            File.WriteAllLines(file, words);
-            config.ModelConfig.ModelingUnit = "bpe";
-            config.ModelConfig.BpeVocab = Path.Combine(_folder, "bpe.vocab");
-            config.HotwordsFile = file;
-            config.HotwordsScore = _boost;
-        }
-        _recognizer?.Dispose();
-        _recognizer = new OfflineRecognizer(config);
-        _keywordKey = key;
-        _log($"zipformer: {words.Count} hotwords, boost {_boost}");
-    }
-
-    public void Dispose() => _recognizer?.Dispose();
-}
-
-/// <summary>
-/// Spells the numbers in a keyword the ways they are spoken, since a model without digits cannot be biased towards
-/// "251": "two hundred fifty one", "two five one" and, for three digits, "two fifty one". "000" gives "zero zero
-/// zero". A keyword with several numbers gives every combination, up to <see cref="MaxForms"/>.
-/// </summary>
-internal static class Hotwords
-{
-    private const int MaxForms = 8;
-
-    public static IEnumerable<string> Forms(string keyword)
-    {
-        var forms = new List<string> { "" };
-        foreach (var word in keyword.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var spoken = word.All(char.IsAsciiDigit) ? Number(word) : [word];
-            forms = forms.SelectMany(f => spoken.Select(w => f.Length == 0 ? w : f + " " + w)).Take(MaxForms).ToList();
-        }
-        return forms.Where(f => f.Length > 0);
-    }
-
-    private static List<string> Number(string digits)
-    {
-        var forms = new List<string>();
-        var n = int.Parse(digits, System.Globalization.CultureInfo.InvariantCulture);
-        if (digits.Length <= 4 && (digits.Length == 1 || digits[0] != '0')) forms.Add(NumberWords.English(n).Replace(" hundred ", " hundred and ")); // keep "and": "two hundred and fifty one"
-        if (digits.Length <= 4 && (digits.Length == 1 || digits[0] != '0')) forms.Add(NumberWords.English(n));
-        if (digits.Length > 1) forms.Add(string.Join(' ', digits.Select(d => NumberWords.English(d - '0'))));
-        if (digits.Length == 3 && digits[0] != '0' && digits[1] != '0')
-            forms.Add(NumberWords.English(digits[0] - '0') + " " + NumberWords.English(int.Parse(digits[1..], System.Globalization.CultureInfo.InvariantCulture)));
-        return forms.Distinct().ToList();
     }
 }
 
@@ -226,90 +111,6 @@ internal sealed class WhisperRecognizer(string modelPath, int threads) : ISpeech
     {
         _processor?.Dispose();
         _factory.Dispose();
-    }
-}
-
-/// <summary>
-/// Writes sentencepiece's bpe.vocab ("piece\tscore" per line) from bpe.model, which sherpa-onnx needs to turn
-/// hotwords into tokens. bpe.model is a protobuf ModelProto: field 1 repeats SentencePiece {1: piece, 2: score}.
-/// </summary>
-internal static class BpeVocab
-{
-    public static void Write(string model, string vocab)
-    {
-        if (File.Exists(vocab)) return;
-        var data = File.ReadAllBytes(model);
-        var lines = new List<string>();
-        var pos = 0;
-        while (pos < data.Length)
-        {
-            var (field, wire) = Tag(data, ref pos);
-            if (field == 1 && wire == 2)
-            {
-                var length = (int)Varint(data, ref pos);
-                lines.Add(Piece(data.AsSpan(pos, length)));
-                pos += length;
-            }
-            else Skip(data, ref pos, wire);
-        }
-        File.WriteAllLines(vocab, lines);
-    }
-
-    private static string Piece(ReadOnlySpan<byte> message)
-    {
-        string piece = "";
-        float score = 0;
-        var data = message.ToArray();
-        var pos = 0;
-        while (pos < data.Length)
-        {
-            var (field, wire) = Tag(data, ref pos);
-            if (field == 1 && wire == 2)
-            {
-                var length = (int)Varint(data, ref pos);
-                piece = Encoding.UTF8.GetString(data, pos, length);
-                pos += length;
-            }
-            else if (field == 2 && wire == 5)
-            {
-                score = BitConverter.ToSingle(data, pos);
-                pos += 4;
-            }
-            else Skip(data, ref pos, wire);
-        }
-        return $"{piece}\t{score.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
-    }
-
-    private static (int Field, int Wire) Tag(byte[] data, ref int pos)
-    {
-        var tag = Varint(data, ref pos);
-        return ((int)(tag >> 3), (int)(tag & 7));
-    }
-
-    private static ulong Varint(byte[] data, ref int pos)
-    {
-        ulong value = 0;
-        for (var shift = 0; ; shift += 7)
-        {
-            var b = data[pos++];
-            value |= (ulong)(b & 0x7f) << shift;
-            if (b < 0x80) return value;
-        }
-    }
-
-    private static void Skip(byte[] data, ref int pos, int wire)
-    {
-        switch (wire)
-        {
-            case 0: Varint(data, ref pos); break;
-            case 1: pos += 8; break;
-            case 2:
-                var length = (int)Varint(data, ref pos); // read first: "pos += Varint(ref pos)" would add to the old pos
-                pos += length;
-                break;
-            case 5: pos += 4; break;
-            default: throw new InvalidDataException($"bad protobuf wire type {wire}");
-        }
     }
 }
 

@@ -6,6 +6,13 @@ namespace DcsVoiceCom.Speech;
 public sealed record SpeechSettings
 {
     /// <summary>
+    /// The speech engine: <see cref="SpeechEngines.Whistle"/> (default, 7 languages) or <see cref="SpeechEngines.Zipformer"/>
+    /// (English only, downloaded on first use). If the chosen one can't load, Whistle runs instead.
+    /// </summary>
+    public string Engine { get; init; } = SpeechEngines.Whistle;
+    /// <summary>Zipformer only: how strongly it leans towards the profile's words.</summary>
+    public float HotwordBoost { get; init; } = ZipformerRecognizer.DefaultBoost;
+    /// <summary>
     /// Folder holding the Whistle model in the cactus-needle cache layout (whistle\..., v3\...). Empty: found by
     /// <see cref="ModelLocator.ResolveDirectory"/>, and downloaded to <see cref="ModelLocator.DefaultDirectory"/> if missing.
     /// </summary>
@@ -88,22 +95,20 @@ public sealed class SpeechService : IDisposable
     }
 
     /// <summary>
-    /// Loads Whistle and opens the microphone. Failures are logged and leave speech off; the service is still returned,
+    /// Loads the chosen speech engine (Whistle, or Zipformer with Whistle as the fallback) and opens the microphone. Failures are logged and leave speech off; the service is still returned,
     /// so typed matching works and the reason shows on push-to-talk.
     /// </summary>
     public static async Task<SpeechService> OpenAsync(SpeechSettings settings, string language, IMicrophoneProvider? microphones,
         Action<string> log, HttpClient? http = null, CancellationToken ct = default)
     {
-        WhistleRecognizer? recognizer = null;
+        ISpeechToText? recognizer = null;
         IMicrophone? microphone = null;
         string? error = null;
+        using var owned = http is null ? new HttpClient { Timeout = TimeSpan.FromMinutes(5) } : null;
+        http ??= owned!;
         try
         {
-            var files = await FindOrDownloadModelAsync(settings, log, http, ct).ConfigureAwait(false);
-            var clock = Stopwatch.StartNew();
-            var model = await Task.Run(() => WhistleModel.Load(files.Weights, files.Engine), ct).ConfigureAwait(false);
-            recognizer = new WhistleRecognizer(model);
-            log($"Whistle loaded in {clock.ElapsedMilliseconds} ms ({language}): {files.Weights}");
+            recognizer = await OpenEngineAsync(settings, language, log, http, ct).ConfigureAwait(false);
             if (microphones is null) throw new InvalidOperationException("no microphone support on this platform");
             microphone = microphones.Open(settings.Device, settings.PreRollMs);
             log($"Microphone: {microphone.DeviceName}");
@@ -116,7 +121,45 @@ public sealed class SpeechService : IDisposable
         return new SpeechService(recognizer, microphone, language, log, settings.PhraseKeywords, settings.Margin, error, microphones);
     }
 
-    private static async Task<ModelFiles> FindOrDownloadModelAsync(SpeechSettings settings, Action<string> log, HttpClient? http, CancellationToken ct)
+    /// <summary>The chosen engine, or Whistle when that one can't run (another language, no download, no library).</summary>
+    private static async Task<ISpeechToText> OpenEngineAsync(SpeechSettings settings, string language, Action<string> log, HttpClient http, CancellationToken ct)
+    {
+        if (settings.Engine == SpeechEngines.Zipformer)
+        {
+            if (!ZipformerModel.Languages.Contains(language))
+                log($"Zipformer only knows English, not {language}; using Whistle");
+            else
+            {
+                try
+                {
+                    var folder = ZipformerModel.DefaultDirectory;
+                    if (!ZipformerModel.IsComplete(folder))
+                    {
+                        if (!settings.AutoDownload) throw new FileNotFoundException($"no Zipformer model in {folder}");
+                        await ZipformerModel.DownloadAsync(folder, http, log, ct).ConfigureAwait(false);
+                    }
+                    var clock = Stopwatch.StartNew();
+                    var zipformer = await Task.Run(() => new ZipformerRecognizer(folder, boost: settings.HotwordBoost, log: log), ct).ConfigureAwait(false);
+                    log($"Zipformer loaded in {clock.ElapsedMilliseconds} ms ({language}, {ZipformerRecognizer.DefaultThreads} threads): {folder}");
+                    return zipformer;
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    log($"Zipformer can't run ({ex.Message}); using Whistle");
+                }
+            }
+        }
+        else if (settings.Engine != SpeechEngines.Whistle)
+            log($"Unknown speech engine \"{settings.Engine}\"; using Whistle");
+
+        var files = await FindOrDownloadModelAsync(settings, log, http, ct).ConfigureAwait(false);
+        var whistleClock = Stopwatch.StartNew();
+        var model = await Task.Run(() => WhistleModel.Load(files.Weights, files.Engine), ct).ConfigureAwait(false);
+        log($"Whistle loaded in {whistleClock.ElapsedMilliseconds} ms ({language}): {files.Weights}");
+        return new WhistleRecognizer(model);
+    }
+
+    private static async Task<ModelFiles> FindOrDownloadModelAsync(SpeechSettings settings, Action<string> log, HttpClient http, CancellationToken ct)
     {
         var folder = ModelLocator.ResolveDirectory(settings.ModelDirectory, AppContext.BaseDirectory);
         if (folder is not null)
@@ -131,8 +174,7 @@ public sealed class SpeechService : IDisposable
         }
         if (!settings.AutoDownload)
             throw new FileNotFoundException("Whistle model not found; set the model folder in Settings");
-        using var owned = http is null ? new HttpClient { Timeout = TimeSpan.FromMinutes(5) } : null;
-        return await ModelDownloader.DownloadAsync(ModelLocator.DefaultDirectory, http ?? owned!, log, ct).ConfigureAwait(false);
+        return await ModelDownloader.DownloadAsync(ModelLocator.DefaultDirectory, http, log, ct).ConfigureAwait(false);
     }
 
     public string Language { get; private set; }
@@ -150,11 +192,13 @@ public sealed class SpeechService : IDisposable
         var count = matcher.Load(list.Select(p => p.Phrase).ToList(), list.Select(p => p.Command).ToList());
         var all = keywords.ToList();
         if (_phraseKeywords) all = all.Concat(matcher.LiteralRuns()).Distinct().ToList();
+        var cleaned = all.Where(k => !string.IsNullOrWhiteSpace(k)).Distinct().ToList();
+        (_recognizer as IKeywordBiased)?.Prepare(cleaned);
         lock (_lock)
         {
             Language = string.IsNullOrEmpty(language) ? Language : language;
             _matcher = matcher;
-            _keywords = all.Where(k => !string.IsNullOrWhiteSpace(k)).Distinct().ToList();
+            _keywords = cleaned;
         }
         _log($"Loaded {count} phrases, {all.Count} keywords ({Language})");
         return count;
