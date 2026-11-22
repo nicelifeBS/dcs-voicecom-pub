@@ -3,6 +3,7 @@ using System.Globalization;
 using DcsVoiceCom.Config;
 using DcsVoiceCom.DcsBios;
 using DcsVoiceCom.DcsHook;
+using DcsVoiceCom.Speech;
 
 namespace DcsVoiceCom.ViewModels;
 
@@ -10,6 +11,13 @@ namespace DcsVoiceCom.ViewModels;
 public sealed class SettingsViewModel : ObservableObject
 {
     public static readonly IReadOnlyList<string> Languages = ["en", "de", "fr", "es", "it", "nl", "pl"];
+
+    /// <summary>The speech engines to pick from (Settings → Speech).</summary>
+    public static readonly IReadOnlyList<SpeechEngineChoice> Engines =
+    [
+        new(SpeechEngines.Whistle, "Whistle (default, 7 languages)"),
+        new(SpeechEngines.Zipformer, "Zipformer (English, stronger on call signs)"),
+    ];
 
     private readonly AppSettings _original;
     private readonly IPttBinder? _binder;
@@ -35,6 +43,8 @@ public sealed class SettingsViewModel : ObservableObject
         ExportGroup = settings.DcsBios.ExportMulticastGroup;
         ExportPort = settings.DcsBios.ExportPort.ToString(CultureInfo.InvariantCulture);
         ModelDirectory = settings.Speech.ModelDirectory ?? "";
+        SpeechEngine = Engines.Any(e => e.Id == settings.Speech.Engine) ? settings.Speech.Engine : SpeechEngines.Whistle;
+        HotwordBoost = settings.Speech.HotwordBoost.ToString(CultureInfo.InvariantCulture);
         Microphone = settings.Speech.Device ?? "";
         KeyHoldMs = settings.KeyHoldMs.ToString(CultureInfo.InvariantCulture);
         CuesEnabled = settings.Cues.Enabled;
@@ -208,6 +218,37 @@ public sealed class SettingsViewModel : ObservableObject
         get => _exportPort;
         set => SetProperty(ref _exportPort, value);
     }
+    private string _speechEngine = SpeechEngines.Whistle;
+
+    /// <summary>The engine's id: <see cref="SpeechEngines.Whistle"/> or <see cref="SpeechEngines.Zipformer"/>.</summary>
+    public string SpeechEngine
+    {
+        get => _speechEngine;
+        set
+        {
+            if (SetProperty(ref _speechEngine, value))
+            {
+                OnPropertyChanged(nameof(IsZipformer));
+                OnPropertyChanged(nameof(EngineNote));
+            }
+        }
+    }
+
+    public bool IsZipformer => SpeechEngine == SpeechEngines.Zipformer;
+
+    /// <summary>What the chosen engine means for the user.</summary>
+    public string EngineNote => IsZipformer
+        ? "English only; for another language the app uses Whistle. Downloaded once (about 75 MB), and uses about 150 MB more memory than Whistle."
+        : "Runs every language above. Small and fast.";
+
+    private string _hotwordBoost = "";
+
+    /// <summary>Zipformer only: how strongly it leans towards the profile's words.</summary>
+    public string HotwordBoost
+    {
+        get => _hotwordBoost;
+        set => SetProperty(ref _hotwordBoost, value);
+    }
     private string _modelDirectory = "";
 
     public string ModelDirectory
@@ -292,6 +333,11 @@ public sealed class SettingsViewModel : ObservableObject
             return null;
         }
         if (!TryScore(Threshold, "Threshold", out var threshold) || !TryScore(CriticalThreshold, "Critical", out var critical)) return null;
+        if (!float.TryParse(HotwordBoost, NumberStyles.Float, CultureInfo.InvariantCulture, out var boost) || boost is < 0.5f or > 5f)
+        {
+            Error = "Word boost must be 0.5–5.";
+            return null;
+        }
         Error = null;
         return _original with
         {
@@ -308,6 +354,8 @@ public sealed class SettingsViewModel : ObservableObject
             Speech = _original.Speech with
             {
                 ModelDirectory = NullIfEmpty(ModelDirectory),
+                Engine = SpeechEngine,
+                HotwordBoost = boost,
                 Device = NullIfEmpty(Microphone),
             },
             Ptt = _ptt,
@@ -360,3 +408,6 @@ public sealed class SettingsViewModel : ObservableObject
 
     private static string? NullIfEmpty(string text) => string.IsNullOrWhiteSpace(text) ? null : text.Trim();
 }
+
+/// <summary>A speech engine in the Settings list: its id and what the list shows.</summary>
+public sealed record SpeechEngineChoice(string Id, string Label);

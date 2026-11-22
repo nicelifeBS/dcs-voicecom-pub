@@ -6,6 +6,9 @@ DCS VoiceCom uses the following components. Their licence texts must ship with a
 |---|---|---|
 | Whistle model (`whistle.cact`, Cactus-Compute/whistle on Hugging Face) | Apache-2.0 | Speech recognition. Downloaded on first start, SHA-256 pinned. Ship the licence text. No NOTICE file is published. |
 | Cactus needle engine (`libneedle.dll`, Cactus-Compute/needle3 on Hugging Face) | Apache-2.0 | Runs the Whistle model in process. Downloaded on first start from the cactus-needle 3.3.3 wheel, SHA-256 pinned. Ship the licence text. No NOTICE file is published. |
+| sherpa-onnx (`org.k2fsa.sherpa.onnx`, `sherpa-onnx-c-api.dll`) | Apache-2.0 | Runs the optional Zipformer speech engine. Ship the licence text. |
+| ONNX Runtime (`onnxruntime.dll`, bundled by sherpa-onnx) | MIT | Runs the Zipformer model. Ship the copyright notice. |
+| Zipformer model (k2-fsa/sherpa-onnx-zipformer-gigaspeech-2023-12-12 on Hugging Face) | Apache-2.0 | Optional speech engine (English). Downloaded when chosen in Settings, SHA-256 pinned. Ship the licence text. |
 | NAudio (NAudio.Wasapi, NAudio.Core) | MIT | Microphone capture (WASAPI) and resampling to 16 kHz. Ship the copyright notice. |
 | Vortice.DirectInput | MIT | Push-to-talk from HOTAS buttons |
 | Markdig | BSD-2-Clause | Reads the Markdown pages of the in-app help. Ship the copyright notice and licence text. |

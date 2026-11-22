@@ -1,6 +1,6 @@
 # Plan: other speech-to-text engines
 
-Status: research and benchmark done (`tools/stt-bench/`). No app change yet.
+Status: Zipformer built in as a choice in Settings (Whistle stays the default). Benchmark: `tools/stt-bench/`.
 
 ## Context
 Speech runs on Whistle (Cactus needle, in process). The question: is there an engine that gets more commands

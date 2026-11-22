@@ -58,6 +58,15 @@
             <TextBlock Text="Search above, then pick one. The list shows the microphones Windows has active." Style="{StaticResource MutedText}" Margin="0,4,0,0" TextWrapping="Wrap" />
             <Label Content="Language" Margin="0,10,0,0" />
             <ComboBox ItemsSource="{x:Static local:SettingsWindow.Languages}" SelectedItem="{Binding Language}" Width="120" HorizontalAlignment="Left" />
+            <Label Content="Speech engine" Margin="0,10,0,0" />
+            <ComboBox ItemsSource="{x:Static local:SettingsWindow.Engines}" DisplayMemberPath="Label" SelectedValuePath="Id"
+                      SelectedValue="{Binding SpeechEngine}" Width="320" HorizontalAlignment="Left" />
+            <TextBlock Text="{Binding EngineNote}" Style="{StaticResource MutedText}" Margin="0,4,0,0" TextWrapping="Wrap" />
+            <StackPanel Visibility="{Binding IsZipformer, Converter={StaticResource Visible}}">
+              <Label Content="Word boost" Margin="0,10,0,0" />
+              <TextBox Text="{Binding HotwordBoost, UpdateSourceTrigger=PropertyChanged}" Width="120" HorizontalAlignment="Left" />
+              <TextBlock Text="How strongly Zipformer leans towards the profile's words. 1.5 is a good start; higher helps odd words but can turn other speech into a command word." Style="{StaticResource MutedText}" Margin="0,4,0,0" TextWrapping="Wrap" />
+            </StackPanel>
             <Label Content="Whistle model folder" Margin="0,10,0,0" />
             <DockPanel>
               <Button DockPanel.Dock="Right" Content="Browse…" Click="BrowseModel_Click" Margin="8,0,0,0" />

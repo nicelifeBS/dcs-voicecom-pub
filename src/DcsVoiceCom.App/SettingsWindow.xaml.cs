@@ -18,6 +18,7 @@ public partial class SettingsWindow : Window
     }
 
     public static IReadOnlyList<string> Languages => SettingsViewModel.Languages;
+    public static IReadOnlyList<SpeechEngineChoice> Engines => SettingsViewModel.Engines;
 
     /// <summary>The saved settings after Save; null when cancelled.</summary>
     public AppSettings? Result { get; private set; }
