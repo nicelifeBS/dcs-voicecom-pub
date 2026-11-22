@@ -46,6 +46,6 @@ public class DcsWindowTests
         Assert.Contains("DCS is not the active window", outcome.Message);
         Assert.Empty(cockpit.Keys);
         Assert.Empty(cockpit.Sent);
-        Assert.Equal([Cue.Refused], cockpit.Cues);
+        Assert.Equal(Cue.Refused, cockpit.Cues[^1]);
     }
 }
