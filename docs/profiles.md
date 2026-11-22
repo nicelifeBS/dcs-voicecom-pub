@@ -24,8 +24,6 @@ A `servers` line is a server name or address, ignoring case and outer spaces. `*
 ```json
 {
   "aircraft": "F-14",
-  "threshold": 85,
-  "critical_threshold": 95,
   "keywords": ["TACAN"],
   "commands": [
     {
@@ -37,14 +35,192 @@ A `servers` line is a server name or address, ignoring case and outer spaces. `*
 }
 ```
 
-| Field | Meaning |
-|---|---|
-| `threshold` | Minimum match score (0-100) for any command |
-| `critical_threshold` | Minimum score for commands with `"critical": true`; between the two the command is refused |
-| `keywords` | Domain words passed to the recognizer; add only words it gets wrong |
-| `module_version` | Optional: the DCS-BIOS version the control IDs were checked against |
-| command `enabled` | `false` keeps the command but leaves its phrases out of matching |
-| command `seeded` | Marks commands generated from DCS-BIOS definitions that you have not edited or enabled yet (see [Seeding](#seeding)) |
+All fields, types and defaults are in the [Schema reference](#schema-reference). Phrase syntax is under
+[Phrases](#phrases), the step types under [Steps](#steps).
+
+## Schema reference
+
+### File rules
+
+- UTF-8 JSON. Property names are `snake_case` and read case-insensitively. Enum values are `snake_case` strings
+  (`"wheels"`, `"no_match"`).
+- `//` comments and trailing commas are accepted when reading; the app writes plain, indented JSON without them.
+- Unknown properties are ignored. Match thresholds are app settings (Settings), not profile fields.
+- A missing optional property takes its default; properties with the default value or `null` may be left out.
+- A step is an object with a `"type"` (any position in the object). A missing or unknown `type` makes the file fail
+  to load.
+- Problems that do not stop loading (an unknown slot type, two commands with the same phrase, a button press with equal
+  `arg` and `release`) are listed in the app's log as `Profile problem: …`; the affected phrase is left out or the first command wins.
+
+```json
+{
+  // comments and trailing commas are fine
+  "aircraft": "F-14",
+  "commands": [
+    { "name": "Wait", "phrases": ["hold on"], "steps": [ { "type": "wait", "ms": 500, }, ] }
+  ]
+}
+```
+
+### Profile (top level)
+
+| Field | Type | Default | Meaning |
+|---|---|---|---|
+| `aircraft` | string | `""` | DCS-BIOS `_ACFT_NAME`, `"common"` for `common.json`, `"server-…"` for a server profile |
+| `servers` | string[] | none | Server profiles only: names or addresses it turns on for (`*` = any text) |
+| `module_version` | string | none | DCS-BIOS version the control IDs were checked against |
+| `keywords` | string[] | `[]` | Extra words for the recognizer |
+| `commands` | Command[] | `[]` | The commands |
+
+```json
+{
+  "aircraft": "F-16C_50",
+  "module_version": "0.9.1",
+  "keywords": ["TACAN", "bullseye"],
+  "commands": [ ]
+}
+```
+
+A server profile adds `servers`:
+
+```json
+{ "aircraft": "server-ShadowReapers", "servers": ["ShadowReapers*"], "commands": [ ] }
+```
+
+### Command
+
+Voice lines are explained under [Phrases](#phrases).
+
+
+| Field | Type | Default | Meaning |
+|---|---|---|---|
+| `name` | string | `""` | Shown in the app and the log. Unique per profile: when merging, the first command with a name wins |
+| `description` | string | none | Free text for you |
+| `phrases` | string[] | `[]` | Voice lines, see [Phrases](#phrases) |
+| `steps` | Step[] | `[]` | Run in order when a phrase matches |
+| `critical` | bool | `false` | Needs the critical threshold from Settings |
+| `enabled` | bool | `true` | `false` leaves the phrases out of matching |
+| `seeded` | bool | `false` | Generated and not yet edited or enabled |
+
+```json
+{
+  "name": "Master arm on",
+  "description": "Checked on the F-16C",
+  "phrases": ["master arm on", "arm the jet"],
+  "critical": true,
+  "enabled": true,
+  "steps": [ { "type": "bios", "control": "MASTER_ARM_SW", "arg": "1" } ]
+}
+```
+
+### Step fields
+
+Every step has `type`. Defaults are used when a field is left out.
+
+| `type` | Field | Type | Default |
+|---|---|---|---|
+| `bios` | `control` | string | `""` |
+| | `arg` | string | `""` |
+| | `skip_if_already` | bool | `false` |
+| | `press_ms` | int | none (plain line) |
+| | `release` | string | `"0"` |
+| `bios_until` | `control` | string | `""` |
+| | `output` | string | `control` |
+| | `target` | string | `""` (may be `{slot}`) |
+| | `scale` | number | `1` |
+| | `tolerance` | int | `0` |
+| | `inc`, `dec` | string | `"INC"`, `"DEC"` |
+| | `max_steps` | int | `60` |
+| | `delay_ms` | int | `80` |
+| `key` | `keys` | string | `""` |
+| | `hold_ms` | int | none (app setting) |
+| `wait` | `ms` | int | `0` |
+| `wait_for` | `until` | Condition | empty |
+| | `timeout_ms` | int | `10000` |
+| `if` | `condition` | Condition | empty |
+| | `then`, `else` | Step[] | `[]` |
+| `cue` | `cue` | `accepted` \| `no_match` \| `refused` | `accepted` |
+| `say` | `text` | string | `""` (may hold `{slot}`) |
+| `foreach_char` | `value` | string | `""` |
+| | `map` | object (string → string) | `{}` |
+| | `steps` | Step[] | `[]` |
+| `enter_value` | see below | | |
+
+What each type does is explained under [Steps](#steps).
+
+One small example per step type (control names are examples; use the exact DCS-BIOS names for your jet):
+
+```json
+{ "type": "bios", "control": "PLT_GEAR_LEVER", "arg": "0", "skip_if_already": true }
+{ "type": "bios", "control": "UFC_ENT", "arg": "1", "press_ms": 50, "release": "0" }
+{ "type": "bios_until", "control": "HSI_HDG_KNOB", "target": "{deg}", "scale": 182, "tolerance": 2, "max_steps": 80 }
+{ "type": "key", "keys": "RCtrl+RShift+G", "hold_ms": 100 }
+{ "type": "wait", "ms": 300 }
+{ "type": "wait_for", "until": { "output": "ENGINE_RPM", "op": ">=", "value": "60" }, "timeout_ms": 20000 }
+{ "type": "if", "condition": { "output": "GEAR_LEVER", "op": "=", "value": "1" },
+  "then": [ { "type": "cue", "cue": "accepted" } ],
+  "else": [ { "type": "bios", "control": "GEAR_LEVER", "arg": "1" } ] }
+{ "type": "cue", "cue": "refused" }
+{ "type": "say", "text": "Radio set to {freq}" }
+{ "type": "foreach_char", "value": "{code}", "map": { ".": "DOT" },
+  "steps": [ { "type": "bios", "control": "UFC_{char}", "arg": "1", "press_ms": 50 } ] }
+```
+
+**Condition** (used by `wait_for` and `if`):
+
+```json
+{ "output": "APU_STATE", "op": "!=", "value": "RUNNING" }
+```
+
+Ops and placeholders are explained under [Steps](#steps).
+
+### `enter_value` fields
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `value` | string | `""` | Required, e.g. `{freq}` |
+| `method` | `wheels` \| `keypad` | `wheels` | |
+| `display` | string | none | DCS-BIOS string output |
+| `sample` | string | none | Display text at set-up time |
+| `fields` | Field[] | none | Display layout (current format) |
+| `decimals` | int | none | Implied decimals |
+| `timeout_ms` | int | `1500` | Wait for the display |
+| `up`, `down` | string[] | `["2","1"]`, `["0","1"]` | One click, wheels |
+| `max_steps` | int | `40` | Most clicks per wheel |
+| `delay_ms` | int | `80` | Delay after each line sent |
+| `press` | string[] | `["1","0"]` | One key press, keypad |
+| `keys` | object (char → control) | none | Keypad; `""` skips the character |
+
+Smallest `enter_value` (a keypad, no fields):
+
+```json
+{ "type": "enter_value", "value": "{text}", "method": "keypad", "keys": { "A": "CDU_A", "1": "CDU_1" } }
+```
+
+What the fields mean, the wheel modes and full examples are under [`enter_value`](#enter_value) in Steps.
+
+Field (in `fields`):
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `at` | int | `0` | First character, from 0 |
+| `len` | int | `1` | Characters |
+| `kind` | `wheel` \| `keypad` \| `read_only` | `wheel` | |
+| `control` | string | none | Wheel |
+| `range` | string | none | Wheel: `0-9`, `22-39` or `X,Y` |
+| `mode` | `click` \| `step` \| `set` | `click` | Wheel |
+| `flip` | bool | `false` | Wheel: swap up and down (set by test clicks) |
+| `align` | `left` \| `right` | `left` | Keypad |
+
+```json
+{ "at": 0, "len": 2, "kind": "wheel", "control": "PLT_UHF1_110_DIAL", "range": "22-39", "mode": "click" }
+{ "at": 3, "len": 1, "kind": "read_only" }
+{ "at": 1, "len": 22, "kind": "keypad", "align": "left" }
+```
+
+Older `enter_value` fields (still read, see [Older steps](#enter_value)): `min`, `max`, `wheels[]`
+(`control`, `place`, `width`, `read`, `read_scale`, `mode`, `flip`), `verify` (`output`, `timeout_ms`), `before`,
+`after`.
 
 ## Phrases
 
@@ -75,18 +251,46 @@ In steps, `{name}` inserts the value. Whole numbers also take one operation: `{c
 
 ## Steps
 
-| `type` | Fields | Notes |
+Fields, types and defaults are in the [Schema reference](#step-fields). This is what each type does.
+
+| `type` | What it does |
+|---|---|
+| `bios` | Any DCS-BIOS argument: value, `INC`, `DEC`, `TOGGLE`, `+3200`. `skip_if_already` skips when the output already equals a numeric `arg`. With `press_ms` it is a **button press**: sends `arg` (push in), waits `press_ms`, then sends `release` (default `0`). The release is sent even when the command is cancelled. `arg` and `release` must differ, and `press_ms` must be 0 or more. |
+| `bios_until` | Steps a knob and reads back until `output` (default `control`) is within `tolerance` of `target × scale`; stops when it overshoots; refused after `max_steps`. |
+| `key` | Scan-code chord such as `RCtrl+RShift+G`; left/right modifiers are distinct. DCS must have focus. |
+| `wait` | Fixed delay in `ms`. |
+| `wait_for` | Waits until a [condition](#conditions) is true (`until`); on timeout the sequence stops and plays *refused*. |
+| `if` | Runs `then` or `else` depending on a [condition](#conditions). |
+| `cue` | Plays a cue (`accepted`, `no_match`, `refused`) mid-sequence. |
+| `say` | Speaks `text` as a voice reply with a Windows voice, see [`say`](#say). Doesn't wait for the speech to end, so later steps aren't delayed. With voice replies off or no voice installed, the step is skipped and the command still completes. |
+| `foreach_char` | Runs `steps` per character of `value` with `{char}` bound, e.g. one UFC key per digit; `map` renames characters (`"." → "DOT"`). |
+| `enter_value` | Puts a spoken value into the cockpit: a number on radio wheels, or text on a keypad, checked on one display. Set it up in the app (*+ Enter value*, then *Edit*). |
+
+### `bios` or `bios_until`?
+
+`bios` sends one DCS-BIOS line and moves on. `bios_until` turns a knob step by step (`INC` or `DEC`) and reads the
+cockpit after every step, until the value reaches your target.
+
+| | `bios` | `bios_until` |
 |---|---|---|
-| `bios` | `control`, `arg`, `skip_if_already`, `press_ms`, `release` | Any DCS-BIOS argument: value, `INC`, `DEC`, `TOGGLE`, `+3200`. `skip_if_already` skips when the output already equals a numeric `arg`. With `press_ms` it is a **button press**: sends `arg` (push in), waits `press_ms`, then sends `release` (default `0`). The release is sent even when the command is cancelled. `arg` and `release` must differ, and `press_ms` must be 0 or more. |
-| `bios_until` | `control`, `target`, `output`, `scale`, `tolerance`, `inc`, `dec`, `max_steps`, `delay_ms` | Steps a knob and reads back until `output` (default `control`) is within `tolerance` of `target × scale`; stops when it overshoots; refused after `max_steps`. |
-| `key` | `keys`, `hold_ms` | Scan-code chord such as `RCtrl+RShift+G`; left/right modifiers are distinct. DCS must have focus. |
-| `wait` | `ms` | Fixed delay |
-| `wait_for` | `until: {output, op, value}`, `timeout_ms` | Waits on cockpit state; on timeout the sequence stops and plays *refused*. |
-| `if` | `condition: {output, op, value}`, `then`, `else` | Ops: `=`, `!=`, `<`, `<=`, `>`, `>=` (strings: `=` and `!=` only). |
-| `cue` | `cue`: `accepted`, `no_match`, `refused` | Plays a cue mid-sequence |
-| `say` | `text` | Speaks a voice reply with a Windows voice. `text` may use placeholders (`"Radio set to {freq}"`), see [`say`](#say). Doesn't wait for the speech to end, so later steps aren't delayed. With voice replies off or no voice installed, the step is skipped and the command still completes. |
-| `foreach_char` | `value`, `map`, `steps` | Runs `steps` per character of `value` with `{char}` bound, e.g. one UFC key per digit; `map` renames characters (`"." → "DOT"`). |
-| `enter_value` | `value`, `method`, `display`, `fields`, and the fields below | Puts a spoken value into the cockpit: a number on radio wheels, or text on a keypad, checked on one display. Set it up in the app (*+ Enter value*, then *Edit*). |
+| What it does | Sends one line: a value, `INC`, `DEC`, `TOGGLE` or `+3200` | Sends `INC` or `DEC` again and again |
+| Reads the cockpit | No (only `skip_if_already` checks once) | Yes, after every step |
+| Use it for | Switches, levers, buttons (`press_ms`) | Knobs with no direct value, like a heading knob |
+| Needs a target | No | Yes: `target`, which can be a spoken value like `{deg}` |
+| Stops when | The line is sent | The output is within `tolerance` of `target × scale`, or it overshoots. After `max_steps` the command is refused |
+
+For "gear up", use `bios` and send `0`. For "set heading {deg}", use `bios_until`: the app turns the knob and
+reads the heading until it matches.
+
+### Conditions
+
+`wait_for` and `if` test a cockpit output: `{ "output": "…", "op": "=", "value": "…" }`. `op` is `=`, `!=`, `<`,
+`<=`, `>` or `>=` (default `=`). Integers compare as numbers; strings only with `=` and `!=`.
+
+### Placeholders
+
+`{slot}` placeholders (see [Spoken parameters](#spoken-parameters-slots)) work in `control`, `arg`, `target`,
+`keys`, `value` and `text`. `{char}` is available inside `foreach_char`.
 
 ### `say`
 
@@ -142,12 +346,12 @@ Wheel modes:
 - `set`: sends the target as the `set_state` argument: the number for a span, the position in the list for a list.
   Only for wheels whose `set_state` takes that directly.
 
-The wheels are turned left to right until their characters show the target. A click that turns the wrong way swaps up
-and down; a wheel that doesn't move, passes its target or runs out of `max_steps` stops the command with *refused*.
-A jump across the end of the range (39 → 22) counts as one click. A value that can't be shown (too long, more
-decimals than the display, outside a wheel's range, a character without a key) stops the command before anything is
-sent. If the display already shows the value, the step does nothing. Keypad text is never cleared first: add a CLR
-press as its own step when needed.
+The app turns the wheels from left to right until the display shows your value. If a click turns a wheel the wrong
+way, the app flips up and down for that wheel. If a wheel doesn't move, goes past its target, or needs more than
+`max_steps` clicks, the command stops with *refused*. A jump over the end of the range (39 → 22) counts as one
+click. If the value can't be shown, nothing is sent. That happens when it is too long, has more decimals than the
+display, is outside a wheel's range, or has a character with no key. If the display already shows the value, the step
+does nothing. Keypads are never cleared first. Add a CLR press as its own step if you need it.
 
 In a voice line, a text slot stops at the next word of the phrase. When a number slot follows right after
 (`callsign {cs:text} {chan:number}`), the trailing number words go to that slot: "alpha bravo two five" → AB, 25.

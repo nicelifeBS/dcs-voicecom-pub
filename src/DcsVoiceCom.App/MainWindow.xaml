@@ -243,7 +243,7 @@
                 <TextBox Text="{Binding VoiceLine, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource MonoBox}" FontSize="15" />
                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                   <CheckBox Content="Enabled" IsChecked="{Binding Enabled}" Margin="0,0,14,0" />
-                  <CheckBox Content="Critical" IsChecked="{Binding Critical}" ToolTip="Needs the profile's critical threshold (default 95)" />
+                  <CheckBox Content="Critical" IsChecked="{Binding Critical}" ToolTip="Needs the critical threshold from Settings (default 95)" />
                 </StackPanel>
 
                 <Label Content="Also understood (optional, one per line)" Margin="0,12,0,0" />
