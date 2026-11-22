@@ -117,7 +117,7 @@ public sealed class MainViewModel : ObservableObject
     private CommandEditorViewModel? _editor;
     private Profile? _profile;
     private bool _isDirty;
-    private bool _showLog = true;
+    private bool _showLog;
     private string _testText = "";
     private bool _dryRun = true;
     private string _selectedOverride = AutoProfile;
@@ -330,11 +330,18 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
+    /// <summary>The log panel is open. Hidden by default; the app sets the saved state.</summary>
     public bool ShowLog
     {
         get => _showLog;
-        set => SetProperty(ref _showLog, value);
+        set
+        {
+            if (SetProperty(ref _showLog, value)) ShowLogChanged?.Invoke(value);
+        }
     }
+
+    /// <summary>The user opened or closed the log panel (the app saves it).</summary>
+    public event Action<bool>? ShowLogChanged;
 
     public string TestText
     {

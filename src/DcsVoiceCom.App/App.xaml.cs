@@ -90,6 +90,8 @@ public partial class App : Application
         _vm = new MainViewModel(new ProfileStore(_settings.ProfilesPath), new DefinitionLoader(_settings.DcsBiosJsonPath),
             dialogs, new WpfUiThread(Dispatcher), SettingsViewModel.Describe(_settings.Ptt));
         _vm.SayContextProvider = () => new SayContext(Tts, () => _settings.Tts.ToOptions(Tts.Voices, _settings.Language));
+        _vm.ShowLog = _settings.ShowLog;
+        _vm.ShowLogChanged += open => SaveSettings(_settings with { ShowLog = open });
         _vm.ProfileOverrideChanged += pinned => SaveSettings(_settings with { ProfileOverride = pinned });
         _vm.ServerOverrideChanged += pinned => SaveSettings(_settings with { ServerProfileOverride = pinned });
         _vm.Log.Add("INFO", $"Settings: {AppSettings.DefaultPath}");

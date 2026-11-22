@@ -86,6 +86,9 @@ public sealed record AppSettings
     /// <summary>Score a critical command needs, for every profile.</summary>
     public int CriticalThreshold { get; init; } = EngineOptions.DefaultCriticalThreshold;
 
+    /// <summary>The log panel in the main window is open. Off by default; remembered when it is toggled.</summary>
+    public bool ShowLog { get; init; }
+
     /// <summary>Pinned profile; null follows the aircraft DCS-BIOS reports ("Auto").</summary>
     public string? ProfileOverride { get; init; }
 
