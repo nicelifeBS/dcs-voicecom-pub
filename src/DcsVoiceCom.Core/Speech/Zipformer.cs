@@ -37,7 +37,10 @@ public static class ZipformerModel
     public const string Name = "zipformer-gigaspeech-2023-12-12";
     public static readonly IReadOnlyList<string> Languages = ["en"];
 
-    private const string Url = "https://huggingface.co/k2-fsa/sherpa-onnx-zipformer-gigaspeech-2023-12-12/resolve/main/";
+    // A fixed commit, not main: the repo's files are re-uploaded now and then (the encoder changed on 2026-11-22),
+    // and the SHA-256 pins below are for this version, the one benchmarked in docs/plans/stt-engines.md.
+    private const string Revision = "a284ea43c73bb4b22e4cef6f86a38ce03cbd0ff3";
+    private const string Url = "https://huggingface.co/k2-fsa/sherpa-onnx-zipformer-gigaspeech-2023-12-12/resolve/" + Revision + "/";
     internal const string Encoder = "encoder-epoch-30-avg-1.int8.onnx";
     internal const string Decoder = "decoder-epoch-30-avg-1.int8.onnx";
     internal const string Joiner = "joiner-epoch-30-avg-1.int8.onnx";
