@@ -238,7 +238,7 @@ public sealed class SpeechSettingsTests : IDisposable
     }
 }
 
-public sealed class MissRecorderTests : IDisposable
+public sealed class ClipRecorderTests : IDisposable
 {
     private readonly string _root = Directory.CreateTempSubdirectory("misses").FullName;
 
@@ -263,27 +263,38 @@ public sealed class MissRecorderTests : IDisposable
     public async Task A_miss_is_saved_with_a_note_and_typed_text_is_not()
     {
         var dir = Path.Combine(_root, "debugging");
-        await using (var recorder = new MissRecorder(dir))
+        await using (var recorder = new ClipRecorder(dir))
         {
-            recorder.Save(Miss(new float[1600]), "score 55 below 70");
-            recorder.Save(Miss(null), "typed, no audio");
+            recorder.Save(Miss(new float[1600]), miss: true, "score 55 below 70");
+            recorder.Save(Miss(null), miss: true, "typed, no audio");
         }
         var wavs = Directory.GetFiles(dir, "*.wav");
         Assert.Single(wavs);
         var note = File.ReadAllText(Path.ChangeExtension(wavs[0], ".txt"));
-        Assert.Contains("score 55 below 70", note);
+        Assert.StartsWith("Result:   MISS - score 55 below 70", note);
         Assert.Contains("gear down", note);
+    }
+
+    [Fact]
+    public async Task A_hit_is_saved_too_and_not_marked_as_a_miss()
+    {
+        var dir = Path.Combine(_root, "debugging");
+        await using (var recorder = new ClipRecorder(dir))
+            recorder.Save(Miss(new float[1600]), miss: false, "Completed [Gear down]");
+        var note = File.ReadAllText(Path.ChangeExtension(Assert.Single(Directory.GetFiles(dir, "*.wav")), ".txt"));
+        Assert.StartsWith("Result:   hit - Completed [Gear down]", note);
+        Assert.DoesNotContain("MISS", note);
     }
 
     [Fact]
     public async Task Only_the_newest_clips_are_kept()
     {
         var dir = Path.Combine(_root, "debugging");
-        await using (var recorder = new MissRecorder(dir, maxClips: 2))
+        await using (var recorder = new ClipRecorder(dir, maxClips: 2))
         {
             for (var i = 0; i < 4; i++)
             {
-                recorder.Save(Miss(new float[160]), "x");
+                recorder.Save(Miss(new float[160]), miss: true, "x");
                 await Task.Delay(5);
             }
         }

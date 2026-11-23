@@ -6,12 +6,12 @@ using DcsVoiceCom.Engine;
 namespace DcsVoiceCom.Speech;
 
 /// <summary>
-/// Debug aid: saves the audio of a missed command (WAV plus a text note) so you can tell a poor microphone from
-/// weak recognition. <see cref="Save"/> only queues the clip; a background task writes it, so a miss never delays
-/// the next command. If the writer falls behind, new clips are dropped. Old clips are deleted past
+/// Debug aid: saves the audio of every push-to-talk command (WAV plus a text note) so you can tell a poor microphone
+/// from weak recognition. The note's first line says whether the command was a MISS. <see cref="Save"/> only queues
+/// the clip; a background task writes it, so saving never delays the next command. If the writer falls behind, new clips are dropped. Old clips are deleted past
 /// <see cref="MaxClips"/>.
 /// </summary>
-public sealed class MissRecorder : IAsyncDisposable
+public sealed class ClipRecorder : IAsyncDisposable
 {
     public const int MaxClips = 200;
     private const int QueueSize = 16;
@@ -23,9 +23,12 @@ public sealed class MissRecorder : IAsyncDisposable
     private readonly Task _writer;
     private readonly int _maxClips;
 
-    private sealed record Clip(float[] Samples, DateTime At, RecognitionResult Recognition, string Reason);
+    private sealed record Clip(RecognitionResult Recognition, DateTime At, bool Miss, string Result)
+    {
+        public float[] Samples => Recognition.Audio!;
+    }
 
-    public MissRecorder(string directory, Action<string>? log = null, int maxClips = MaxClips)
+    public ClipRecorder(string directory, Action<string>? log = null, int maxClips = MaxClips)
     {
         _directory = directory;
         _log = log ?? (_ => { });
@@ -33,11 +36,11 @@ public sealed class MissRecorder : IAsyncDisposable
         _writer = Task.Run(WriteLoop);
     }
 
-    /// <summary>Queues a missed clip. Returns at once and never throws.</summary>
-    public void Save(RecognitionResult recognition, string reason)
+    /// <summary>Queues a clip. <paramref name="result"/> says what ran, or why it missed. Returns at once and never throws.</summary>
+    public void Save(RecognitionResult recognition, bool miss, string result)
     {
-        if (recognition.Audio is not { Length: > 0 } samples) return;
-        _queue.Writer.TryWrite(new Clip(samples, DateTime.Now, recognition, reason));
+        if (recognition.Audio is not { Length: > 0 }) return;
+        _queue.Writer.TryWrite(new Clip(recognition, DateTime.Now, miss, result));
     }
 
     private async Task WriteLoop()
@@ -50,7 +53,7 @@ public sealed class MissRecorder : IAsyncDisposable
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                _log($"Saving the missed audio failed: {ex.Message}");
+                _log($"Saving the audio failed: {ex.Message}");
             }
         }
     }
@@ -61,7 +64,7 @@ public sealed class MissRecorder : IAsyncDisposable
         var name = Path.Combine(_directory, clip.At.ToString("yyyyMMdd-HHmmss-fff", CultureInfo.InvariantCulture));
         WavFile.WriteMono16(name + ".wav", clip.Samples, WhistleModel.SampleRate);
         File.WriteAllText(name + ".txt", Describe(clip), Encoding.UTF8);
-        _log($"Saved missed audio: {name}.wav");
+        _log($"Saved {(clip.Miss ? "missed" : "command")} audio: {name}.wav");
         Prune();
     }
 
@@ -77,8 +80,8 @@ public sealed class MissRecorder : IAsyncDisposable
         var r = clip.Recognition;
         var inv = CultureInfo.InvariantCulture;
         var text = new StringBuilder();
+        text.AppendLine(inv, $"Result:   {(clip.Miss ? "MISS" : "hit")} - {clip.Result}");
         text.AppendLine(inv, $"Heard:    {r.Raw}");
-        text.AppendLine(inv, $"Reason:   {clip.Reason}");
         text.AppendLine(inv, $"Best:     {r.Phrase ?? "-"} (score {r.Score})");
         foreach (var c in r.Candidates.Take(3)) text.AppendLine(inv, $"Next:     {c.Phrase} (score {c.Score})");
         text.AppendLine(inv, $"Length:   {(double)clip.Samples.Length / WhistleModel.SampleRate:0.00} s");
@@ -101,7 +104,7 @@ public sealed class MissRecorder : IAsyncDisposable
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                // Still in use (an audio editor has it open): the next miss tries again.
+                // Still in use (an audio editor has it open): the next clip tries again.
             }
         }
     }

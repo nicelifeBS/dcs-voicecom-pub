@@ -62,6 +62,19 @@ internal static class DisplaySteps
         ],
     };
 
+    /// <summary>The AH-64D pilot KU: one 22-character scratchpad line, "IDENT:ABC#", with a blinking cursor.</summary>
+    public static EnterValueStep Ku() => new()
+    {
+        Value = "{text}",
+        Method = EnterMethod.Keypad,
+        Display = "PLT_KU_DISPLAY",
+        Sample = new string(' ', 22),
+        DelayMs = 0,
+        TimeoutMs = 300,
+        Keys = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".ToDictionary(c => c.ToString(), c => "PLT_KU_" + c),
+        Fields = [new() { At = 0, Len = 22, Kind = FieldKind.Keypad, Align = TextAlign.Scratchpad }],
+    };
+
     public static string[] Targets(EnterValueStep step, string value)
     {
         var targets = DisplayLayout.Targets(step, value, out var problem);
@@ -168,6 +181,45 @@ public class DisplayLayoutTests
     {
         DisplayLayout.Targets(DisplaySteps.Cdu(), new string('A', 23), out var problem);
         Assert.Contains("too long", problem);
+    }
+
+    [Theory]
+    // Fits, any label, cursor on or off (blinking).
+    [InlineData("IDENT:ABCHARLEY#", "ABCHARLEY")]
+    [InlineData("IDENT:ABCHARLEY", "ABCHARLEY")]
+    [InlineData("FREE:abc#", "ABC")]
+    [InlineData("UTM LAT/LONG:12345#", "12345")]
+    [InlineData("ABCHARLEY", "ABCHARLEY")]
+    [InlineData("IDENT:ABCH#RLEY", "ABCHARLEY")] // cursor over a letter
+    // Scrolled left: the label partly or fully gone, cursor on or off.
+    [InlineData("NT:ABCDEFGHIJKLMNOPQR#", "ABCDEFGHIJKLMNOPQR")]
+    [InlineData("NT:ABCDEFGHIJKLMNOPQR", "ABCDEFGHIJKLMNOPQR")]
+    [InlineData("FGHIJKLMNOPQRSTUVWXYZ#", "ABCDEFGHIJKLMNOPQRSTUVWXYZ")]
+    [InlineData("FGHIJKLMNOPQRSTUVWXYZ", "ABCDEFGHIJKLMNOPQRSTUVWXYZ")]
+    public void A_scratchpad_shows_text_after_any_label(string display, string text) =>
+        Assert.True(DisplayLayout.ScratchpadShows(display, text, 22));
+
+    [Theory]
+    [InlineData("IDENT:ABCHARLE#", "ABCHARLEY")] // a key missing, cursor where the letter should be
+    [InlineData("IDENT:ABCHARLE", "ABCHARLEY")]
+    [InlineData("IDENT:XABCHARLEY#", "ABCHARLEY")] // more than the text after the label
+    [InlineData("IDENT:#", "A")]
+    [InlineData("IDENT:QRSTUVWXYZ#", "ABCDEFGHIJKLMNOPQRSTUVWXYZ")] // right ending, line not full
+    [InlineData("WRONGJKLMNOPQRSTUVWXYZ", "ABCDEFGHIJKLMNOPQRSTUVWXYZ")] // full, but the start is not the text's
+    public void A_scratchpad_without_the_text_does_not_count(string display, string text) =>
+        Assert.False(DisplayLayout.ScratchpadShows(display, text, 22));
+
+    [Fact]
+    public void A_scrolled_scratchpad_does_not_count_as_already_showing_the_text() =>
+        Assert.False(DisplayLayout.ScratchpadShows("FGHIJKLMNOPQRSTUVWXYZ#", "ABCDEFGHIJKLMNOPQRSTUVWXYZ", 22, scrolled: false));
+
+    [Fact]
+    public void A_scratchpad_takes_text_longer_than_the_line()
+    {
+        var targets = DisplayLayout.Targets(DisplaySteps.Ku(), new string('A', 30), out var problem);
+        Assert.Null(problem);
+        Assert.Equal(new string('A', 30), targets[0].Entry);
+        Assert.Equal(22, targets[0].Text.Length);
     }
 
     [Fact]
@@ -436,5 +488,33 @@ public class DisplayFieldEngineTests
         Assert.Equal(OutcomeStatus.Failed, outcome.Status);
         Assert.Contains("too long", outcome.Message);
         Assert.Empty(cockpit.Sent);
+    }
+
+    [Theory]
+    [InlineData("IDENT:", "alpha bravo charlie")]
+    [InlineData("UTM LAT/LONG:", "alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima")]
+    public async Task Types_on_a_scratchpad_after_its_label_and_checks_it_with_a_blinking_cursor(string label, string spoken)
+    {
+        var (engine, cockpit) = Create(DisplaySteps.Ku(), "type {text:text}");
+        var scratch = "";
+        var blink = false;
+        void Publish(FakeCockpit c)
+        {
+            var line = label + scratch + (blink ? "#" : "");
+            c.Strings["PLT_KU_DISPLAY"] = (line.Length > 22 ? line[^22..] : line).PadRight(22);
+            blink = !blink;
+        }
+        Publish(cockpit);
+        cockpit.OnSend = (c, id, arg) =>
+        {
+            if (arg == "1" && id.StartsWith("PLT_KU_")) scratch += id[7..];
+            Publish(c);
+        };
+
+        var outcome = await engine.HandleAsync(Heard("type {text:text}", spoken));
+
+        Assert.Equal(OutcomeStatus.Completed, outcome.Status);
+        Assert.StartsWith("ABC", scratch);
+        Assert.Contains(outcome.Trace, t => t.StartsWith("PLT_KU_DISPLAY = "));
     }
 }

@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using DcsVoiceCom.Speech;
 
 namespace DcsVoiceCom.Tests;
@@ -36,21 +35,20 @@ public class ZipformerTests
     [Fact]
     public async Task Zipformer_for_another_language_falls_back_to_whistle()
     {
-        if (RuntimeInformation.OSArchitecture != Architecture.X64 || !(OperatingSystem.IsWindows() || OperatingSystem.IsLinux())) return;
-        var log = new List<string>();
-        var settings = new SpeechSettings { Engine = SpeechEngines.Zipformer, ModelDirectory = BundledModel(), AutoDownload = false };
-        using var speech = await SpeechService.OpenAsync(settings, "de", null, log.Add);
-        Assert.Contains(log, l => l.Contains("Zipformer only knows English"));
-        Assert.Contains(log, l => l.StartsWith("Whistle loaded"));
-    }
-
-    private static string BundledModel()
-    {
-        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
+        // An empty model folder: the fallback is decided without loading Whistle, which other tests may hold
+        // (the native engine takes one model per process).
+        var empty = Directory.CreateTempSubdirectory("dcsvoicecom-").FullName;
+        try
         {
-            var model = Path.Combine(dir.FullName, "model", "cactus-needle");
-            if (Directory.Exists(model)) return model;
+            var log = new List<string>();
+            var settings = new SpeechSettings { Engine = SpeechEngines.Zipformer, ModelDirectory = empty, AutoDownload = false };
+            using var speech = await SpeechService.OpenAsync(settings, "de", null, log.Add);
+            Assert.True(log.Any(l => l.Contains("Zipformer only knows English, not de; using Whistle")), string.Join("\n", log));
+            Assert.Contains("whistle", speech.UnavailableReason); // it went on to Whistle, whose model is missing here
         }
-        return Path.Combine(AppContext.BaseDirectory, "model", "cactus-needle");
+        finally
+        {
+            Directory.Delete(empty, recursive: true);
+        }
     }
 }
