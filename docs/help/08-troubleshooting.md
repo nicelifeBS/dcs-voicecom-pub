@@ -17,6 +17,7 @@ Look in the **Log** first. It says what was heard and why a command did not run.
 | DCS-BIOS waiting for DCS | Start DCS and check that DCS-BIOS is installed. |
 | No profile, wrong profile | The profile name must match the aircraft. Or pin a profile in the top bar. |
 | Server profile not active | Settings → DCS hook → Install, then restart DCS. Check its *Servers* list. |
+| Commands take seconds (high ms) | DCS keeps the CPU busy. Keep Settings → Debug → *Speed up speech* on. Turn on *Log CPU use* and send the `[cpu]` lines with a bug report. |
 
 The app does not start? Read `%LOCALAPPDATA%\DcsVoiceCom\crash.log`. Also check the tray: a minimized window
 hides there.

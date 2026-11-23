@@ -20,6 +20,20 @@ public class EditorTests
     }
 
     [Fact]
+    public void Settings_debug_options_round_trip_with_the_boost_on_by_default()
+    {
+        var vm = new SettingsViewModel(new AppSettings());
+        Assert.True(vm.BoostSpeechPriority);
+        Assert.False(vm.LogCpu);
+
+        vm.BoostSpeechPriority = false;
+        vm.LogCpu = true;
+        var built = vm.Build()!;
+        Assert.False(built.Speech.BoostPriority);
+        Assert.True(built.Speech.LogCpu);
+    }
+
+    [Fact]
     public void Settings_build_keeps_matching_scores_and_rejects_bad_ones()
     {
         var vm = new SettingsViewModel(new AppSettings());

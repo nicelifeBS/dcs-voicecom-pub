@@ -39,6 +39,8 @@ public sealed class SettingsViewModel : ObservableObject
         KeyHoldMs = settings.KeyHoldMs.ToString(CultureInfo.InvariantCulture);
         CuesEnabled = settings.Cues.Enabled;
         SaveCommandAudio = settings.SaveCommandAudio;
+        BoostSpeechPriority = settings.Speech.BoostPriority;
+        LogCpu = settings.Speech.LogCpu;
         Threshold = settings.Threshold.ToString(CultureInfo.InvariantCulture);
         CriticalThreshold = settings.CriticalThreshold.ToString(CultureInfo.InvariantCulture);
         _allMicrophones = (microphones ?? []).ToList();
@@ -265,6 +267,24 @@ public sealed class SettingsViewModel : ObservableObject
         set => SetProperty(ref _saveCommandAudio, value);
     }
 
+    private bool _boostSpeechPriority;
+
+    /// <summary>Run speech at above-normal priority while it transcribes (on by default).</summary>
+    public bool BoostSpeechPriority
+    {
+        get => _boostSpeechPriority;
+        set => SetProperty(ref _boostSpeechPriority, value);
+    }
+
+    private bool _logCpu;
+
+    /// <summary>Log the CPU and, per command, how busy it was and how long speech took.</summary>
+    public bool LogCpu
+    {
+        get => _logCpu;
+        set => SetProperty(ref _logCpu, value);
+    }
+
     public string PttText => Describe(_ptt);
 
     public string BindStatus
@@ -309,6 +329,8 @@ public sealed class SettingsViewModel : ObservableObject
             {
                 ModelDirectory = NullIfEmpty(ModelDirectory),
                 Device = NullIfEmpty(Microphone),
+                BoostPriority = BoostSpeechPriority,
+                LogCpu = LogCpu,
             },
             Ptt = _ptt,
             KeyHoldMs = hold,

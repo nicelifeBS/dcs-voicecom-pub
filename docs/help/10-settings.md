@@ -15,9 +15,12 @@ group: Reference
   multiplayer server you're on, for [server profiles](11-server-profiles.md). *Remove* takes it out again.
 - **Profiles and keys.** Where the profile files are kept, how long a key is held, and the sounds for accepted,
   no match and refused.
-- **Debug.** *Save the audio of every command* writes each push-to-talk clip to
-  `%LOCALAPPDATA%\DcsVoiceCom\debugging` as a `.wav` with a `.txt` note (result, what was heard, mic level). Misses
-  start with `Result: MISS` and the reason. Play the clip to tell a bad microphone from weak recognition. Off by
-  default; the newest 200 are kept.
+- **Debug: speed up speech.** Runs speech at above-normal priority while it recognises a command, and stops
+  Windows from slowing the app down to save power. On by default. Turn it off if DCS stutters when you speak.
+- **Debug: log CPU use.** Logs the CPU model and cores at start, then for each command how busy the CPU was and how
+  long speech took (`[cpu]` lines). Off by default.
+- **Debug: save audio.** Writes each push-to-talk clip to `%LOCALAPPDATA%\DcsVoiceCom\debugging` as a `.wav` with
+  a `.txt` note (result, what was heard, mic level). Misses start with `Result: MISS` and the reason. Play the clip
+  to tell a bad microphone from weak recognition. Off by default; the newest 200 are kept.
 
 Saving restarts the voice engine. All settings are in `%LOCALAPPDATA%\DcsVoiceCom\settings.json`.
