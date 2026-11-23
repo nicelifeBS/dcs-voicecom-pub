@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using DcsVoiceCom.Diagnostics;
 using DcsVoiceCom.Engine;
 
 namespace DcsVoiceCom.Speech;
@@ -20,6 +21,13 @@ public sealed record SpeechSettings
     public double Margin { get; init; } = PhraseMatcher.DefaultMargin;
     /// <summary>Download the model when no folder has it.</summary>
     public bool AutoDownload { get; init; } = true;
+    /// <summary>
+    /// Run Whistle at above-normal priority while it transcribes, and keep Windows from power-throttling the app.
+    /// Without it a command can take seconds when DCS keeps every core busy.
+    /// </summary>
+    public bool BoostPriority { get; init; } = true;
+    /// <summary>Debugging: log the CPU at start, and per command how busy it was and how long Whistle took.</summary>
+    public bool LogCpu { get; init; }
 }
 
 /// <summary>Push-to-talk capture: 16 kHz mono float samples between <see cref="Start"/> and <see cref="Stop"/>.</summary>
@@ -49,8 +57,14 @@ public sealed class WhistleRecognizer(WhistleModel model) : ISpeechToText, IDisp
     /// <summary>Shorter clips cannot hold a word; Whistle tends to invent one.</summary>
     public const double MinAudioSeconds = 0.15;
 
-    public string Transcribe(float[] samples, string language, IReadOnlyList<string> keywords) =>
-        samples.Length < MinAudioSeconds * WhistleModel.SampleRate ? "" : model.Transcribe(samples, language, keywords).Text;
+    /// <summary>The last transcription with its timings; null before the first or after a too-short clip.</summary>
+    public WhistleTranscript? Last { get; private set; }
+
+    public string Transcribe(float[] samples, string language, IReadOnlyList<string> keywords)
+    {
+        Last = samples.Length < MinAudioSeconds * WhistleModel.SampleRate ? null : model.Transcribe(samples, language, keywords);
+        return Last?.Text ?? "";
+    }
 
     public void Dispose() => model.Dispose();
 }
@@ -71,11 +85,17 @@ public sealed class SpeechService : IDisposable
     private readonly bool _phraseKeywords;
     private PhraseMatcher _matcher;
     private IReadOnlyList<string> _keywords = [];
+    private readonly ProcessPriority? _priority;
+    private readonly bool _logCpu;
+    private CpuTimes? _talkStart;
+    private long _talkStartAt;
 
     public SpeechService(ISpeechToText? recognizer, IMicrophone? microphone, string language = "en", Action<string>? log = null,
         bool phraseKeywords = true, double margin = PhraseMatcher.DefaultMargin, string? unavailableReason = null,
-        IMicrophoneProvider? devices = null)
+        IMicrophoneProvider? devices = null, ProcessPriority? priority = null, bool logCpu = false)
     {
+        _priority = priority;
+        _logCpu = logCpu;
         _recognizer = recognizer;
         _microphone = microphone;
         _devices = devices;
@@ -97,6 +117,13 @@ public sealed class SpeechService : IDisposable
         WhistleRecognizer? recognizer = null;
         IMicrophone? microphone = null;
         string? error = null;
+        ProcessPriority? priority = null;
+        if (settings.BoostPriority)
+        {
+            priority = new ProcessPriority(log);
+            if (ProcessPriority.DisablePowerThrottling()) log("Power throttling off for the app");
+        }
+        if (settings.LogCpu) log("[cpu] " + CpuInfo.Describe());
         try
         {
             var files = await FindOrDownloadModelAsync(settings, log, http, ct).ConfigureAwait(false);
@@ -113,7 +140,8 @@ public sealed class SpeechService : IDisposable
             error = $"speech unavailable: {ex.Message}";
             log(error);
         }
-        return new SpeechService(recognizer, microphone, language, log, settings.PhraseKeywords, settings.Margin, error, microphones);
+        return new SpeechService(recognizer, microphone, language, log, settings.PhraseKeywords, settings.Margin, error, microphones,
+            priority, settings.LogCpu);
     }
 
     private static async Task<ModelFiles> FindOrDownloadModelAsync(SpeechSettings settings, Action<string> log, HttpClient? http, CancellationToken ct)
@@ -161,7 +189,11 @@ public sealed class SpeechService : IDisposable
     }
 
     /// <summary>Push-to-talk pressed: starts keeping the microphone's audio.</summary>
-    public void Start() => _microphone?.Start();
+    public void Start()
+    {
+        if (_logCpu) (_talkStart, _talkStartAt) = (CpuTimes.ReadSystem(), Stopwatch.GetTimestamp());
+        _microphone?.Start();
+    }
 
     /// <summary>Push-to-talk released: transcribes the clip and matches it against the profile.</summary>
     public RecognitionResult Stop()
@@ -174,10 +206,55 @@ public sealed class SpeechService : IDisposable
         IReadOnlyList<string> keywords;
         string language;
         lock (_lock) (matcher, keywords, language) = (_matcher, _keywords, Language);
-        var text = _recognizer.Transcribe(samples, language, keywords);
+        var cpuBefore = _logCpu ? CpuTimes.ReadSystem() : null;
+        var appBefore = _logCpu ? AppCpuTime() : TimeSpan.Zero;
+        var transcribeStarted = Stopwatch.GetTimestamp();
+        string text;
+        string? priority = null;
+        using (_priority?.Boost())
+        {
+            if (_logCpu) priority = ProcessPriority.Current();
+            text = _recognizer.Transcribe(samples, language, keywords);
+        }
+        if (_logCpu) LogCpu(cpuBefore, appBefore, transcribeStarted, priority!);
         var result = Result(matcher, text, started) with { Audio = samples };
         _log($"Heard \"{text}\" → {result.Phrase ?? "-"} ({result.Score}) in {result.Ms} ms" + (result.Reject is null ? "" : $", rejected: {result.Reject}"));
         return result;
+    }
+
+    /// <summary>
+    /// One line per command: how busy the CPU was while the button was held (that's DCS and the rest, not Whistle)
+    /// and while Whistle ran, how many cores' worth the app got, and Whistle's own timings.
+    /// </summary>
+    private void LogCpu(CpuTimes? before, TimeSpan appBefore, long transcribeStarted, string priority)
+    {
+        var after = CpuTimes.ReadSystem();
+        var elapsed = Stopwatch.GetElapsedTime(transcribeStarted);
+        var talking = _talkStartAt != 0 && Stopwatch.GetElapsedTime(_talkStartAt) - elapsed >= TimeSpan.FromMilliseconds(100)
+            ? CpuTimes.Utilization(_talkStart, before) : null;
+        var transcribing = CpuTimes.Utilization(before, after);
+        var cores = elapsed > TimeSpan.Zero ? (AppCpuTime() - appBefore) / elapsed : 0;
+        var whistle = (_recognizer as WhistleRecognizer)?.Last;
+        _log($"[cpu] busy while talking {Percent(talking)}, while transcribing {Percent(transcribing)}; app used {cores:0.0} of " +
+            $"{Environment.ProcessorCount} cores; Whistle {elapsed.TotalMilliseconds:0} ms" +
+            (whistle is null ? "" : $" (first token {whistle.TtftMs:0} ms, {whistle.DecodeTps:0.#} tokens/s)") +
+            $"; priority {priority}{(_priority is null ? " (boost off)" : "")}");
+        _talkStartAt = 0;
+    }
+
+    private static string Percent(double? value) => value is { } v ? $"{v:0}%" : "n/a";
+
+    private static TimeSpan AppCpuTime()
+    {
+        try
+        {
+            using var process = Process.GetCurrentProcess();
+            return process.TotalProcessorTime;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException or System.ComponentModel.Win32Exception)
+        {
+            return TimeSpan.Zero;
+        }
     }
 
     /// <summary>Matches typed text as if it had been spoken (test panel and replay).</summary>

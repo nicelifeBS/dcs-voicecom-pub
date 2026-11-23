@@ -140,7 +140,7 @@
           </StackPanel>
         </Border>
 
-        <Border Style="{StaticResource Card}">
+        <Border Style="{StaticResource Card}" Margin="0,0,0,12">
           <StackPanel>
             <TextBlock Text="PROFILES AND KEYS" Style="{StaticResource Heading}" />
             <Label Content="Profiles folder" />
@@ -151,8 +151,20 @@
             <Label Content="Key hold (ms)" Margin="0,10,0,0" />
             <TextBox Text="{Binding KeyHoldMs, UpdateSourceTrigger=PropertyChanged}" Width="120" HorizontalAlignment="Left" />
             <CheckBox Content="Audio cues (accepted, no match, refused)" IsChecked="{Binding CuesEnabled}" Margin="0,10,0,0" />
-            <CheckBox Content="Debug: save the audio of every command (misses marked)" IsChecked="{Binding SaveCommandAudio}" Margin="0,10,0,0" />
-            <TextBlock Text="Writes a WAV and a note for each miss to %LOCALAPPDATA%\DcsVoiceCom\debugging (the newest 200 are kept)."
+          </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource Card}">
+          <StackPanel>
+            <TextBlock Text="DEBUG" Style="{StaticResource Heading}" />
+            <CheckBox Content="Speed up speech while DCS keeps the CPU busy" IsChecked="{Binding BoostSpeechPriority}" />
+            <TextBlock Text="Runs speech at above-normal priority for the moment it takes to recognise a command, and stops Windows from slowing the app down to save power. On by default. Turn it off if DCS stutters when you speak."
+                       Style="{StaticResource MutedText}" Margin="20,2,0,0" TextWrapping="Wrap" />
+            <CheckBox Content="Log CPU use for every command" IsChecked="{Binding LogCpu}" Margin="0,10,0,0" />
+            <TextBlock Text="Logs the CPU model and cores at start, then for each command how busy the CPU was and how long speech took. Use it when commands are slow."
+                       Style="{StaticResource MutedText}" Margin="20,2,0,0" TextWrapping="Wrap" />
+            <CheckBox Content="Save the audio of every command (misses marked)" IsChecked="{Binding SaveCommandAudio}" Margin="0,10,0,0" />
+            <TextBlock Text="Writes a WAV and a note for each command to %LOCALAPPDATA%\DcsVoiceCom\debugging (the newest 200 are kept)."
                        Style="{StaticResource MutedText}" Margin="20,2,0,0" TextWrapping="Wrap" />
           </StackPanel>
         </Border>
