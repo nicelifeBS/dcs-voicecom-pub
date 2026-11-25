@@ -47,6 +47,8 @@ public static class ZipformerModel
     internal const string Tokens = "tokens.txt";
     internal const string Bpe = "bpe.model";
 
+    // The same files and hashes are in src/DcsVoiceCom.App/DcsVoiceCom.App.csproj (BundleZipformer), which puts
+    // them into the installer; change both together.
     private static readonly (string Name, string Sha256)[] Files =
     [
         (Encoder, "62be226a7b28a38e82cc522184ee01c46751df06bdd070dc9e1572a836ebbe78"),
@@ -56,8 +58,14 @@ public static class ZipformerModel
         (Bpe, "c8a2a0129c4ab8e463164c142f82d25649661b122c8cd0b7aab5c9e80b90ad24"),
     ];
 
-    /// <summary>Where the app keeps it: %LOCALAPPDATA%\DcsVoiceCom\model\zipformer-gigaspeech-2023-12-12.</summary>
+    /// <summary>
+    /// Where the app downloads it, and keeps the files it writes for any copy (bpe.vocab, hotwords.txt):
+    /// %LOCALAPPDATA%\DcsVoiceCom\model\zipformer-gigaspeech-2023-12-12.
+    /// </summary>
     public static string DefaultDirectory => Path.Combine(ModelLocator.DefaultDirectory, Name);
+
+    /// <summary>The copy the installer puts next to the app: model\zipformer-gigaspeech-2023-12-12.</summary>
+    public static string BundledDirectory(string appDirectory) => Path.Combine(appDirectory, "model", Name);
 
     /// <summary>True when <paramref name="folder"/> holds every file with its pinned SHA-256.</summary>
     public static bool IsComplete(string folder) =>
@@ -99,19 +107,24 @@ public sealed class ZipformerRecognizer : ISpeechToText, IKeywordBiased, IDispos
 
     private readonly object _lock = new();
     private readonly string _folder;
+    private readonly string _work;
     private readonly int _threads;
     private readonly float _boost;
     private readonly Action<string> _log;
     private OfflineRecognizer? _recognizer;
     private string? _keywordKey;
 
-    public ZipformerRecognizer(string folder, int threads = 0, float boost = DefaultBoost, Action<string>? log = null)
+    /// <param name="folder">The model files; only read, so it may be the installed copy under Program Files.</param>
+    /// <param name="workFolder">Where bpe.vocab and hotwords.txt are written (default <paramref name="folder"/>).</param>
+    public ZipformerRecognizer(string folder, int threads = 0, float boost = DefaultBoost, Action<string>? log = null, string? workFolder = null)
     {
         _folder = folder;
+        _work = workFolder ?? folder;
+        Directory.CreateDirectory(_work);
         _threads = threads > 0 ? threads : DefaultThreads;
         _boost = boost > 0 ? boost : DefaultBoost;
         _log = log ?? (_ => { });
-        BpeVocab.Write(Path.Combine(folder, ZipformerModel.Bpe), Path.Combine(folder, "bpe.vocab"));
+        BpeVocab.Write(Path.Combine(folder, ZipformerModel.Bpe), Path.Combine(_work, "bpe.vocab"));
         Prepare([]);
         // The first decode pays one-off setup; do it now instead of on the first command.
         Transcribe(new float[WhistleModel.SampleRate / 2], "en", []);
@@ -154,10 +167,10 @@ public sealed class ZipformerRecognizer : ISpeechToText, IKeywordBiased, IDispos
             config.MaxActivePaths = 4;
             if (words.Count > 0)
             {
-                var file = Path.Combine(_folder, "hotwords.txt");
+                var file = Path.Combine(_work, "hotwords.txt");
                 File.WriteAllLines(file, words);
                 config.ModelConfig.ModelingUnit = "bpe";
-                config.ModelConfig.BpeVocab = Path.Combine(_folder, "bpe.vocab");
+                config.ModelConfig.BpeVocab = Path.Combine(_work, "bpe.vocab");
                 config.HotwordsFile = file;
                 config.HotwordsScore = _boost;
             }

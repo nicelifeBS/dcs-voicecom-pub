@@ -54,7 +54,7 @@ dotnet publish src\DcsVoiceCom.App -c Release -r win-x64 --self-contained false 
 dist\DcsVoiceCom\DcsVoiceCom.exe
 ```
 
-The Whistle model and engine are bundled, so speech works offline. Full steps, settings and troubleshooting:
+The Whistle and Zipformer models are bundled, so speech works offline. Full steps, settings and troubleshooting:
 [docs/windows-setup.md](docs/windows-setup.md). A tour of the window: [docs/app.md](docs/app.md).
 
 Note: Old screenshot needs to be updated

@@ -238,7 +238,7 @@ public sealed class SettingsViewModel : ObservableObject
 
     /// <summary>What the chosen engine means for the user.</summary>
     public string EngineNote => IsZipformer
-        ? "English only; for another language the app uses Whistle. Downloaded once (about 75 MB), and uses about 150 MB more memory than Whistle."
+        ? "English only; for another language the app uses Whistle. Uses about 150 MB more memory than Whistle."
         : "Runs every language above. Small and fast.";
 
     private string _hotwordBoost = "";

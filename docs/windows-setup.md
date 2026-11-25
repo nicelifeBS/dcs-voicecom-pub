@@ -46,7 +46,14 @@ In folders 2–4 the app only uses files whose SHA-256 matches the pinned Whistl
 engine, so a library dropped into one of them is ignored. A folder set in Settings is used as is.
 
 Only if none has it does the app download the Whistle weights (17 MB) and the engine (1.5 MB) from Hugging Face into
-`%LOCALAPPDATA%\DcsVoiceCom\model`, checking their SHA-256. Then open **Settings** once for:
+`%LOCALAPPDATA%\DcsVoiceCom\model`, checking their SHA-256.
+
+The Zipformer engine (Settings → Speech engine, English) uses `model\zipformer-gigaspeech-2023-12-12` next to the exe.
+`dotnet publish` fetches it into the checkout's `model\` folder (once, about 74 MB, SHA-256 checked) and copies it
+there; `-p:BundleZipformer=false` leaves it out. Without it, the app downloads it into
+`%LOCALAPPDATA%\DcsVoiceCom\model\zipformer-gigaspeech-2023-12-12` when Zipformer is chosen.
+
+Then open **Settings** once for:
 
 - **Push-to-talk → Rebind**, then press the HOTAS button within 15 s.
 - **Microphone**, if it isn't the Windows default input.
@@ -81,6 +88,7 @@ section is dropped.
 | `profilesPath` | `%LOCALAPPDATA%\DcsVoiceCom\profiles` |
 | `speech.device` | microphone, part of its name; empty: the Windows default input |
 | `speech.modelDirectory` | Whistle model folder laid out like the cactus-needle cache (`whistle\<ver>\whistle.cact`, `v3\<ver>\libneedle.dll`); empty: the bundled `model\cactus-needle` next to the exe (see the search order above), else downloaded |
+| `speech.engine` / `hotwordBoost` | `whistle` (or `zipformer`, English only), `1.5` |
 | `speech.preRollMs` / `phraseKeywords` / `margin` / `autoDownload` | `200`, `true`, `10`, `true` |
 | `ptt.deviceGuid` / `deviceName` / `button` | set by `--bind` |
 | `dcsBios.allowRemoteExport` | `false`: export packets from other PCs are dropped; set `true` when DCS runs on another PC |

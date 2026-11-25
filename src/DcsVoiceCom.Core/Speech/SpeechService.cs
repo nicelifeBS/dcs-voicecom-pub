@@ -132,14 +132,17 @@ public sealed class SpeechService : IDisposable
             {
                 try
                 {
-                    var folder = ZipformerModel.DefaultDirectory;
+                    // The installer's copy, else a downloaded one.
+                    var folder = ZipformerModel.BundledDirectory(AppContext.BaseDirectory);
+                    if (!ZipformerModel.IsComplete(folder)) folder = ZipformerModel.DefaultDirectory;
                     if (!ZipformerModel.IsComplete(folder))
                     {
                         if (!settings.AutoDownload) throw new FileNotFoundException($"no Zipformer model in {folder}");
                         await ZipformerModel.DownloadAsync(folder, http, log, ct).ConfigureAwait(false);
                     }
                     var clock = Stopwatch.StartNew();
-                    var zipformer = await Task.Run(() => new ZipformerRecognizer(folder, boost: settings.HotwordBoost, log: log), ct).ConfigureAwait(false);
+                    var zipformer = await Task.Run(() => new ZipformerRecognizer(folder, boost: settings.HotwordBoost, log: log,
+                        workFolder: ZipformerModel.DefaultDirectory), ct).ConfigureAwait(false);
                     log($"Zipformer loaded in {clock.ElapsedMilliseconds} ms ({language}, {ZipformerRecognizer.DefaultThreads} threads): {folder}");
                     return zipformer;
                 }

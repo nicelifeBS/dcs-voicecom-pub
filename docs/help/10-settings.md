@@ -10,8 +10,8 @@ group: Reference
 - **Speech.** Microphone, language, speech engine and the Whistle model folder. Leave the folder empty to use the
   built-in model.
   - **Whistle** (default) runs every language. Small and fast.
-  - **Zipformer** is English only and better at odd words like "Jester", "AWACS" or "Shkval". It downloads once
-    (about 75 MB) and uses about 150 MB more memory. For another language the app uses Whistle.
+  - **Zipformer** is English only and better at odd words like "Jester", "AWACS" or "Shkval". It comes with the
+    installer and uses about 150 MB more memory. For another language the app uses Whistle.
   - **Word boost** (Zipformer only, default 1.5): how strongly it leans towards your profile's words. Higher can
     help an odd word, but can also turn other speech into a command word.
 - **Matching.** The score a command needs (85) and a critical command needs (95), 50 to 100. For every profile.
