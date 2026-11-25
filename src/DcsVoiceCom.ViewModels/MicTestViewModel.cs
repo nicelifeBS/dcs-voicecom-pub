@@ -5,7 +5,7 @@ using DcsVoiceCom.Speech;
 namespace DcsVoiceCom.ViewModels;
 
 /// <summary>
-/// Test Coms in the Settings dialog: press push-to-talk, say <see cref="Phrase"/>, then see what Whistle heard, a grade,
+/// Test Coms in the Settings dialog: press push-to-talk, say <see cref="Phrase"/>, then see what the speech engine heard, a grade,
 /// the mic level, and hear the clip played back.
 /// </summary>
 public sealed class MicTestViewModel : ObservableObject, IDisposable

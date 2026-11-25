@@ -8,10 +8,16 @@ group: Reference
 
 - **Push-to-talk.** *Rebind*, then press a HOTAS button within 15 seconds. One button for every aircraft.
 - **Test Coms.** Checks your microphone. Click *Test Coms*, hold push-to-talk, say the phrase shown, release. You
-  get a grade (**GOOD**, **FAIR** or **POOR**), what Whistle heard, the match score and the mic level, and you hear
-  your clip played back. It uses the microphone and language picked below, before you save. While it runs,
+  get a grade (**GOOD**, **FAIR** or **POOR**), what the speech engine heard, the match score and the mic level,
+  and you hear your clip played back. It uses the microphone picked below, before you save. While it runs,
   push-to-talk runs no commands.
-- **Speech.** Microphone, language and the Whistle model folder. Leave the folder empty to use the built-in model.
+- **Speech.** Microphone, speech engine and the Whistle model folder. Leave the folder empty to use the built-in
+  model. The app understands English.
+  - **Whistle** (default) is small and fast.
+  - **Zipformer** is better at odd words like "Jester", "AWACS" or "Shkval". It comes with the installer and uses
+    about 150 MB more memory.
+  - **Word boost** (Zipformer only, default 1.5): how strongly it leans towards your profile's words. Higher can
+    help an odd word, but can also turn other speech into a command word.
 - **Voice replies.** Turns the *Say* step on or off and sets the language, voice, output device, speed and
   volume. Type a text and press *Play* to hear it with the settings shown, before you save. The voices come from
   Windows. If none is installed for your language, a note says so; add one in Windows Settings › Time & language ›

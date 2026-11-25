@@ -31,4 +31,32 @@
     <None Include="..\..\model\cactus-needle\**" Exclude="..\..\model\cactus-needle\**\*.so"
           Link="model\cactus-needle\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <!--
+    The Zipformer speech engine's model, put into the publish folder (and so the installer) on publish only, so a
+    plain build needs no download. Fetched once into model\zipformer-gigaspeech-2023-12-12 (git-ignored) from a fixed
+    Hugging Face commit and checked against SHA-256. Same files and hashes as ZipformerModel in
+    src/DcsVoiceCom.Core/Speech/Zipformer.cs; change both together. -p:BundleZipformer=false leaves it out.
+    A hash mismatch stops the build: delete that folder to fetch the files again.
+  -->
+  <PropertyGroup>
+    <ZipformerDir>$(MSBuildThisFileDirectory)..\..\model\zipformer-gigaspeech-2023-12-12\</ZipformerDir>
+    <ZipformerUrl>https://huggingface.co/k2-fsa/sherpa-onnx-zipformer-gigaspeech-2023-12-12/resolve/a284ea43c73bb4b22e4cef6f86a38ce03cbd0ff3/</ZipformerUrl>
+  </PropertyGroup>
+  <Target Name="BundleZipformer" BeforeTargets="ComputeResolvedFilesToPublishList" Condition="'$(BundleZipformer)' != 'false'">
+    <ItemGroup>
+      <ZipformerFile Include="encoder-epoch-30-avg-1.int8.onnx" Sha256="62be226a7b28a38e82cc522184ee01c46751df06bdd070dc9e1572a836ebbe78" />
+      <ZipformerFile Include="decoder-epoch-30-avg-1.int8.onnx" Sha256="2b0580feb757696fa929922670b7126aaee609630349a1809fd5a2aee926d56e" />
+      <ZipformerFile Include="joiner-epoch-30-avg-1.int8.onnx" Sha256="80160e45cca71dd52f6b0a6d3d12be18126f5308b2d4ba03f001300fea377c64" />
+      <ZipformerFile Include="tokens.txt" Sha256="0ef7d736bf4de3ef947292e4b119ef13f6808cd5f3aec225a843a7135ac1c2ce" />
+      <ZipformerFile Include="bpe.model" Sha256="c8a2a0129c4ab8e463164c142f82d25649661b122c8cd0b7aab5c9e80b90ad24" />
+    </ItemGroup>
+    <DownloadFile SourceUrl="$(ZipformerUrl)%(ZipformerFile.Identity)" DestinationFolder="$(ZipformerDir)"
+                  Condition="!Exists('$(ZipformerDir)%(ZipformerFile.Identity)')" Retries="3" />
+    <VerifyFileHash File="$(ZipformerDir)%(ZipformerFile.Identity)" Hash="%(ZipformerFile.Sha256)" Algorithm="SHA256" />
+    <ItemGroup>
+      <ResolvedFileToPublish Include="@(ZipformerFile->'$(ZipformerDir)%(Identity)')"
+                             RelativePath="model\zipformer-gigaspeech-2023-12-12\%(Filename)%(Extension)" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
 </Project>

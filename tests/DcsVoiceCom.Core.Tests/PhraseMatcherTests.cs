@@ -116,6 +116,8 @@ public class PhraseMatcherTests
     [InlineData("jester target one", "Jester, target 1.")]
     [InlineData("range two hundred", "range 200")]
     [InlineData("jester target 1", "Jester, target one.")]
+    [InlineData("radio 251 decimal 000", "radio two five one decimal zero zero zero")]
+    [InlineData("radio 251 decimal 000", "radio 251 decimal zero zero zero")]
     public void Number_heard_as_digits_or_words_counts(string phrase, string said)
     {
         var d = Make(phrase, "jester target 2", "gear up").Decide(said);

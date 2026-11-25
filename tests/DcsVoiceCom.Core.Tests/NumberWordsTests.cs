@@ -22,6 +22,13 @@ public class NumberWordsTests
     [InlineData("tacan")]
     public void Leaves_other_words_alone(string word) => Assert.Empty(NumberWords.Spell(word));
 
+    [Theory]
+    [InlineData("000", "zero zero zero")]
+    [InlineData("251", "two five one")]
+    [InlineData("7", null)]
+    [InlineData("25.1", null)]
+    public void Reads_digits_one_by_one(string digits, string? english) => Assert.Equal(english, NumberWords.EnglishDigits(digits));
+
     [Fact]
     public void Spelled_numbers_parse_back()
     {

@@ -63,8 +63,14 @@ public sealed record TtsSettings
 /// <summary>All app settings, stored as %LOCALAPPDATA%\DcsVoiceCom\settings.json. Every path is configurable.</summary>
 public sealed record AppSettings
 {
-    /// <summary>Recognition language: "en" (default), "de", or another language Whistle knows.</summary>
-    public string Language { get; init; } = "en";
+    /// <summary>The language the app recognizes. English only for now; more languages are a later feature.</summary>
+    public const string SpeechLanguage = "en";
+
+    /// <summary>
+    /// Recognition language as stored in settings.json. Not used for now: the app recognizes <see cref="SpeechLanguage"/>
+    /// whatever this says (betas let you pick "de" and others). Kept so the file round-trips.
+    /// </summary>
+    public string Language { get; init; } = SpeechLanguage;
     public string DcsBiosJsonPath { get; init; } = DefinitionLoader.DefaultJsonDirectory;
     public string ProfilesPath { get; init; } = ProfileStore.DefaultDirectory;
     public DcsBiosEndpoints DcsBios { get; init; } = new();

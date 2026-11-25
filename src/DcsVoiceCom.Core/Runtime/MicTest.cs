@@ -17,16 +17,16 @@ public interface IMicTest : IDisposable
     /// <summary>True on push-to-talk press, false on release.</summary>
     event Action<bool>? ListeningChanged;
 
-    /// <summary>Whistle is working on the clip.</summary>
+    /// <summary>The speech engine is working on the clip.</summary>
     event Action? Transcribing;
 
     event Action<MicCheckResult>? Completed;
 
-    /// <summary>The clip could not be checked (too short, Whistle failed).</summary>
+    /// <summary>The clip could not be checked (too short, the speech engine failed).</summary>
     event Action<string>? Failed;
 }
 
-/// <summary>Runs one push-to-talk clip at a time through Whistle and <see cref="MicCheck"/>.</summary>
+/// <summary>Runs one push-to-talk clip at a time through the speech engine and <see cref="MicCheck"/>.</summary>
 internal sealed class MicTestSession(SpeechService speech, IMicrophone microphone, bool ownsMicrophone, string language, int threshold,
     Action<MicTestSession> closed) : IMicTest
 {
@@ -92,7 +92,7 @@ internal sealed class MicTestSession(SpeechService speech, IMicrophone microphon
             }
             catch (Exception ex)
             {
-                Failed?.Invoke($"Whistle failed: {ex.Message}");
+                Failed?.Invoke($"Speech engine failed: {ex.Message}");
             }
         });
     }

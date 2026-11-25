@@ -2,8 +2,9 @@
 
 Standalone, DCS-only voice control that replaces VoiceAttack for DCS World. Push a HOTAS button, speak,
 and the command acts on the cockpit through [DCS-BIOS (Skunkworks)](https://github.com/DCS-Skunkworks/dcs-bios),
-with keyboard shortcuts as a fallback. Speech runs in the app on the CPU with [Cactus Whistle](https://huggingface.co/Cactus-Compute/whistle);
-nothing leaves the machine.
+with keyboard shortcuts as a fallback. Speech runs in the app on the CPU with [Cactus Whistle](https://huggingface.co/Cactus-Compute/whistle), or a
+[Zipformer](https://huggingface.co/k2-fsa/sherpa-onnx-zipformer-gigaspeech-2023-12-12) model
+through sherpa-onnx (Settings → Speech engine); nothing leaves the machine. English only for now.
 
 Free and open source under the [GNU General Public License v3.0 or later](LICENSE). See [Licence](#licence) and
 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
@@ -53,7 +54,7 @@ dotnet publish src\DcsVoiceCom.App -c Release -r win-x64 --self-contained false 
 dist\DcsVoiceCom\DcsVoiceCom.exe
 ```
 
-The Whistle model and engine are bundled, so speech works offline. Full steps, settings and troubleshooting:
+The Whistle and Zipformer models are bundled, so speech works offline. Full steps, settings and troubleshooting:
 [docs/windows-setup.md](docs/windows-setup.md). A tour of the window: [docs/app.md](docs/app.md).
 
 Note: Old screenshot needs to be updated

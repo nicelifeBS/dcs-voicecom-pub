@@ -315,7 +315,7 @@ public sealed class MainViewModel : ObservableObject
 
     public string WindowTitle => "DCS VoiceCom" + (_profile is null ? "" : $" — {SelectedProfile?.Display}{(IsDirty ? " •" : "")}");
 
-    /// <summary>Recognizer keywords, comma separated: only words Whistle gets wrong.</summary>
+    /// <summary>Recognizer keywords, comma separated: only words the speech engine gets wrong.</summary>
     public string KeywordsText
     {
         get => _profile is null ? "" : string.Join(", ", _profile.Keywords);

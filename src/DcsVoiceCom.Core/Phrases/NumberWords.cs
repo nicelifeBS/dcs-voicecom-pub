@@ -22,6 +22,13 @@ public static class NumberWords
         return new[] { English(n), German(n) }.Distinct().ToList();
     }
 
+    /// <summary>
+    /// A number of two or more digits read out one digit at a time, as on the radio: "000" gives "zero zero zero",
+    /// "251" gives "two five one". Null for anything else.
+    /// </summary>
+    public static string? EnglishDigits(string digits) =>
+        digits.Length < 2 || !digits.All(char.IsAsciiDigit) ? null : string.Join(' ', digits.Select(d => En.Ones[d - '0']));
+
     public static string English(int n)
     {
         if (n < 10) return En.Ones[n];

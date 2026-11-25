@@ -9,6 +9,10 @@
     <InternalsVisibleTo Include="DcsVoiceCom.Core.Tests" />
   </ItemGroup>
   <ItemGroup>
+    <!-- Zipformer speech engine (Apache-2.0); brings onnxruntime (MIT) for each platform. -->
+    <PackageReference Include="org.k2fsa.sherpa.onnx" Version="2.0.1" />
+  </ItemGroup>
+  <ItemGroup>
     <EmbeddedResource Include="DcsHook\DcsVoiceCom.GameGUI.lua" LogicalName="DcsVoiceCom.GameGUI.lua" />
   </ItemGroup>
 </Project>

@@ -47,7 +47,7 @@ stand-ins, and DCS, DCS-BIOS definitions and speech are offline.
 - **Log and test:** every push-to-talk and test with what was heard, the match, the score and the result. Type a phrase
   and press Enter (or *Test selected*); *Dry run* lists the steps without sending them. Hidden by default; the *Log*
   button toggles it and the state is saved (`showLog` in settings.json). It scrolls to the newest line.
-- **Settings:** push-to-talk rebind, microphone, language, Whistle model folder, DCS-BIOS ports and
+- **Settings:** push-to-talk rebind, microphone, speech engine, Whistle model folder, DCS-BIOS ports and
   definitions folder, profiles folder, key hold, cues. The VOICE REPLIES card sets the Windows voice, language,
   output device, speed and volume, and has a text box with **Play** that uses the values shown, before you save.
   A warning replaces the voice list when no voice is installed. Saving restarts the voice engine.

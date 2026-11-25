@@ -18,7 +18,7 @@ public partial class SettingsWindow : Window
         Closed += (_, _) => vm.Dispose(); // stops the voice preview and Test Coms, so push-to-talk runs commands again
     }
 
-    public static IReadOnlyList<string> Languages => SettingsViewModel.Languages;
+    public static IReadOnlyList<SpeechEngineChoice> Engines => SettingsViewModel.Engines;
 
     /// <summary>The saved settings after Save; null when cancelled.</summary>
     public AppSettings? Result { get; private set; }
