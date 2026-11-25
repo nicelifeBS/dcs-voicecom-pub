@@ -216,7 +216,9 @@
             <ToggleButton Template="{StaticResource ComboToggle}" Focusable="False" ClickMode="Press"
                           IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" />
             <ContentPresenter x:Name="Content" IsHitTestVisible="False" Margin="8,0,28,0" VerticalAlignment="Center"
-                              Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" />
+                              Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                              ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                              ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}" />
             <TextBox x:Name="PART_EditableTextBox" Visibility="Hidden" Margin="1,1,24,1" Background="Transparent"
                      BorderThickness="0" IsReadOnly="{TemplateBinding IsReadOnly}" VerticalContentAlignment="Center" />
             <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True"

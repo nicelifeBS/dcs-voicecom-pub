@@ -432,6 +432,6 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
 /// <summary>A speech engine in the Settings list: its id and what the list shows.</summary>
 public sealed record SpeechEngineChoice(string Id, string Label)
 {
-    // The app's ComboBox template shows the item itself, not DisplayMemberPath, so the label is the text.
+    // The label is also the text where no DisplayMemberPath is set.
     public override string ToString() => Label;
 }
