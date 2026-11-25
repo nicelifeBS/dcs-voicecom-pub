@@ -122,6 +122,16 @@ public sealed class ProfileStore
             ModuleVersion = aircraft.ModuleVersion,
             Keywords = aircraft.Keywords.Concat(common.Keywords).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
             Commands = aircraft.Commands.Concat(common.Commands.Where(c => !names.Contains(c.Name))).ToList(),
+            Values = MergeValues(aircraft.Values, common.Values),
         };
+    }
+
+    /// <summary>Live values by name: the higher layer's wins.</summary>
+    private static List<TtsValue>? MergeValues(List<TtsValue>? high, List<TtsValue>? low)
+    {
+        if (low is not { Count: > 0 }) return high;
+        if (high is not { Count: > 0 }) return low;
+        var names = new HashSet<string>(high.Select(v => v.Name), StringComparer.OrdinalIgnoreCase);
+        return high.Concat(low.Where(v => !names.Contains(v.Name))).ToList();
     }
 }

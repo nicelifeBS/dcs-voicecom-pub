@@ -15,6 +15,10 @@ public static partial class Placeholders
     /// <summary>Each placeholder as its bare slot name, for a preview: "Radio set to {freq}" → "Radio set to freq".</summary>
     public static string ToSlotNames(string text) => PlaceholderRegex().Replace(text, "$1");
 
+    /// <summary>The slot names the text uses, each once: "{a} and {b+1} {a}" → a, b.</summary>
+    public static IReadOnlyList<string> Names(string text) =>
+        PlaceholderRegex().Matches(text).Select(m => m.Groups[1].Value).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
     public static string Apply(string text, IReadOnlyDictionary<string, string> values)
     {
         if (!text.Contains('{')) return text;

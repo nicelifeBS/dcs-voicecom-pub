@@ -25,6 +25,10 @@ public sealed class Profile
     public List<string> Keywords { get; set; } = [];
 
     public List<Command> Commands { get; set; } = [];
+
+    /// <summary>Live cockpit values Say steps can speak as {name}. Left out of the file when empty.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public List<TtsValue>? Values { get; set; }
 }
 
 public sealed class Command
