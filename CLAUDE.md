@@ -14,3 +14,9 @@ panel, button or layout) since the last screenshot commit:
 `git diff --stat $(git log -1 --format=%h -- docs/help/images) -- src/DcsVoiceCom.App`
 
 If there are any, **ask the user before retaking**. On yes, use the `help-screenshots` skill.
+
+## Branches
+
+- Name the branch after the topic, e.g. `claude/settings-test-comms` or `claude/fix-help-links`, not the random
+  name a session starts on. Create it before the first commit and push there.
+- When the topic is unclear, ask the user for the name.

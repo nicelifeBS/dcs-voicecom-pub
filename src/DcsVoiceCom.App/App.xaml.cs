@@ -28,6 +28,7 @@ public partial class App : Application
     private HelpWindow? _help;
     private HelpViewModel? _helpModel;
     private VoiceComRuntime? _runtime;
+    private readonly WavClipPlayer _clipPlayer = new();
     private OneCoreTextToSpeech? _tts;
     private bool _quitting;
 
@@ -214,7 +215,7 @@ public partial class App : Application
 
         Tts.RefreshVoices(); // picks up voices added in Windows since the app started
         var dialog = new SettingsWindow(new SettingsViewModel(_settings, new DirectInputBinder(() => WindowHandle), microphones,
-            new DcsHookInstaller(_settings.DcsHook.Port), Tts, OpenUri)) { Owner = _window };
+            new DcsHookInstaller(_settings.DcsHook.Port), Tts, OpenUri, _runtime, _clipPlayer, new WpfUiThread(Dispatcher))) { Owner = _window };
         if (dialog.ShowDialog() != true || dialog.Result is not { } updated) return;
 
         var pathsChanged = updated.ProfilesPath != _settings.ProfilesPath || updated.DcsBiosJsonPath != _settings.DcsBiosJsonPath;
@@ -262,6 +263,7 @@ public partial class App : Application
         }
         _quitting = true;
         _tray?.Dispose();
+        _clipPlayer.Dispose();
         await StopRuntimeAsync();
         _instance?.ReleaseMutex();
         Shutdown();

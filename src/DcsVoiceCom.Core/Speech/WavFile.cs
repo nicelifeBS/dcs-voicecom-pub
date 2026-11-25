@@ -53,7 +53,11 @@ public static class WavFile
     }
 
     /// <summary>Writes mono float samples in [-1, 1] as a 16-bit PCM WAV file.</summary>
-    public static void WriteMono16(string path, ReadOnlySpan<float> samples, int sampleRate)
+    public static void WriteMono16(string path, ReadOnlySpan<float> samples, int sampleRate) =>
+        File.WriteAllBytes(path, EncodeMono16(samples, sampleRate));
+
+    /// <summary>Mono float samples in [-1, 1] as the bytes of a 16-bit PCM WAV file.</summary>
+    public static byte[] EncodeMono16(ReadOnlySpan<float> samples, int sampleRate)
     {
         var bytes = new byte[44 + samples.Length * 2];
         var span = bytes.AsSpan();
@@ -74,7 +78,7 @@ public static class WavFile
             var v = (int)Math.Round(Math.Clamp(samples[i], -1f, 1f) * 32767.0);
             BinaryPrimitives.WriteInt16LittleEndian(span[(44 + i * 2)..], (short)v);
         }
-        File.WriteAllBytes(path, bytes);
+        return bytes;
     }
 
     private static double Sample(ReadOnlySpan<byte> s, int tag) => (tag, s.Length) switch

@@ -36,6 +36,7 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
     private bool _listening;
     private readonly CatalogBiosSender _sender;
     private readonly ClipRecorder? _clips;
+    private MicTestSession? _micTest;
 
     /// <param name="microphones">Microphone capture; null leaves push-to-talk off (typed tests still work).</param>
     public VoiceComRuntime(AppSettings settings, IKeySender keys, ICuePlayer cues, IPushToTalk? ptt, Action<string>? log = null,
@@ -232,6 +233,48 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
     public Task<IReadOnlyList<string>> ListInputDevicesAsync(CancellationToken ct = default) =>
         _microphones is null ? Task.FromResult<IReadOnlyList<string>>([]) : Task.Run(_microphones.ListDevices, ct);
 
+    /// <summary>
+    /// Starts Test Coms on <paramref name="device"/> (a microphone name; empty for the Windows default). Until the test is
+    /// disposed, push-to-talk records for it and no command runs. Throws <see cref="InvalidOperationException"/> with a
+    /// plain reason when it can't start.
+    /// </summary>
+    public async Task<IMicTest> StartMicTestAsync(string? device, string language, CancellationToken ct = default)
+    {
+        var speech = _speech ?? throw new InvalidOperationException("The voice engine is still starting. Try again in a moment.");
+        if (!speech.CanTranscribe) throw new InvalidOperationException($"Whistle is not loaded ({speech.UnavailableReason}).");
+        if (_ptt is null) throw new InvalidOperationException("No push-to-talk button is bound. Rebind, save, then test.");
+
+        var wanted = string.IsNullOrWhiteSpace(device) ? null : device.Trim();
+        var configured = string.IsNullOrWhiteSpace(_settings.Speech.Device) ? null : _settings.Speech.Device.Trim();
+        IMicrophone microphone;
+        var owned = false;
+        if (speech.Microphone is { } open && string.Equals(wanted, configured, StringComparison.OrdinalIgnoreCase))
+            microphone = open;
+        else
+        {
+            if (_microphones is null) throw new InvalidOperationException("No microphone support on this platform.");
+            try
+            {
+                microphone = await Task.Run(() => _microphones.Open(wanted, _settings.Speech.PreRollMs), ct).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                throw new InvalidOperationException($"Can't open the microphone: {ex.Message}", ex);
+            }
+            owned = true;
+        }
+        var test = new MicTestSession(speech, microphone, owned, string.IsNullOrWhiteSpace(language) ? speech.Language : language,
+            _settings.Threshold, t => Interlocked.CompareExchange(ref _micTest, null, t));
+        Interlocked.Exchange(ref _micTest, test)?.Dispose();
+        if (_listening)
+        {
+            _listening = false;
+            ListeningChanged?.Invoke(false);
+        }
+        Log($"Test Coms started: {microphone.DeviceName}");
+        return test;
+    }
+
     /// <summary>Sends one DCS-BIOS line (the "Enter value" window's test clicks).</summary>
     public Task SendBiosAsync(string control, string argument, CancellationToken ct = default) => _sender.SendAsync(control, argument, ct);
 
@@ -272,6 +315,11 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
 
     private void OnPttPressed()
     {
+        if (_micTest is { } test)
+        {
+            test.Press();
+            return;
+        }
         _engine.Cancel();
         _engine.StopSpeech();
         _pttWatch.Restart();
@@ -282,6 +330,11 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
 
     private void OnPttReleased()
     {
+        if (_micTest is { } test)
+        {
+            test.Release();
+            return;
+        }
         if (!_listening) return;
         _listening = false;
         ListeningChanged?.Invoke(false);
@@ -330,6 +383,7 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         _ptt?.Dispose();
+        _micTest?.Dispose();
         _engine.Cancel();
         _speech?.Dispose();
         if (_clips is not null) await _clips.DisposeAsync().ConfigureAwait(false);
