@@ -20,6 +20,9 @@ public interface IDialogs
 
     /// <summary>Shows the Say window; true on OK. Without a window, nothing is added.</summary>
     bool ShowSay(SayEditorViewModel editor) => false;
+
+    /// <summary>Shows the TTS values window; true on OK (or Insert in pick mode). Without a window, nothing changes.</summary>
+    bool ShowTtsValues(TtsValuesEditorViewModel editor) => false;
 }
 
 /// <summary>Runs work on the UI thread; runtime events arrive on background threads.</summary>

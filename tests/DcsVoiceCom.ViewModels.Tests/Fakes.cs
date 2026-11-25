@@ -52,6 +52,11 @@ internal sealed class FakeDialogs : IDialogs
     public Func<SayEditorViewModel, bool>? OnSay { get; set; }
 
     public bool ShowSay(SayEditorViewModel editor) => OnSay?.Invoke(editor) ?? false;
+
+    /// <summary>Runs on the TTS values window instead of showing it; return true for OK.</summary>
+    public Func<TtsValuesEditorViewModel, bool>? OnTtsValues { get; set; }
+
+    public bool ShowTtsValues(TtsValuesEditorViewModel editor) => OnTtsValues?.Invoke(editor) ?? false;
 }
 
 internal sealed class FakeRuntime : IVoiceComRuntime
