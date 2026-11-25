@@ -12,6 +12,10 @@ group: Reference
   your clip played back. It uses the microphone and language picked below, before you save. While it runs,
   push-to-talk runs no commands.
 - **Speech.** Microphone, language and the Whistle model folder. Leave the folder empty to use the built-in model.
+- **Voice replies.** Turns the *Say* step on or off and sets the language, voice, output device, speed and
+  volume. Type a text and press *Play* to hear it with the settings shown, before you save. The voices come from
+  Windows. If none is installed for your language, a note says so; add one in Windows Settings › Time & language ›
+  Speech › Manage voices, then reopen Settings.
 - **Matching.** The score a command needs (85) and a critical command needs (95), 50 to 100. For every profile.
 - **DCS-BIOS connection.** Host, ports and the folder with the aircraft definitions. The defaults fit a normal
   install.

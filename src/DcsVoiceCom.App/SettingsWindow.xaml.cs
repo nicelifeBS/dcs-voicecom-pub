@@ -15,7 +15,7 @@ public partial class SettingsWindow : Window
         _vm = vm;
         DataContext = vm;
         Icon = AppIcon.ImageSource;
-        Closed += (_, _) => vm.Dispose(); // ends Test Coms, so push-to-talk runs commands again
+        Closed += (_, _) => vm.Dispose(); // stops the voice preview and Test Coms, so push-to-talk runs commands again
     }
 
     public static IReadOnlyList<string> Languages => SettingsViewModel.Languages;

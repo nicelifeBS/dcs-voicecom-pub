@@ -25,6 +25,7 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
     private SpeechService? _speech;
     private readonly CommandEngine _engine;
     private readonly IPushToTalk? _ptt;
+    private readonly ITextToSpeech? _tts;
     private readonly SemaphoreSlim _switchLock = new(1, 1);
     private readonly Stopwatch _pttWatch = new();
     private ControlCatalog _catalog = ControlCatalog.Empty;
@@ -39,8 +40,9 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
 
     /// <param name="microphones">Microphone capture; null leaves push-to-talk off (typed tests still work).</param>
     public VoiceComRuntime(AppSettings settings, IKeySender keys, ICuePlayer cues, IPushToTalk? ptt, Action<string>? log = null,
-        IMicrophoneProvider? microphones = null)
+        IMicrophoneProvider? microphones = null, ITextToSpeech? tts = null)
     {
+        _tts = tts;
         _settings = settings;
         Log = log ?? (_ => { });
         _override = settings.ProfileOverride;
@@ -61,7 +63,8 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
                 KeyHold = TimeSpan.FromMilliseconds(settings.KeyHoldMs),
                 Threshold = settings.Threshold,
                 CriticalThreshold = settings.CriticalThreshold,
-            });
+            },
+            tts, TtsOptionsFor);
         _engine.Executed += OnExecuted;
         StateReader = state;
 
@@ -306,6 +309,10 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
         if (!names.SequenceEqual(_activeServerProfiles, StringComparer.OrdinalIgnoreCase)) _ = RunLogged(ReloadProfileAsync);
     }
 
+    /// <summary>Options for one voice reply; null when voice replies are off or no voice fits the language.</summary>
+    private TtsOptions? TtsOptionsFor() =>
+        _tts is null ? null : _settings.Tts.ToOptions(_tts.Voices, _settings.Language);
+
     private void OnPttPressed()
     {
         if (_micTest is { } test)
@@ -314,6 +321,7 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
             return;
         }
         _engine.Cancel();
+        _engine.StopSpeech();
         _pttWatch.Restart();
         _listening = true;
         ListeningChanged?.Invoke(true);

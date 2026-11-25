@@ -47,6 +47,11 @@ internal sealed class FakeDialogs : IDialogs
     public Func<EnterValueEditorViewModel, bool>? OnEnterValue { get; set; }
 
     public bool ShowEnterValue(EnterValueEditorViewModel editor) => OnEnterValue?.Invoke(editor) ?? false;
+
+    /// <summary>Runs on the Say window instead of showing it; return true for OK.</summary>
+    public Func<SayEditorViewModel, bool>? OnSay { get; set; }
+
+    public bool ShowSay(SayEditorViewModel editor) => OnSay?.Invoke(editor) ?? false;
 }
 
 internal sealed class FakeRuntime : IVoiceComRuntime

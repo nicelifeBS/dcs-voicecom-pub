@@ -103,6 +103,13 @@ public sealed class CueStep : Step
     public Cue Cue { get; set; }
 }
 
+/// <summary>Speaks a reply with the text-to-speech voice. <see cref="Text"/> may hold placeholders ("Radio set to {freq}"). Doesn't wait for the speech.</summary>
+public sealed class SayStep : Step
+{
+    public override string Type => "say";
+    public string Text { get; set; } = "";
+}
+
 /// <summary>
 /// Runs its steps once per character of <see cref="Value"/> (usually a spoken parameter),
 /// with {char} bound to the character, or to its <see cref="Map"/> entry ("." → "DOT").
