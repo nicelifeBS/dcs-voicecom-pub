@@ -140,6 +140,7 @@ Every step has `type`. Defaults are used when a field is left out.
 | `if` | `condition` | Condition | empty |
 | | `then`, `else` | Step[] | `[]` |
 | `cue` | `cue` | `accepted` \| `no_match` \| `refused` | `accepted` |
+| `say` | `text` | string | `""` (may hold `{slot}`) |
 | `foreach_char` | `value` | string | `""` |
 | | `map` | object (string → string) | `{}` |
 | | `steps` | Step[] | `[]` |
@@ -160,6 +161,7 @@ One small example per step type (control names are examples; use the exact DCS-B
   "then": [ { "type": "cue", "cue": "accepted" } ],
   "else": [ { "type": "bios", "control": "GEAR_LEVER", "arg": "1" } ] }
 { "type": "cue", "cue": "refused" }
+{ "type": "say", "text": "Radio set to {freq}" }
 { "type": "foreach_char", "value": "{code}", "map": { ".": "DOT" },
   "steps": [ { "type": "bios", "control": "UFC_{char}", "arg": "1", "press_ms": 50 } ] }
 ```
@@ -260,6 +262,7 @@ Fields, types and defaults are in the [Schema reference](#step-fields). This is 
 | `wait_for` | Waits until a [condition](#conditions) is true (`until`); on timeout the sequence stops and plays *refused*. |
 | `if` | Runs `then` or `else` depending on a [condition](#conditions). |
 | `cue` | Plays a cue (`accepted`, `no_match`, `refused`) mid-sequence. |
+| `say` | Speaks `text` as a voice reply with a Windows voice, see [`say`](#say). Doesn't wait for the speech to end, so later steps aren't delayed. With voice replies off or no voice installed, the step is skipped and the command still completes. |
 | `foreach_char` | Runs `steps` per character of `value` with `{char}` bound, e.g. one UFC key per digit; `map` renames characters (`"." → "DOT"`). |
 | `enter_value` | Puts a spoken value into the cockpit: a number on radio wheels, or text on a keypad, checked on one display. Set it up in the app (*+ Enter value*, then *Edit*). |
 
@@ -287,7 +290,20 @@ reads the heading until it matches.
 ### Placeholders
 
 `{slot}` placeholders (see [Spoken parameters](#spoken-parameters-slots)) work in `control`, `arg`, `target`,
-`keys` and `value`. `{char}` is available inside `foreach_char`.
+`keys`, `value` and `text`. `{char}` is available inside `foreach_char`.
+
+### `say`
+
+```json
+{ "type": "say", "text": "Radio set to {freq}" }
+```
+
+`{name}` is the spoken value of a slot in the voice line, the same values `bios` and `enter_value` steps use. Say
+"set radio to two five one decimal zero" and the voice reads "Radio set to 251.0" in its own way. The operations work
+too (`{channel+1}`). The value is the parsed number, not your exact words.
+
+A new push-to-talk press stops the reply, so the app never talks over you. The voice, speed, volume and output
+device are in Settings → VOICE REPLIES (`tts` in `settings.json`).
 
 ### `enter_value`
 

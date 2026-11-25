@@ -1,7 +1,9 @@
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using DcsVoiceCom.ViewModels;
 
@@ -19,19 +21,43 @@ public partial class MainWindow : Window
         DataContext = vm;
         Icon = AppIcon.ImageSource;
 
-        // Keep the newest log line in view. Deferred: during the Add notification the list hasn't seen the item yet.
+        // Keep the newest log line in view: on every new line, and when the panel opens (a hidden list doesn't scroll).
+        // Deferred: during the Add notification the list hasn't laid out the item yet.
         ((INotifyCollectionChanged)vm.Log.Entries).CollectionChanged += (_, e) =>
         {
-            if (e.Action != NotifyCollectionChangedAction.Add) return;
-            Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
-            {
-                if (vm.Log.Entries.Count > 0) LogList.ScrollIntoView(vm.Log.Entries[^1]);
-            });
+            if (e.Action == NotifyCollectionChangedAction.Add) ScrollLogToEnd();
+        };
+        LogList.IsVisibleChanged += (_, e) =>
+        {
+            if (e.NewValue is true) ScrollLogToEnd();
         };
 
         // Status bar and live control values.
         _timer = new DispatcherTimer(TimeSpan.FromMilliseconds(250), DispatcherPriority.Background, (_, _) => vm.Tick(), Dispatcher);
         _timer.Start();
+    }
+
+    /// <summary>
+    /// Scrolls the log to its last line. ScrollToEnd, not ScrollIntoView: with wrapped (taller) lines ScrollIntoView
+    /// can stop short of the bottom.
+    /// </summary>
+    private void ScrollLogToEnd() =>
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+        {
+            if (!LogList.IsVisible) return;
+            if (FindScrollViewer(LogList) is { } scroller) scroller.ScrollToEnd();
+            else if (_vm.Log.Entries.Count > 0) LogList.ScrollIntoView(_vm.Log.Entries[^1]);
+        });
+
+    private static ScrollViewer? FindScrollViewer(DependencyObject parent)
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is ScrollViewer found) return found;
+            if (FindScrollViewer(child) is { } deeper) return deeper;
+        }
+        return null;
     }
 
     /// <summary>Opens the Settings dialog; set by the app.</summary>

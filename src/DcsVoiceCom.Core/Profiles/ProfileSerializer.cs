@@ -42,6 +42,7 @@ public sealed class StepJsonConverter : JsonConverter<Step>
         ["wait_for"] = typeof(WaitForStep),
         ["if"] = typeof(IfStep),
         ["cue"] = typeof(CueStep),
+        ["say"] = typeof(SayStep),
         ["foreach_char"] = typeof(ForEachCharStep),
         ["enter_value"] = typeof(EnterValueStep),
     };

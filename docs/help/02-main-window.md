@@ -17,6 +17,7 @@ group: Start
 3. **Commands.** All commands of the profile, sorted A–Z by voice line. Tick a box to enable a command. Right-click for duplicate and delete.
 4. **Editor.** The voice line and the actions of the selected command.
 5. **Add DCS-BIOS command.** Search the aircraft's switches and click a value to add it as an action.
-6. **Log.** What was heard, the match, and what was sent. Type a phrase here to test it.
+6. **Log.** What was heard, the match, and what was sent. Type a phrase here to test it. Hidden at first: the
+   **Log** button opens it, and the app remembers if it is open. It always shows the newest line.
 
 Minimizing hides the window in the tray. The tray menu pins a profile or quits.

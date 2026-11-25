@@ -15,6 +15,7 @@ public partial class SettingsWindow : Window
         _vm = vm;
         DataContext = vm;
         Icon = AppIcon.ImageSource;
+        Closed += (_, _) => vm.StopPreview();
     }
 
     public static IReadOnlyList<string> Languages => SettingsViewModel.Languages;

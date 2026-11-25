@@ -50,12 +50,13 @@ if [[ "${1:-}" != "--no-build" ]]; then "$D" build; fi
 mkdir -p "$PREFIX/AppData/Local/DcsVoiceCom/profiles" "$PREFIX/Saved Games/DCS/Scripts/DCS-BIOS/doc/json"
 cp "$ROOT"/profiles/*.json "$PREFIX/AppData/Local/DcsVoiceCom/profiles/"
 cp "$ROOT"/tools/help-screenshots/sample-dcs-bios/*.json "$PREFIX/Saved Games/DCS/Scripts/DCS-BIOS/doc/json/"
-# Pin F-14, so typed tests match without DCS (the app writes settings.json on its first start).
+# Pin F-14, so typed tests match without DCS, and open the log (hidden by default).
+# The app writes settings.json on its first start.
 SETTINGS="$PREFIX/AppData/Local/DcsVoiceCom/settings.json"
 if [[ -f "$SETTINGS" ]]; then
-  python3 -c 'import json,sys; p=sys.argv[1]; s=json.load(open(p, encoding="utf-8-sig")); s["profileOverride"]="F-14"; json.dump(s, open(p,"w"), indent=2)' "$SETTINGS"
+  python3 -c 'import json,sys; p=sys.argv[1]; s=json.load(open(p, encoding="utf-8-sig")); s["profileOverride"]="F-14"; s["showLog"]=True; json.dump(s, open(p,"w"), indent=2)' "$SETTINGS"
 else
-  echo '{ "profileOverride": "F-14" }' > "$SETTINGS"
+  echo '{ "profileOverride": "F-14", "showLog": true }' > "$SETTINGS"
 fi
 
 setsid nohup "$D" launch > "$WORK/launch.log" 2>&1 < /dev/null &
@@ -76,15 +77,16 @@ marker "$SHOTS/main.png" "$OUT/main-window.png" \
 "$D" ss log >/dev/null; check "$SHOTS/log.png"
 crop "$SHOTS/log.png" "$OUT/log.png" 16 620 1400 230
 
-# Editor: the UHF frequency command (a slot and an Enter value step).
+# Editor: the UHF frequency command (a slot and an Enter value step). Hide the log first, so both actions fit.
+"$D" click 1245 36; "$D" wait 1
 "$D" click 400 120; "$D" wait 1; "$D" type "uhf"; "$D" wait 2
 "$D" click 400 180; "$D" wait 3
 "$D" ss editor >/dev/null; check "$SHOTS/editor.png"
 crop "$SHOTS/editor.png" "$OUT/voice-line.png" 584 72 418 350
-crop "$SHOTS/editor.png" "$OUT/actions.png" 584 432 418 176
+crop "$SHOTS/editor.png" "$OUT/actions.png" 584 462 418 200
 
 # Enter value window (no DCS here, so it shows its warning and empty cells).
-"$D" click 912 592; "$D" waitwin 'Enter value'
+"$D" click 922 613; "$D" waitwin 'Enter value'
 "$D" sswin 'Enter value' enter-value >/dev/null
 cp "$SHOTS/enter-value.png" "$OUT/enter-value.png"
 "$D" click 1083 800; "$D" wait 2

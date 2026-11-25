@@ -108,6 +108,7 @@ dotnet test     # Core and ViewModels tests; the App project fails with MSB4019 
 
 | Symptom | Fix |
 |---|---|
+| Every `wine` command aborts with `free(): invalid pointer` (wineserver crashes) | `/run/user/<uid>` is missing. `driver.sh` creates it on every run; by hand: `mkdir -p /run/user/0 && chmod 700 /run/user/0`. |
 | `MSB4019 ... Microsoft.NET.Sdk.WindowsDesktop.targets was not found` | You built with `/usr/bin/dotnet`. Use `driver.sh build`. |
 | `launch` prints `Process terminated` + `MapUnresolvedCharacters` | The font step is missing. Re-run `driver.sh setup`. |
 | `launch` says `already running` but nothing is visible | A previous run is still alive. Run `driver.sh quit` and then `launch`. |

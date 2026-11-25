@@ -28,6 +28,7 @@ public partial class App : Application
     private HelpWindow? _help;
     private HelpViewModel? _helpModel;
     private VoiceComRuntime? _runtime;
+    private OneCoreTextToSpeech? _tts;
     private bool _quitting;
 
     public App()
@@ -88,6 +89,9 @@ public partial class App : Application
         var dialogs = new WpfDialogs(() => _window);
         _vm = new MainViewModel(new ProfileStore(_settings.ProfilesPath), new DefinitionLoader(_settings.DcsBiosJsonPath),
             dialogs, new WpfUiThread(Dispatcher), SettingsViewModel.Describe(_settings.Ptt));
+        _vm.SayContextProvider = () => new SayContext(Tts, () => _settings.Tts.ToOptions(Tts.Voices, _settings.Language));
+        _vm.ShowLog = _settings.ShowLog;
+        _vm.ShowLogChanged += open => SaveSettings(_settings with { ShowLog = open });
         _vm.ProfileOverrideChanged += pinned => SaveSettings(_settings with { ProfileOverride = pinned });
         _vm.ServerOverrideChanged += pinned => SaveSettings(_settings with { ServerProfileOverride = pinned });
         _vm.Log.Add("INFO", $"Settings: {AppSettings.DefaultPath}");
@@ -104,6 +108,21 @@ public partial class App : Application
         await StartRuntimeAsync();
     }
 
+    /// <summary>One voice for the runtime and the Settings preview, so Stop reaches both.</summary>
+    private OneCoreTextToSpeech Tts => _tts ??= new OneCoreTextToSpeech(message => _vm?.PostMessage(message));
+
+    private static void OpenUri(string uri)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(uri) { UseShellExecute = true });
+        }
+        catch (Exception)
+        {
+            // No settings app (stripped-down Windows): nothing to open.
+        }
+    }
+
     private nint WindowHandle => _window is null ? 0 : new WindowInteropHelper(_window).Handle;
 
     private async Task StartRuntimeAsync()
@@ -113,7 +132,7 @@ public partial class App : Application
         if (!hasPtt) _vm.Log.Add("WARN", "No push-to-talk button bound: Settings → Rebind. Typed tests still work.");
         var ptt = hasPtt ? new DirectInputPushToTalk(_settings.Ptt, WindowHandle, _vm.PostMessage) : null;
         _runtime = new VoiceComRuntime(_settings, new SendInputKeySender(), new WavCuePlayer(_settings.Cues), ptt, _vm.PostMessage,
-            new WasapiMicrophoneProvider());
+            new WasapiMicrophoneProvider(), Tts);
         _vm.AttachRuntime(_runtime);
         try
         {
@@ -193,8 +212,9 @@ public partial class App : Application
             }
         }
 
+        Tts.RefreshVoices(); // picks up voices added in Windows since the app started
         var dialog = new SettingsWindow(new SettingsViewModel(_settings, new DirectInputBinder(() => WindowHandle), microphones,
-            new DcsHookInstaller(_settings.DcsHook.Port))) { Owner = _window };
+            new DcsHookInstaller(_settings.DcsHook.Port), Tts, OpenUri)) { Owner = _window };
         if (dialog.ShowDialog() != true || dialog.Result is not { } updated) return;
 
         var pathsChanged = updated.ProfilesPath != _settings.ProfilesPath || updated.DcsBiosJsonPath != _settings.DcsBiosJsonPath;

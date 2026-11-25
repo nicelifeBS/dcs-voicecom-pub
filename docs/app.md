@@ -25,7 +25,10 @@ stand-ins, and DCS, DCS-BIOS definitions and speech are offline.
   ones you have not edited or enabled.
 - **Editor:** name, phrases (one per line, with `[a;b]` alternatives and `{slots}`), a preview of what they expand to,
   problems in red, Enabled/Critical, and the steps in order: reorder, edit, remove, *skip if already* on DCS-BIOS
-  steps, + Key, + Wait, + Enter value, and *Edit as JSON* for `if`/`wait_for`/`bios_until`. Double-click a step to edit it.
+  steps, + Key, + Wait, + Say, + Enter value, and *Edit as JSON* for `if`/`wait_for`/`bios_until`. Double-click a step to edit it.
+- **Say window:** opens from *+ Say* or a say step's Edit. A text field with the hint "Use {slot} for spoken values",
+  and **Play** for a preview: placeholders play as their slot name ("Radio set to freq"), so no real values are needed.
+  Without a Windows voice Play is off and the note says how to add one; the step can still be saved.
 - **Enter value window:** opens from an *enter value* step's Edit. Pick the spoken slot, the read-back display and
   *Switches / dials* or *Keypad*. The display shows cell by cell: click a character, Shift+click to widen, then make
   it a *Wheel*, the *Keypad* field or *Read-only*. Place and width come from where the field sits. For a wheel, pick
@@ -42,9 +45,12 @@ stand-ins, and DCS, DCS-BIOS definitions and speech are offline.
 - **Button press:** tick *button press* on any DCS-BIOS step to make it a click. Its *in* / *out* values (default 1 / 0)
   and *hold* time (default 50 ms) are editable right in the action row.
 - **Log and test:** every push-to-talk and test with what was heard, the match, the score and the result. Type a phrase
-  and press Enter (or *Test selected*); *Dry run* lists the steps without sending them.
+  and press Enter (or *Test selected*); *Dry run* lists the steps without sending them. Hidden by default; the *Log*
+  button toggles it and the state is saved (`showLog` in settings.json). It scrolls to the newest line.
 - **Settings:** push-to-talk rebind, microphone, language, Whistle model folder, DCS-BIOS ports and
-  definitions folder, profiles folder, key hold, cues. Saving restarts the voice engine.
+  definitions folder, profiles folder, key hold, cues. The VOICE REPLIES card sets the Windows voice, language,
+  output device, speed and volume, and has a text box with **Play** that uses the values shown, before you save.
+  A warning replaces the voice list when no voice is installed. Saving restarts the voice engine.
 - **Help:** the pages in `docs/help`, built into the exe: topics in groups, full-text search, links between pages,
   screenshots (click one to see it full size). It stays open beside the main window and keeps the last topic until
   the app quits.

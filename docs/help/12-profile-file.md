@@ -65,6 +65,7 @@ Each step has a `type`:
 | `wait_for` | Waits until a condition (see Conditions below) is true. On timeout the command is refused | `until`, `timeout_ms` |
 | `if` | Runs `then` or `else` depending on a condition (see Conditions below) | `condition`, `then`, `else` |
 | `cue` | Plays a sound: `accepted`, `no_match` or `refused` | `cue` |
+| `say` | Speaks a voice reply, like `Radio set to {freq}` (see [Actions and steps](04-actions.md)). Doesn't wait for the speech | `text` |
 | `foreach_char` | Repeats `steps` for each character of `value`, with `{char}` set. `map` renames characters (`"."` to `"DOT"`) | `value`, `map`, `steps` |
 | `enter_value` | Puts a spoken value into a radio or keypad (see [Enter value](06-enter-value.md)) | `value`, `method`, `display`, `fields` |
 
@@ -90,8 +91,8 @@ For "gear up", use `bios` and send `0`. For "set heading {deg}", use `bios_until
 
 ### Placeholders
 
-A spoken value (see [Writing phrases](03-phrases.md)) can be used in `control`, `arg`, `target`, `keys` and `value`
-as `{name}`. Inside `foreach_char`, `{char}` is the current character.
+A spoken value (see [Writing phrases](03-phrases.md)) can be used in `control`, `arg`, `target`, `keys`, `value`
+and `text` as `{name}`. Inside `foreach_char`, `{char}` is the current character.
 
 ## Rules
 

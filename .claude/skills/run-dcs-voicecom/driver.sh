@@ -29,6 +29,11 @@ PUB=$W/pub
 export WINEPREFIX=$W/wine WINEDEBUG=-all DISPLAY=${DCSVC_DISPLAY:-:99}
 APPDATA_DIR=$WINEPREFIX/drive_c/users/$(whoami)/AppData/Local/DcsVoiceCom
 
+# Ubuntu's Wine 9.0 keeps its server socket under /run/user/<uid>. When that folder is missing (as in fresh
+# containers), wineserver aborts with "free(): invalid pointer" and every wine command fails.
+RUNTIME_DIR=/run/user/$(id -u)
+[ -d "$RUNTIME_DIR" ] || { mkdir -p "$RUNTIME_DIR" && chmod 700 "$RUNTIME_DIR"; } 2>/dev/null || true
+
 sleep_s() { python3 -c "import time,sys; time.sleep(float(sys.argv[1]))" "$1"; }
 
 main_window() {
