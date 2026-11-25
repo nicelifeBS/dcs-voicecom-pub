@@ -11,13 +11,12 @@ namespace DcsVoiceCom.ViewModels;
 /// <summary>The Settings dialog: a working copy of <see cref="AppSettings"/>; <see cref="Build"/> returns the edited settings.</summary>
 public sealed partial class SettingsViewModel : ObservableObject, IDisposable
 {
-    public static readonly IReadOnlyList<string> Languages = ["en", "de", "fr", "es", "it", "nl", "pl"];
 
     /// <summary>The speech engines to pick from (Settings → Speech).</summary>
     public static readonly IReadOnlyList<SpeechEngineChoice> Engines =
     [
-        new(SpeechEngines.Whistle, "Whistle (default, 7 languages)"),
-        new(SpeechEngines.Zipformer, "Zipformer (English, stronger on call signs)"),
+        new(SpeechEngines.Whistle, "Whistle (default)"),
+        new(SpeechEngines.Zipformer, "Zipformer (stronger on call signs)"),
     ];
 
     private readonly AppSettings _original;
@@ -256,8 +255,8 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
 
     /// <summary>What the chosen engine means for the user.</summary>
     public string EngineNote => IsZipformer
-        ? "English only; for another language the app uses Whistle. Uses about 150 MB more memory than Whistle."
-        : "Runs every language above. Small and fast.";
+        ? "Better at odd words like \"Jester\", \"AWACS\" or \"Shkval\". Uses about 150 MB more memory than Whistle."
+        : "Small and fast.";
 
     private string _hotwordBoost = "";
 
@@ -431,4 +430,8 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
 }
 
 /// <summary>A speech engine in the Settings list: its id and what the list shows.</summary>
-public sealed record SpeechEngineChoice(string Id, string Label);
+public sealed record SpeechEngineChoice(string Id, string Label)
+{
+    // The app's ComboBox template shows the item itself, not DisplayMemberPath, so the label is the text.
+    public override string ToString() => Label;
+}

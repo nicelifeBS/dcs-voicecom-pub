@@ -12,7 +12,13 @@ public class SpeechEngineSettingsTests
         Assert.Equal((SpeechEngines.Whistle, false), (vm.SpeechEngine, vm.IsZipformer));
         vm.SpeechEngine = SpeechEngines.Zipformer;
         Assert.True(vm.IsZipformer);
-        Assert.Contains("English only", vm.EngineNote);
+        Assert.Contains("150 MB", vm.EngineNote);
+    }
+
+    [Fact]
+    public void The_engine_list_shows_labels() // the app's ComboBox template shows the item's text, not DisplayMemberPath
+    {
+        Assert.Equal(["Whistle (default)", "Zipformer (stronger on call signs)"], SettingsViewModel.Engines.Select(e => e.ToString()));
     }
 
     [Fact]

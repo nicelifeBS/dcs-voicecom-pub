@@ -73,7 +73,7 @@ backslashes:
 }
 ```
 
-Leave `modelDirectory` out (or `null`) to use the bundled model. `language` at the top selects `en` or `de`.
+Leave `modelDirectory` out (or `null`) to use the bundled model. The app recognizes English only for now.
 A settings file from the Python sidecar days keeps its `device` and `modelDirectory`; the rest of its `sidecar`
 section is dropped.
 
@@ -83,12 +83,12 @@ section is dropped.
 
 | Key | Default |
 |---|---|
-| `language` | `en` (`de` for German; Whistle also knows `fr es it nl pl`) |
+| `language` | `en`; ignored for now: the app recognizes English only (more languages later) |
 | `dcsBiosJsonPath` | `%USERPROFILE%\Saved Games\DCS\Scripts\DCS-BIOS\doc\json` |
 | `profilesPath` | `%LOCALAPPDATA%\DcsVoiceCom\profiles` |
 | `speech.device` | microphone, part of its name; empty: the Windows default input |
 | `speech.modelDirectory` | Whistle model folder laid out like the cactus-needle cache (`whistle\<ver>\whistle.cact`, `v3\<ver>\libneedle.dll`); empty: the bundled `model\cactus-needle` next to the exe (see the search order above), else downloaded |
-| `speech.engine` / `hotwordBoost` | `whistle` (or `zipformer`, English only), `1.5` |
+| `speech.engine` / `hotwordBoost` | `whistle` (or `zipformer`), `1.5` |
 | `speech.preRollMs` / `phraseKeywords` / `margin` / `autoDownload` | `200`, `true`, `10`, `true` |
 | `ptt.deviceGuid` / `deviceName` / `button` | set by `--bind` |
 | `dcsBios.allowRemoteExport` | `false`: export packets from other PCs are dropped; set `true` when DCS runs on another PC |

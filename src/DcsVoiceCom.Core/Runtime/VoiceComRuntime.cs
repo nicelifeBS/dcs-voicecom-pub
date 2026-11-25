@@ -142,7 +142,9 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
         }
 
         // Without a model or microphone the rest still works: live state, profile editing and typed tests.
-        _speech = await SpeechService.OpenAsync(_settings.Speech, _settings.Language, _microphones, m => Log("[speech] " + m), ct: ct)
+        if (!string.Equals(_settings.Language, AppSettings.SpeechLanguage, StringComparison.OrdinalIgnoreCase))
+            Log($"Language \"{_settings.Language}\" in settings.json: the app recognizes English only for now; using English.");
+        _speech = await SpeechService.OpenAsync(_settings.Speech, AppSettings.SpeechLanguage, _microphones, m => Log("[speech] " + m), ct: ct)
             .ConfigureAwait(false);
 
         await ReloadProfileAsync(ct).ConfigureAwait(false);
@@ -203,7 +205,7 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
             _engine.Profile = compiled;
             if (_speech is { } speech)
             {
-                var count = speech.LoadPhrases(_settings.Language, compiled.Entries, compiled.Keywords);
+                var count = speech.LoadPhrases(AppSettings.SpeechLanguage, compiled.Entries, compiled.Keywords);
                 Log($"Profile {profileName}: {compiled.Profile.Commands.Count(c => c.Enabled)} commands, {count} phrases, {_catalog.Count} controls");
             }
             ProfileLoaded?.Invoke(compiled);
@@ -241,7 +243,7 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
     public async Task<IMicTest> StartMicTestAsync(string? device, string language, CancellationToken ct = default)
     {
         var speech = _speech ?? throw new InvalidOperationException("The voice engine is still starting. Try again in a moment.");
-        if (!speech.CanTranscribe) throw new InvalidOperationException($"Whistle is not loaded ({speech.UnavailableReason}).");
+        if (!speech.CanTranscribe) throw new InvalidOperationException($"The speech engine is not loaded ({speech.UnavailableReason}).");
         if (_ptt is null) throw new InvalidOperationException("No push-to-talk button is bound. Rebind, save, then test.");
 
         var wanted = string.IsNullOrWhiteSpace(device) ? null : device.Trim();
@@ -263,7 +265,7 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
             }
             owned = true;
         }
-        var test = new MicTestSession(speech, microphone, owned, string.IsNullOrWhiteSpace(language) ? speech.Language : language,
+        var test = new MicTestSession(speech, microphone, owned, AppSettings.SpeechLanguage, // English only for now
             _settings.Threshold, t => Interlocked.CompareExchange(ref _micTest, null, t));
         Interlocked.Exchange(ref _micTest, test)?.Dispose();
         if (_listening)
@@ -311,7 +313,7 @@ public sealed class VoiceComRuntime : IVoiceComRuntime, IAsyncDisposable
 
     /// <summary>Options for one voice reply; null when voice replies are off or no voice fits the language.</summary>
     private TtsOptions? TtsOptionsFor() =>
-        _tts is null ? null : _settings.Tts.ToOptions(_tts.Voices, _settings.Language);
+        _tts is null ? null : _settings.Tts.ToOptions(_tts.Voices, AppSettings.SpeechLanguage);
 
     private void OnPttPressed()
     {
