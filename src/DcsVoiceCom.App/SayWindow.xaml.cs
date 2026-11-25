@@ -18,5 +18,19 @@ public partial class SayWindow : Window
         };
     }
 
+    /// <summary>Opens the TTS values window and puts the picked {name} at the cursor.</summary>
+    private void InsertValue_Click(object sender, RoutedEventArgs e)
+    {
+        var editor = (SayEditorViewModel)DataContext;
+        var caret = Math.Min(Input.CaretIndex, editor.Text.Length);
+        var before = editor.Text;
+        if (editor.PickValue() is not { } placeholder) return;
+        // Renames may have changed the text; then add at the end.
+        if (editor.Text != before) caret = editor.Text.Length;
+        editor.Text = editor.Text.Insert(caret, placeholder);
+        Input.Focus();
+        Input.CaretIndex = caret + placeholder.Length;
+    }
+
     private void Ok_Click(object sender, RoutedEventArgs e) => DialogResult = true;
 }

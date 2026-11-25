@@ -1,6 +1,8 @@
 # Plan: Say live cockpit values (TTS values)
 
-Status: planned, not built.
+Status: built on branch `claude/tts-values`.
+
+Design mock-up: https://claude.ai/artifact/KFsc9H757fKYTkktcMevgD
 
 ## Goal
 
@@ -36,9 +38,11 @@ A new top-level `values` list in the profile:
 "values": [
   { "name": "clock", "output": "CLOCK", "mode": "slice", "pad": 6, "template": "{0-1}:{2-3}:{4-5}" },
   { "name": "throttle", "output": "THROTTLE_L", "mode": "remap",
-    "in": [0, 65535], "out": [0, 100], "decimals": 0 }
+    "in_min": 0, "in_max": 65535, "out_min": 0, "out_max": 100, "decimals": 0 }
 ]
 ```
+
+`{a}` (one character) works too. An aircraft value wins over a `common.json` value of the same name.
 
 The Say step stays `{ "type": "say", "text": "Throttle {throttle} percent" }`.
 
@@ -69,5 +73,6 @@ The Say step stays `{ "type": "say", "text": "Throttle {throttle} percent" }`.
 
 ## Open points
 
-- Exact look of the Values editor (mock-up before building?).
 - Button name "TTS" is for now.
+- No screenshot in the help page yet: retake at release time (`help-screenshots` skill).
+- Pad is not filled in automatically; the user types it.

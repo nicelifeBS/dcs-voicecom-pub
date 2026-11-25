@@ -8,7 +8,7 @@ group: Start
 
 1. **Status bar.** The push-to-talk button, DCS-BIOS and speech. A green dot means working: listening,
    DCS connected, speech ready. Hover a dot for details. On the right: the *Profile* and *Server* pins (Auto follows DCS), Save (Ctrl+S),
-   Log, Settings and Help. On a narrow window the status text gets shorter; the buttons always stay.
+   Log, [TTS](13-tts-values.md), Settings and Help. On a narrow window the status text gets shorter; the buttons always stay.
 2. **Profiles.** One per aircraft, [server profiles](11-server-profiles.md), and *common* for every aircraft.
    The active ones have a green dot. Common and server profiles are purple and always listed below the aircraft.
    Variants of one jet share a profile: an F-16D_52 uses F-16C_50, every Tomcat uses F-14.

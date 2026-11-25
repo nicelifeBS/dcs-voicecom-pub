@@ -69,6 +69,23 @@ Each step has a `type`:
 | `foreach_char` | Repeats `steps` for each character of `value`, with `{char}` set. `map` renames characters (`"."` to `"DOT"`) | `value`, `map`, `steps` |
 | `enter_value` | Puts a spoken value into a radio or keypad (see [Enter value](06-enter-value.md)) | `value`, `method`, `display`, `fields` |
 
+### TTS values
+
+A profile can have a `values` list: live cockpit values a `say` step speaks as `{name}`
+(see [TTS values](13-tts-values.md)).
+
+```json
+"values": [
+  { "name": "clock", "output": "CLOCK", "mode": "slice", "pad": 6, "template": "{0-1}:{2-3}:{4-5}" },
+  { "name": "throttle", "output": "THROTTLE_L", "mode": "remap",
+    "in_min": 0, "in_max": 65535, "out_min": 0, "out_max": 100, "decimals": 0 }
+]
+```
+
+`slice` picks characters: `{a-b}` is characters a to b (from 0), `{a}` one character. `pad` adds zeros in front
+of a number first. `remap` scales a number and clamps it to the `out` range. An aircraft value wins over a
+`common.json` value of the same name.
+
 ### bios or bios_until?
 
 `bios` sends one line and moves on. `bios_until` turns a knob step by step (`INC` or `DEC`) and reads the cockpit
