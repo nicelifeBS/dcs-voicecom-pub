@@ -70,7 +70,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
         InitTts(settings, tts, openUri);
     }
 
-    /// <summary>Test Coms: checks the picked microphone with push-to-talk and Whistle.</summary>
+    /// <summary>Test Coms: checks the picked microphone with push-to-talk and the speech engine.</summary>
     public MicTestViewModel MicTest { get; }
 
     public void Dispose()

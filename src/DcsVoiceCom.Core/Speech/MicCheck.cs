@@ -10,7 +10,7 @@ public enum MicGrade
     Poor,
 }
 
-/// <summary>One Test Coms try: what was said, what Whistle heard, the score, the level and the clip for playback.</summary>
+/// <summary>One Test Coms try: what was said, what the speech engine heard, the score, the level and the clip for playback.</summary>
 public sealed record MicCheckResult
 {
     public required string Expected { get; init; }
@@ -36,7 +36,7 @@ public static class MicCheck
     public const double QuietDb = -40;
     public const double MinSeconds = 0.6;
 
-    /// <summary>The phrase words, as keywords for Whistle (as a profile's phrases are in normal use).</summary>
+    /// <summary>The phrase words, as keywords for the speech engine (as a profile's phrases are in normal use).</summary>
     public static IReadOnlyList<string> Keywords(string expected)
     {
         var matcher = new PhraseMatcher();
