@@ -28,6 +28,7 @@ public partial class App : Application
     private HelpWindow? _help;
     private HelpViewModel? _helpModel;
     private VoiceComRuntime? _runtime;
+    private readonly WavClipPlayer _clipPlayer = new();
     private bool _quitting;
 
     public App()
@@ -194,7 +195,7 @@ public partial class App : Application
         }
 
         var dialog = new SettingsWindow(new SettingsViewModel(_settings, new DirectInputBinder(() => WindowHandle), microphones,
-            new DcsHookInstaller(_settings.DcsHook.Port))) { Owner = _window };
+            new DcsHookInstaller(_settings.DcsHook.Port), _runtime, _clipPlayer, new WpfUiThread(Dispatcher))) { Owner = _window };
         if (dialog.ShowDialog() != true || dialog.Result is not { } updated) return;
 
         var pathsChanged = updated.ProfilesPath != _settings.ProfilesPath || updated.DcsBiosJsonPath != _settings.DcsBiosJsonPath;
@@ -242,6 +243,7 @@ public partial class App : Application
         }
         _quitting = true;
         _tray?.Dispose();
+        _clipPlayer.Dispose();
         await StopRuntimeAsync();
         _instance?.ReleaseMutex();
         Shutdown();

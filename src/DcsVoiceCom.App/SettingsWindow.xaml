@@ -3,6 +3,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:DcsVoiceCom.App"
+        xmlns:speech="clr-namespace:DcsVoiceCom.Speech;assembly=DcsVoiceCom.Core"
         Title="Settings" Width="640" Height="760" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
         Style="{StaticResource {x:Type Window}}">
   <Window.Resources>
@@ -31,6 +32,59 @@
             </DockPanel>
             <TextBlock Text="{Binding BindStatus}" Style="{StaticResource MutedText}" Margin="0,6,0,0" />
             <TextBlock Text="One joystick button activates listening for every airframe profile." Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+
+            <Border BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Margin="0,12,0,0" Padding="0,12,0,0"
+                    DataContext="{Binding MicTest}">
+              <StackPanel>
+                <DockPanel>
+                  <Button DockPanel.Dock="Right" Content="{Binding ToggleText}" Command="{Binding ToggleCommand}" MinWidth="90" Margin="8,0,0,0" />
+                  <TextBlock Text="Test Coms" VerticalAlignment="Center" FontWeight="SemiBold" />
+                </DockPanel>
+                <TextBlock Text="Checks the microphone picked below with your push-to-talk button. Hold it, say the phrase, release."
+                           Style="{StaticResource MutedText}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                <Label Content="Say this" Margin="0,8,0,0" />
+                <TextBox Text="{Binding Phrase, UpdateSourceTrigger=PropertyChanged}" FontSize="15" ToolTip="Any phrase works; change it to test your own words" />
+                <DockPanel Margin="0,8,0,0">
+                  <Ellipse DockPanel.Dock="Left" Width="10" Height="10" Margin="0,0,8,0" VerticalAlignment="Center"
+                           Fill="{StaticResource Bad}" Visibility="{Binding IsListening, Converter={StaticResource Visible}}" />
+                  <TextBlock Text="{Binding Status}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                </DockPanel>
+                <Border Style="{StaticResource Card}" Background="{StaticResource Raised}" Margin="0,10,0,0" Padding="12"
+                        Visibility="{Binding HasResult, Converter={StaticResource Visible}}">
+                  <StackPanel>
+                    <DockPanel>
+                      <Button DockPanel.Dock="Right" Content="Play again" Command="{Binding ReplayCommand}" Margin="8,0,0,0" />
+                      <Border Style="{StaticResource Pill}">
+                        <TextBlock Text="{Binding GradeText}" FontWeight="Bold">
+                          <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                              <Setter Property="Foreground" Value="{StaticResource Bad}" />
+                              <Style.Triggers>
+                                <DataTrigger Binding="{Binding Grade}" Value="{x:Static speech:MicGrade.Good}">
+                                  <Setter Property="Foreground" Value="{StaticResource Good}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Grade}" Value="{x:Static speech:MicGrade.Fair}">
+                                  <Setter Property="Foreground" Value="{StaticResource Accent}" />
+                                </DataTrigger>
+                              </Style.Triggers>
+                            </Style>
+                          </TextBlock.Style>
+                        </TextBlock>
+                      </Border>
+                      <TextBlock Text="{Binding ScoreText}" VerticalAlignment="Center" FontWeight="SemiBold" />
+                    </DockPanel>
+                    <TextBlock Margin="0,8,0,0" TextWrapping="Wrap">
+                      <Run Text="Heard:" Foreground="{StaticResource Muted}" />
+                      <Run Text="{Binding HeardText, Mode=OneWay}" Foreground="{StaticResource Text}" />
+                    </TextBlock>
+                    <TextBlock Text="{Binding LevelText}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+                    <TextBlock Text="{Binding HintsText}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                  </StackPanel>
+                </Border>
+                <TextBlock Text="While the test runs, push-to-talk runs no commands. A new button binding works after Save."
+                           Style="{StaticResource MutedText}" Margin="0,6,0,0" TextWrapping="Wrap" />
+              </StackPanel>
+            </Border>
           </StackPanel>
         </Border>
 

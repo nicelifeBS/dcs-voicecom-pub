@@ -3,11 +3,13 @@ using System.Globalization;
 using DcsVoiceCom.Config;
 using DcsVoiceCom.DcsBios;
 using DcsVoiceCom.DcsHook;
+using DcsVoiceCom.Runtime;
+using DcsVoiceCom.Speech;
 
 namespace DcsVoiceCom.ViewModels;
 
 /// <summary>The Settings dialog: a working copy of <see cref="AppSettings"/>; <see cref="Build"/> returns the edited settings.</summary>
-public sealed class SettingsViewModel : ObservableObject
+public sealed class SettingsViewModel : ObservableObject, IDisposable
 {
     public static readonly IReadOnlyList<string> Languages = ["en", "de", "fr", "es", "it", "nl", "pl"];
 
@@ -21,8 +23,9 @@ public sealed class SettingsViewModel : ObservableObject
     private string _hookStatus = "";
 
     public SettingsViewModel(AppSettings settings, IPttBinder? binder = null, IReadOnlyList<string>? microphones = null,
-        DcsHookInstaller? hook = null)
+        DcsHookInstaller? hook = null, IVoiceComRuntime? runtime = null, IAudioPlayer? player = null, IUiThread? ui = null)
     {
+        MicTest = new MicTestViewModel(runtime, player, ui, () => Microphone, () => Language);
         _hook = hook;
         _original = settings;
         _binder = binder;
@@ -55,6 +58,11 @@ public sealed class SettingsViewModel : ObservableObject
         RemoveHookCommand = new RelayCommand(() => RunHook(h => h.Remove()), () => CanRemoveHook);
         RefreshHook();
     }
+
+    /// <summary>Test Coms: checks the picked microphone with push-to-talk and Whistle.</summary>
+    public MicTestViewModel MicTest { get; }
+
+    public void Dispose() => MicTest.Dispose();
 
     public AsyncCommand BindCommand { get; }
     public RelayCommand ClearBindingCommand { get; }
@@ -164,7 +172,10 @@ public sealed class SettingsViewModel : ObservableObject
     public string Language
     {
         get => _language;
-        set => SetProperty(ref _language, value);
+        set
+        {
+            if (SetProperty(ref _language, value)) _ = MicTest.RestartIfTestingAsync();
+        }
     }
     private string _dcsBiosJsonPath = "";
 
@@ -223,7 +234,9 @@ public sealed class SettingsViewModel : ObservableObject
         get => _microphone;
         set
         {
-            if (SetProperty(ref _microphone, value)) OnPropertyChanged(nameof(MicrophoneText));
+            if (!SetProperty(ref _microphone, value)) return;
+            OnPropertyChanged(nameof(MicrophoneText));
+            _ = MicTest.RestartIfTestingAsync();
         }
     }
     private string _keyHoldMs = "";

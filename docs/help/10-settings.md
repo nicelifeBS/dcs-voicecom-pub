@@ -7,6 +7,10 @@ group: Reference
 ![The Settings window](images/settings.png)
 
 - **Push-to-talk.** *Rebind*, then press a HOTAS button within 15 seconds. One button for every aircraft.
+- **Test Coms.** Checks your microphone. Click *Test Coms*, hold push-to-talk, say the phrase shown, release. You
+  get a grade (**GOOD**, **FAIR** or **POOR**), what Whistle heard, the match score and the mic level, and you hear
+  your clip played back. It uses the microphone and language picked below, before you save. While it runs,
+  push-to-talk runs no commands.
 - **Speech.** Microphone, language and the Whistle model folder. Leave the folder empty to use the built-in model.
 - **Matching.** The score a command needs (85) and a critical command needs (95), 50 to 100. For every profile.
 - **DCS-BIOS connection.** Host, ports and the folder with the aircraft definitions. The defaults fit a normal

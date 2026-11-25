@@ -6,6 +6,8 @@ group: Speech
 
 Look in the **Log** first. It says what was heard and why a command did not run.
 
+> **Tip:** Not sure the microphone is right? Settings → *Test Coms*. Say the phrase, see the grade and hear your clip.
+
 | Log says | Do this |
 |---|---|
 | No push-to-talk button bound | Settings → Rebind. |

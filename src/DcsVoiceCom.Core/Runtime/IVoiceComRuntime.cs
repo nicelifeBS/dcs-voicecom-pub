@@ -57,4 +57,7 @@ public interface IVoiceComRuntime
 
     Task<CommandOutcome> TestAsync(string text, bool dryRun, CancellationToken ct = default);
     Task<IReadOnlyList<string>> ListInputDevicesAsync(CancellationToken ct = default);
+
+    /// <summary>Starts Test Coms: push-to-talk records for the test (no command runs) until it is disposed.</summary>
+    Task<IMicTest> StartMicTestAsync(string? device, string language, CancellationToken ct = default);
 }

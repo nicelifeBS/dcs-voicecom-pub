@@ -5,6 +5,7 @@ using DcsVoiceCom.DcsHook;
 using DcsVoiceCom.Engine;
 using DcsVoiceCom.Profiles;
 using DcsVoiceCom.Runtime;
+using DcsVoiceCom.Speech;
 
 namespace DcsVoiceCom.ViewModels.Tests;
 
@@ -119,6 +120,18 @@ internal sealed class FakeRuntime : IVoiceComRuntime
 
     public Task<IReadOnlyList<string>> ListInputDevicesAsync(CancellationToken ct = default) => Task.FromResult<IReadOnlyList<string>>(["Headset"]);
 
+    /// <summary>The test StartMicTestAsync returns; null makes it throw like a runtime with no push-to-talk.</summary>
+    public FakeMicTest? NextMicTest { get; set; } = new();
+    public List<(string? Device, string Language)> MicTests { get; } = [];
+
+    public Task<IMicTest> StartMicTestAsync(string? device, string language, CancellationToken ct = default)
+    {
+        MicTests.Add((device, language));
+        if (NextMicTest is not { } test) throw new InvalidOperationException("No push-to-talk button is bound.");
+        NextMicTest = new FakeMicTest();
+        return Task.FromResult<IMicTest>(test);
+    }
+
     public void RaiseListening(bool on) => ListeningChanged?.Invoke(on);
     public void RaiseAircraft(string name) => AircraftChanged?.Invoke(name);
 }
@@ -154,4 +167,38 @@ internal sealed class Workspace : IDisposable
         {
         }
     }
+}
+
+internal sealed class FakeMicTest : IMicTest
+{
+    public string DeviceName { get; set; } = "Headset";
+    public string Phrase { get; set; } = "";
+    public bool Disposed { get; private set; }
+
+    public event Action<bool>? ListeningChanged;
+    public event Action? Transcribing;
+    public event Action<MicCheckResult>? Completed;
+    public event Action<string>? Failed;
+
+    public void Say(MicCheckResult result)
+    {
+        ListeningChanged?.Invoke(true);
+        ListeningChanged?.Invoke(false);
+        Transcribing?.Invoke();
+        Completed?.Invoke(result);
+    }
+
+    public void Fail(string message) => Failed?.Invoke(message);
+
+    public void Dispose() => Disposed = true;
+}
+
+internal sealed class FakePlayer : IAudioPlayer
+{
+    public List<int> Played { get; } = [];
+    public int Stops { get; private set; }
+
+    public void Play(float[] samples, int sampleRate) => Played.Add(samples.Length);
+
+    public void Stop() => Stops++;
 }
