@@ -7,6 +7,10 @@ group: Reference
 ![The Settings window](images/settings.png)
 
 - **Push-to-talk.** *Rebind*, then press a HOTAS button within 15 seconds. One button for every aircraft.
+- **Test Coms.** Checks your microphone. Click *Test Coms*, hold push-to-talk, say the phrase shown, release. You
+  get a grade (**GOOD**, **FAIR** or **POOR**), what the speech engine heard, the match score and the mic level,
+  and you hear your clip played back. It uses the microphone and language picked below, before you save. While it runs,
+  push-to-talk runs no commands.
 - **Speech.** Microphone, language, speech engine and the Whistle model folder. Leave the folder empty to use the
   built-in model.
   - **Whistle** (default) runs every language. Small and fast.
@@ -14,6 +18,10 @@ group: Reference
     installer and uses about 150 MB more memory. For another language the app uses Whistle.
   - **Word boost** (Zipformer only, default 1.5): how strongly it leans towards your profile's words. Higher can
     help an odd word, but can also turn other speech into a command word.
+- **Voice replies.** Turns the *Say* step on or off and sets the language, voice, output device, speed and
+  volume. Type a text and press *Play* to hear it with the settings shown, before you save. The voices come from
+  Windows. If none is installed for your language, a note says so; add one in Windows Settings › Time & language ›
+  Speech › Manage voices, then reopen Settings.
 - **Matching.** The score a command needs (85) and a critical command needs (95), 50 to 100. For every profile.
 - **DCS-BIOS connection.** Host, ports and the folder with the aircraft definitions. The defaults fit a normal
   install.

@@ -12,6 +12,7 @@ internal static partial class NativeMethods
     public const uint SndAsync = 0x0001;
     public const uint SndNoDefault = 0x0002;
     public const uint SndFilename = 0x00020000;
+    public const uint SndMemory = 0x0004;
 
     [StructLayout(LayoutKind.Sequential)]
     public struct NativeInput
@@ -60,4 +61,8 @@ internal static partial class NativeMethods
     [LibraryImport("winmm.dll", EntryPoint = "PlaySoundW", StringMarshalling = StringMarshalling.Utf16)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool PlaySound(string? sound, nint module, uint flags);
+
+    [LibraryImport("winmm.dll", EntryPoint = "PlaySoundW")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool PlaySound(nint sound, nint module, uint flags);
 }

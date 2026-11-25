@@ -94,7 +94,19 @@ section is dropped.
 | `dcsBios.allowRemoteExport` | `false`: export packets from other PCs are dropped; set `true` when DCS runs on another PC |
 | `keyHoldMs` | `50` |
 | `cues.accepted` / `noMatch` / `refused` | bundled WAVs |
+| `tts.enabled` | `true`: voice replies (the `say` step) on or off |
+| `tts.language` | `null`: same as `language`; or `en`, `de-DE`… |
+| `tts.voice` | `null`: first installed voice for the language; or a voice id |
+| `tts.rate` / `volume` | `1.0` (0.5–2.0) / `1.0` (0–1) |
+| `tts.device` | output device name; `null`: the Windows default output |
 | `profileOverride` | `null` (Auto) |
+
+### Voice replies: adding a voice
+
+Voice replies use the voices that come with Windows. Nothing is bundled. If Settings says "No voice for German (de)
+is installed", or "No Windows voices found", add one in Windows Settings › Time & language › Speech › Manage
+voices (the **Open Windows speech settings** button in the app goes there), then reopen Settings. Until then
+`say` steps are skipped and everything else works.
 
 ### DCS on another PC
 

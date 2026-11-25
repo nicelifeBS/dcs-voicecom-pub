@@ -12,6 +12,9 @@ public static partial class Placeholders
     [GeneratedRegex(@"\{([A-Za-z_][A-Za-z0-9_]*)(?:([/%*+\-])(\d+))?\}")]
     private static partial Regex PlaceholderRegex();
 
+    /// <summary>Each placeholder as its bare slot name, for a preview: "Radio set to {freq}" → "Radio set to freq".</summary>
+    public static string ToSlotNames(string text) => PlaceholderRegex().Replace(text, "$1");
+
     public static string Apply(string text, IReadOnlyDictionary<string, string> values)
     {
         if (!text.Contains('{')) return text;

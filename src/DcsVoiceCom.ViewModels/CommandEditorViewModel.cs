@@ -137,14 +137,17 @@ public sealed class CommandEditorViewModel : ObservableObject
     private readonly IDialogs _dialogs;
     private readonly Action _changed;
     private readonly Func<EnterValueContext> _enterValue;
+    private readonly Func<SayContext> _say;
     private string _voiceLine;
     private string _alternativesText;
     private string _stepsJson = "";
     private bool _showJson;
     private string? _jsonError;
 
-    public CommandEditorViewModel(Command command, IDialogs dialogs, Action changed, Func<EnterValueContext>? enterValue = null)
+    public CommandEditorViewModel(Command command, IDialogs dialogs, Action changed, Func<EnterValueContext>? enterValue = null,
+        Func<SayContext>? say = null)
     {
+        _say = say ?? (() => SayContext.Offline);
         Command = command;
         _dialogs = dialogs;
         _changed = changed;
@@ -159,6 +162,7 @@ public sealed class CommandEditorViewModel : ObservableObject
         AddKeyCommand = new RelayCommand(AddKey);
         AddWaitCommand = new RelayCommand(AddWait);
         AddEnterValueCommand = new RelayCommand(AddEnterValue);
+        AddSayCommand = new RelayCommand(AddSay);
         ToggleJsonCommand = new RelayCommand(ToggleJson);
         ApplyJsonCommand = new RelayCommand(() => ApplyJson());
         RebuildSteps();
@@ -178,6 +182,7 @@ public sealed class CommandEditorViewModel : ObservableObject
     public RelayCommand AddKeyCommand { get; }
     public RelayCommand AddWaitCommand { get; }
     public RelayCommand AddEnterValueCommand { get; }
+    public RelayCommand AddSayCommand { get; }
     public RelayCommand ToggleJsonCommand { get; }
     public RelayCommand ApplyJsonCommand { get; }
 
@@ -352,6 +357,22 @@ public sealed class CommandEditorViewModel : ObservableObject
         StepsChanged();
     }
 
+    /// <summary>Opens the Say window; OK adds a voice reply step with that text.</summary>
+    private void AddSay()
+    {
+        var editor = new SayEditorViewModel("", _say());
+        try
+        {
+            if (!_dialogs.ShowSay(editor) || !editor.CanSave) return;
+        }
+        finally
+        {
+            editor.StopPreview();
+        }
+        Command.Steps.Add(new SayStep { Text = editor.Text.Trim() });
+        StepsChanged();
+    }
+
     /// <summary>Adds one "enter value" step for the voice line's first slot; Edit opens its window.</summary>
     private void AddEnterValue()
     {
@@ -405,6 +426,18 @@ public sealed class CommandEditorViewModel : ObservableObject
                 if (ms is null) return;
                 wait.Ms = ms.Value;
                 LastWaitMs = ms.Value;
+                break;
+            case SayStep say:
+                var sayEditor = new SayEditorViewModel(say.Text, _say());
+                try
+                {
+                    if (!_dialogs.ShowSay(sayEditor) || !sayEditor.CanSave) return;
+                }
+                finally
+                {
+                    sayEditor.StopPreview();
+                }
+                say.Text = sayEditor.Text.Trim();
                 break;
             case EnterValueStep enter:
                 var editor = new EnterValueEditorViewModel(EnterValueEditorViewModel.Copy(enter), Command.Phrases, _enterValue(), _dialogs);

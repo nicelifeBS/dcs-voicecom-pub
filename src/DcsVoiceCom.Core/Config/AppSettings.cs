@@ -33,6 +33,33 @@ public sealed record CueSettings
     public string? Refused { get; init; }
 }
 
+/// <summary>Voice replies (the "say" step), spoken with a Windows voice.</summary>
+public sealed record TtsSettings
+{
+    public bool Enabled { get; init; } = true;
+    /// <summary>Voice language such as "en" or "de-DE"; null follows the recognition language.</summary>
+    public string? Language { get; init; }
+    /// <summary>Voice id; null uses the first voice for the language.</summary>
+    public string? Voice { get; init; }
+    /// <summary>Speaking speed, 0.5-2.0.</summary>
+    public double Rate { get; init; } = 1.0;
+    /// <summary>Volume, 0-1.</summary>
+    public double Volume { get; init; } = 1.0;
+    /// <summary>Output device name; null is the Windows default output.</summary>
+    public string? Device { get; init; }
+
+    /// <summary>
+    /// Options for one reply, or null when voice replies are off or no voice fits the language
+    /// (<see cref="Language"/>, else <paramref name="recognitionLanguage"/>).
+    /// </summary>
+    public TtsOptions? ToOptions(IReadOnlyList<VoiceInfo> voices, string recognitionLanguage)
+    {
+        if (!Enabled) return null;
+        var voice = VoiceChooser.Pick(voices, Language ?? recognitionLanguage, Voice);
+        return voice is null ? null : new TtsOptions(voice.Id, Rate, Volume, Device);
+    }
+}
+
 /// <summary>All app settings, stored as %LOCALAPPDATA%\DcsVoiceCom\settings.json. Every path is configurable.</summary>
 public sealed record AppSettings
 {
@@ -45,6 +72,7 @@ public sealed record AppSettings
     public SpeechSettings Speech { get; init; } = new();
     public PttSettings Ptt { get; init; } = new();
     public CueSettings Cues { get; init; } = new();
+    public TtsSettings Tts { get; init; } = new();
     public int KeyHoldMs { get; init; } = 50;
 
     /// <summary>Debugging: save the audio of every push-to-talk command to <see cref="DebugDirectory"/>; misses are marked in the note. Off by default.</summary>
@@ -57,6 +85,9 @@ public sealed record AppSettings
 
     /// <summary>Score a critical command needs, for every profile.</summary>
     public int CriticalThreshold { get; init; } = EngineOptions.DefaultCriticalThreshold;
+
+    /// <summary>The log panel in the main window is open. Off by default; remembered when it is toggled.</summary>
+    public bool ShowLog { get; init; }
 
     /// <summary>Pinned profile; null follows the aircraft DCS-BIOS reports ("Auto").</summary>
     public string? ProfileOverride { get; init; }

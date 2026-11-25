@@ -13,6 +13,6 @@ switch in the cockpit through DCS-BIOS.
 4. Start DCS and jump into an aircraft. The app finds its profile by itself.
 5. Hold push-to-talk, say "gear up", let go.
 
-> **Tip:** No microphone yet? Type a phrase in the Log box and press Enter. It runs the same way.
+> **Tip:** No microphone yet? Click **Log** at the top, type a phrase in the Log box and press Enter. It runs the same way.
 
 Next: [The main window](02-main-window.md).

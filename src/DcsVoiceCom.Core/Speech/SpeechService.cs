@@ -45,6 +45,14 @@ public interface IMicrophoneProvider
     IMicrophone Open(string? device, int preRollMs);
 }
 
+/// <summary>Plays a clip back (Test Coms).</summary>
+public interface IAudioPlayer
+{
+    /// <summary>Plays 16 kHz mono samples, stopping any clip still playing.</summary>
+    void Play(float[] samples, int sampleRate);
+    void Stop();
+}
+
 public interface ISpeechToText
 {
     string Transcribe(float[] samples, string language, IReadOnlyList<string> keywords);
@@ -71,6 +79,7 @@ public sealed class WhistleRecognizer(WhistleModel model) : ISpeechToText, IDisp
 public sealed class SpeechService : IDisposable
 {
     private readonly object _lock = new();
+    private readonly object _transcribeLock = new(); // one Whistle call at a time
     private readonly ISpeechToText? _recognizer;
     private readonly IMicrophone? _microphone;
     private readonly IMicrophoneProvider? _devices;
@@ -221,10 +230,24 @@ public sealed class SpeechService : IDisposable
         IReadOnlyList<string> keywords;
         string language;
         lock (_lock) (matcher, keywords, language) = (_matcher, _keywords, Language);
-        var text = _recognizer.Transcribe(samples, language, keywords);
+        string text;
+        lock (_transcribeLock) text = _recognizer.Transcribe(samples, language, keywords);
         var result = Result(matcher, text, started) with { Audio = samples };
         _log($"Heard \"{text}\" → {result.Phrase ?? "-"} ({result.Score}) in {result.Ms} ms" + (result.Reject is null ? "" : $", rejected: {result.Reject}"));
         return result;
+    }
+
+    /// <summary>True when Whistle is loaded, even if the configured microphone failed to open.</summary>
+    public bool CanTranscribe => _recognizer is not null;
+
+    /// <summary>The open push-to-talk microphone, or null when it failed to open.</summary>
+    public IMicrophone? Microphone => _microphone;
+
+    /// <summary>Transcribes a clip without matching it (Test Coms).</summary>
+    public string Transcribe(float[] samples, string language, IReadOnlyList<string> keywords)
+    {
+        if (_recognizer is null) throw new InvalidOperationException(UnavailableReason ?? "Whistle is not loaded");
+        lock (_transcribeLock) return _recognizer.Transcribe(samples, language, keywords);
     }
 
     /// <summary>Matches typed text as if it had been spoken (test panel and replay).</summary>
