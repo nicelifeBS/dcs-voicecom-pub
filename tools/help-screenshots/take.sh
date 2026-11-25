@@ -77,15 +77,16 @@ marker "$SHOTS/main.png" "$OUT/main-window.png" \
 "$D" ss log >/dev/null; check "$SHOTS/log.png"
 crop "$SHOTS/log.png" "$OUT/log.png" 16 620 1400 230
 
-# Editor: the UHF frequency command (a slot and an Enter value step).
+# Editor: the UHF frequency command (a slot and an Enter value step). Hide the log first, so both actions fit.
+"$D" click 1245 36; "$D" wait 1
 "$D" click 400 120; "$D" wait 1; "$D" type "uhf"; "$D" wait 2
 "$D" click 400 180; "$D" wait 3
 "$D" ss editor >/dev/null; check "$SHOTS/editor.png"
 crop "$SHOTS/editor.png" "$OUT/voice-line.png" 584 72 418 350
-crop "$SHOTS/editor.png" "$OUT/actions.png" 584 432 418 176
+crop "$SHOTS/editor.png" "$OUT/actions.png" 584 462 418 200
 
 # Enter value window (no DCS here, so it shows its warning and empty cells).
-"$D" click 912 592; "$D" waitwin 'Enter value'
+"$D" click 922 613; "$D" waitwin 'Enter value'
 "$D" sswin 'Enter value' enter-value >/dev/null
 cp "$SHOTS/enter-value.png" "$OUT/enter-value.png"
 "$D" click 1083 800; "$D" wait 2
