@@ -27,8 +27,6 @@ W=${DCSVC_WORK:-/tmp/dcs-voicecom-run}
 SDK=${DCSVC_SDK:-/usr/lib/dotnet}
 PUB=$W/pub
 export WINEPREFIX=$W/wine WINEDEBUG=-all DISPLAY=${DCSVC_DISPLAY:-:99}
-# Ubuntu's Wine 9.0 aborts at start ("free(): invalid pointer") whenever TMPDIR is set, whatever its value.
-unset TMPDIR
 APPDATA_DIR=$WINEPREFIX/drive_c/users/$(whoami)/AppData/Local/DcsVoiceCom
 
 # Ubuntu's Wine 9.0 keeps its server socket under /run/user/<uid>. When that folder is missing (as in fresh
