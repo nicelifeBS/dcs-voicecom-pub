@@ -131,8 +131,11 @@ public enum WheelMode { Click, Step, Set }
 /// <summary>What a <see cref="DisplayField"/> is: a wheel or switch, the one keypad field, or text that never changes.</summary>
 public enum FieldKind { Wheel, Keypad, ReadOnly }
 
-/// <summary>Where typed text sits in a keypad field.</summary>
-public enum TextAlign { Left, Right }
+/// <summary>
+/// Where typed text sits in a keypad field. <see cref="Scratchpad"/>: a line like the AH-64D KU, "IDENT:ABC#", with a
+/// label of any length, a blinking cursor and long text scrolled off to the left.
+/// </summary>
+public enum TextAlign { Left, Right, Scratchpad }
 
 /// <summary>
 /// Puts a spoken value into the cockpit. Wheels: the number is split by digit place and each wheel is

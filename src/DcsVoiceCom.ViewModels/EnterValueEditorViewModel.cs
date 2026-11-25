@@ -125,15 +125,17 @@ public sealed class DisplayFieldViewModel : ObservableObject
     /// <summary>Keypad: where the text sits in the field.</summary>
     public TextAlign Align { get => _align; set { if (SetProperty(ref _align, value)) _owner.Changed(); } }
 
-    /// <summary>The Left / Right toggles; clicking the one that is on leaves it on.</summary>
+    /// <summary>The Left / Right / Scratchpad toggles; clicking the one that is on leaves it on.</summary>
     public bool AlignLeft { get => Align == TextAlign.Left; set => SetAlign(value ? TextAlign.Left : Align); }
     public bool AlignRight { get => Align == TextAlign.Right; set => SetAlign(value ? TextAlign.Right : Align); }
+    public bool AlignScratchpad { get => Align == TextAlign.Scratchpad; set => SetAlign(value ? TextAlign.Scratchpad : Align); }
 
     private void SetAlign(TextAlign align)
     {
         Align = align;
         OnPropertyChanged(nameof(AlignLeft));
         OnPropertyChanged(nameof(AlignRight));
+        OnPropertyChanged(nameof(AlignScratchpad));
     }
 
     public bool Flip { get => _flip; set => SetProperty(ref _flip, value); }
@@ -172,6 +174,7 @@ public sealed class DisplayFieldViewModel : ObservableObject
         OnPropertyChanged(nameof(Range));
         OnPropertyChanged(nameof(AlignLeft));
         OnPropertyChanged(nameof(AlignRight));
+        OnPropertyChanged(nameof(AlignScratchpad));
     }
 
     public DisplayField ToField() => new()
@@ -1079,9 +1082,10 @@ public sealed class EnterValueEditorViewModel : ObservableObject
     private string Preview(EnterValueStep step, IReadOnlyList<FieldTarget> targets)
     {
         if (SelectedField is not { } field || field.IsReadOnly) return "";
-        var target = targets.FirstOrDefault(t => t.Field.At == field.At)?.Text;
+        var found = targets.FirstOrDefault(t => t.Field.At == field.At);
+        var target = found?.Text;
         if (target is null) return "";
-        if (field.IsKeypad) return $"types ‘{target.Trim()}’";
+        if (field.IsKeypad) return $"types ‘{(found!.Entry ?? target).Trim()}’";
         var current = IsLive ? DisplayLayout.Read(_liveText, field.ToField()) : null;
         var range = DisplayLayout.RangeOf(field.ToField());
         var head = $"‘{current?.Trim() ?? "?"}’ → ‘{target.Trim()}’";
