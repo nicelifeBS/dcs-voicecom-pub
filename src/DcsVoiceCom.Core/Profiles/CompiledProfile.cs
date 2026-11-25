@@ -85,7 +85,18 @@ public sealed class CompiledProfile
             }
             CheckSteps(command, command.Steps, problems);
         }
+        CheckValues(profile.Values, problems);
         return new CompiledProfile(profile, byPhrase, problems);
+    }
+
+    private static void CheckValues(List<TtsValue>? values, List<string> problems)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var value in values ?? [])
+        {
+            if (!seen.Add(value.Name)) problems.Add($"TTS value {{{value.Name}}} is defined twice; keeping the first");
+            problems.AddRange(Engine.TtsValueFormat.Validate(value).Select(p => $"TTS value {{{value.Name}}}: {p}"));
+        }
     }
 
     private static void CheckSteps(Command command, IEnumerable<Step> steps, List<string> problems)
@@ -172,6 +183,7 @@ public sealed class CompiledProfile
             }
         }
         foreach (var command in profile.Commands) Walk(command.Steps);
+        foreach (var value in profile.Values ?? []) Check(value.Output);
         return missing.ToList();
     }
 }

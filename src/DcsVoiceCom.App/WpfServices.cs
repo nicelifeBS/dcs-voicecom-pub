@@ -31,11 +31,15 @@ public sealed class WpfDialogs(Func<Window?> owner) : IDialogs
 
     public bool ShowSay(SayEditorViewModel editor) => new SayWindow(editor) { Owner = OwnerWindow() }.ShowDialog() == true;
 
+    public bool ShowTtsValues(TtsValuesEditorViewModel editor) => new TtsValuesWindow(editor) { Owner = OwnerWindow() }.ShowDialog() == true;
+
     private MessageBoxResult Show(string title, string message, MessageBoxButton buttons) =>
         MessageWindow.Show(OwnerWindow(), title, message, buttons);
 
+    /// <summary>The dialog on top (e.g. the Say window when picking a TTS value), else the main window.</summary>
     private Window? OwnerWindow()
     {
+        if (Application.Current?.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive && w.IsVisible) is { } active) return active;
         var o = owner();
         return o is { IsVisible: true } ? o : null;
     }

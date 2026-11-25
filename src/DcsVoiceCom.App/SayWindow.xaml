@@ -10,7 +10,12 @@
   </Window.Resources>
   <StackPanel Margin="20">
     <TextBlock Text="Text to speak" Style="{StaticResource MutedText}" Margin="0,0,0,8" />
-    <TextBox x:Name="Input" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="False" />
+    <DockPanel>
+      <Button DockPanel.Dock="Right" Content="Insert value…" Click="InsertValue_Click" Margin="8,0,0,0"
+              Visibility="{Binding CanPickValue, Converter={StaticResource Visible}}"
+              ToolTip="Pick or make a live cockpit value, e.g. {clock}, and put it at the cursor" />
+      <TextBox x:Name="Input" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="False" />
+    </DockPanel>
     <TextBlock x:Name="HintText" Style="{StaticResource MutedText}" Margin="0,6,0,0" TextWrapping="Wrap" />
     <DockPanel Margin="0,14,0,0">
       <Button DockPanel.Dock="Right" Content="Play" Command="{Binding PlayCommand}" MinWidth="70" Margin="8,0,0,0" />

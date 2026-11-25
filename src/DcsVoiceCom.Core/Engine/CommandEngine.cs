@@ -156,7 +156,7 @@ public sealed class CommandEngine
             var runner = new StepRunner(
                 dryRun ? NullSenders.Instance : _bios,
                 dryRun ? NullSenders.Instance : _keys,
-                _state, cues, _options, trace, dryRun, _speech, _speechOptions);
+                _state, cues, _options, trace, dryRun, _speech, _speechOptions, profile.Profile.Values);
             var ok = await runner.RunAsync(command.Steps, slots.Values, cts.Token).ConfigureAwait(false);
             if (!ok)
             {
@@ -196,7 +196,8 @@ internal sealed class StepRunner(
     List<string> trace,
     bool dryRun,
     ITextToSpeech? speech = null,
-    Func<TtsOptions?>? speechOptions = null)
+    Func<TtsOptions?>? speechOptions = null,
+    IReadOnlyList<TtsValue>? ttsValues = null)
 {
     public async Task<bool> RunAsync(IEnumerable<Step> steps, IReadOnlyDictionary<string, string> values, CancellationToken ct)
     {
@@ -300,7 +301,12 @@ internal sealed class StepRunner(
 
             case SayStep say:
             {
-                var text = Placeholders.Apply(say.Text, values).Trim();
+                if (!TryAddLiveValues(say.Text, values, out var withLive, out var missing))
+                {
+                    trace.Add($"voice reply skipped ({missing})");
+                    return true;
+                }
+                var text = Placeholders.Apply(say.Text, withLive).Trim();
                 trace.Add($"say \"{text}\"");
                 if (dryRun || text.Length == 0) return true;
                 if (speech is null)
@@ -336,6 +342,33 @@ internal sealed class StepRunner(
             default:
                 throw new StepException($"Unsupported step {step.Type}");
         }
+    }
+
+    /// <summary>
+    /// Adds the profile's live values the Say text uses. A spoken slot of the same name wins.
+    /// False with the reason when one can't be read (no DCS data, unknown output, a slice past the end).
+    /// </summary>
+    private bool TryAddLiveValues(string text, IReadOnlyDictionary<string, string> values, out IReadOnlyDictionary<string, string> result, out string why)
+    {
+        result = values;
+        why = "";
+        if (ttsValues is not { Count: > 0 }) return true;
+        Dictionary<string, string>? added = null;
+        foreach (var name in Placeholders.Names(text))
+        {
+            if (values.ContainsKey(name)) continue;
+            var value = ttsValues.FirstOrDefault(v => v.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            if (value is null) continue;
+            if (!TtsValueFormat.TryRead(value, state, out var spoken, out var reason))
+            {
+                why = $"{{{name}}}: {reason}";
+                return false;
+            }
+            added ??= new Dictionary<string, string>(values, StringComparer.OrdinalIgnoreCase);
+            added[name] = spoken;
+        }
+        if (added != null) result = added;
+        return true;
     }
 
     private static async Task SpeakQuietlyAsync(ITextToSpeech speech, string text, TtsOptions options)

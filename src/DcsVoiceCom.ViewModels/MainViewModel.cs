@@ -148,6 +148,7 @@ public sealed class MainViewModel : ObservableObject
         NewServerProfileCommand = new RelayCommand(NewServerProfile);
         DeleteProfileCommand = new RelayCommand(p => DeleteProfile(p as ProfileItemViewModel ?? SelectedProfile), p => CanDeleteProfile(p as ProfileItemViewModel ?? SelectedProfile));
         NewCommandCommand = new RelayCommand(NewCommand, () => _profile != null);
+        OpenTtsValuesCommand = new RelayCommand(() => OpenTtsValues(pickMode: false), () => _profile != null);
         DuplicateCommandCommand = new RelayCommand(p => Duplicate(p as CommandItemViewModel ?? SelectedCommand), p => (p ?? SelectedCommand) is CommandItemViewModel);
         DeleteCommandCommand = new RelayCommand(p => Delete(p as CommandItemViewModel ?? SelectedCommand), p => (p ?? SelectedCommand) is CommandItemViewModel);
         SaveCommand = new AsyncCommand(SaveAsync, ReportError, () => IsDirty);
@@ -179,6 +180,9 @@ public sealed class MainViewModel : ObservableObject
     public RelayCommand NewServerProfileCommand { get; }
     public RelayCommand DeleteProfileCommand { get; }
     public RelayCommand NewCommandCommand { get; }
+
+    /// <summary>The TTS button: opens the profile's live values for Say steps.</summary>
+    public RelayCommand OpenTtsValuesCommand { get; }
     public RelayCommand DuplicateCommandCommand { get; }
     public RelayCommand DeleteCommandCommand { get; }
     public AsyncCommand SaveCommand { get; }
@@ -262,7 +266,7 @@ public sealed class MainViewModel : ObservableObject
         {
             if (!SetProperty(ref _selectedCommand, value)) return;
             Editor = value is null ? null : new CommandEditorViewModel(value.Command, _dialogs, () => CommandChanged(value), EnterValueContext,
-                () => SayContextProvider?.Invoke() ?? SayContext.Offline);
+                SayContextForEditor);
             DuplicateCommandCommand.Refresh();
             DeleteCommandCommand.Refresh();
             TestSelectedCommand.Refresh();
@@ -521,6 +525,52 @@ public sealed class MainViewModel : ObservableObject
     /// <summary>Gives the Say window its voice and options (set by the app); without it Play is off.</summary>
     public Func<SayContext>? SayContextProvider { get; set; }
 
+    /// <summary>The Say window's context, plus picking and previewing this profile's TTS values.</summary>
+    private SayContext SayContextForEditor()
+    {
+        var context = SayContextProvider?.Invoke() ?? SayContext.Offline;
+        if (_profile is null) return context;
+        return context with { PickValue = () => OpenTtsValues(pickMode: true), LiveValue = LiveTtsValue };
+    }
+
+    /// <summary>
+    /// Opens the TTS values window for the selected profile. On OK the values are stored, renames reach the Say
+    /// steps, and the profile is marked changed. In pick mode it returns the picked value for the Say window.
+    /// </summary>
+    private TtsValuePick? OpenTtsValues(bool pickMode)
+    {
+        if (_profile is null) return null;
+        var editor = new TtsValuesEditorViewModel(_profile, EnterValueContext(), SayContextProvider?.Invoke() ?? SayContext.Offline, _dialogs, pickMode);
+        try
+        {
+            if (!_dialogs.ShowTtsValues(editor) || !editor.CanSave) return null;
+        }
+        finally
+        {
+            editor.StopPreview();
+        }
+        var renames = editor.Renames;
+        var before = System.Text.Json.JsonSerializer.Serialize(_profile.Values, ProfileSerializer.Options);
+        editor.ApplyTo(_profile);
+        if (renames.Count > 0 || System.Text.Json.JsonSerializer.Serialize(_profile.Values, ProfileSerializer.Options) != before) IsDirty = true;
+        if (!pickMode && renames.Count > 0 && SelectedCommand is { } selected)
+        {
+            // Rebuild the open editor so its Say steps show the new names.
+            _selectedCommand = null;
+            SelectedCommand = selected;
+        }
+        return pickMode && editor.Selected is { } picked ? new TtsValuePick(picked.Value.Name, renames) : null;
+    }
+
+    /// <summary>A TTS value's live text while DCS flies this profile's aircraft, for the Say preview.</summary>
+    private string? LiveTtsValue(string name)
+    {
+        if (_profile?.Values?.FirstOrDefault(v => v.Name.Equals(name, StringComparison.OrdinalIgnoreCase)) is not { } value) return null;
+        if (_runtime is not { } runtime || !IsLiveForSelected()) return null;
+        var reader = new CatalogStateReader(runtime.State, () => Browser.Catalog);
+        return TtsValueFormat.TryRead(value, reader, out var text, out _) ? text : null;
+    }
+
     private bool IsLiveForSelected()
     {
         var runtime = _runtime;
@@ -592,6 +642,7 @@ public sealed class MainViewModel : ObservableObject
         RebuildCommands();
         IsDirty = false;
         NewCommandCommand.Refresh();
+        OpenTtsValuesCommand.Refresh();
         SeedCommand.Refresh();
         OnPropertyChanged(nameof(HasProfile));
         OnPropertyChanged(nameof(IsServerProfile));

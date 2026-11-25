@@ -1,0 +1,234 @@
+<Window x:Class="DcsVoiceCom.App.TtsValuesWindow" UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="ClearType"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:DcsVoiceCom.App"
+        Title="{Binding Title}" Width="1000" Height="680" MinWidth="820" MinHeight="520"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" Style="{StaticResource {x:Type Window}}">
+  <Window.Resources>
+    <local:BoolToVisibility x:Key="Visible" />
+    <local:NotEmptyToVisibility x:Key="NotEmpty" />
+
+    <!-- One character of the sample: click picks it, Shift+click widens. -->
+    <Style x:Key="Cell" TargetType="Button">
+      <Setter Property="Width" Value="48" />
+      <Setter Property="Height" Value="64" />
+      <Setter Property="FontSize" Value="30" />
+      <Setter Property="FontFamily" Value="Cascadia Mono, Consolas" />
+      <Setter Property="Foreground" Value="{StaticResource Text}" />
+      <Setter Property="Background" Value="#0b0e10" />
+      <Setter Property="BorderBrush" Value="{StaticResource Line}" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="2" CornerRadius="6">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Muted}" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+          <Setter Property="Background" Value="{StaticResource AccentDark}" />
+          <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
+          <Setter Property="Foreground" Value="{StaticResource Accent}" />
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+  </Window.Resources>
+
+  <DockPanel Margin="20">
+    <!-- Delete / Cancel / OK -->
+    <DockPanel DockPanel.Dock="Bottom" Margin="0,14,0,0">
+      <Button DockPanel.Dock="Left" Content="Delete…" Command="{Binding DeleteCommand}" MinWidth="80" Foreground="{StaticResource Bad}" />
+      <Button DockPanel.Dock="Right" Content="{Binding PrimaryLabel}" IsDefault="True" Style="{StaticResource Primary}" MinWidth="90"
+              IsEnabled="{Binding CanSave}" Click="Ok_Click" />
+      <Button DockPanel.Dock="Right" Content="Cancel" IsCancel="True" MinWidth="80" Margin="0,0,8,0" />
+      <TextBlock Text="{Binding SaveProblem}" Foreground="{StaticResource Bad}" VerticalAlignment="Center" Margin="12,0,12,0"
+                 TextTrimming="CharacterEllipsis" Visibility="{Binding SaveProblem, Converter={StaticResource NotEmpty}}" />
+      <TextBlock Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="12,0,12,0" TextTrimming="CharacterEllipsis"
+                 Visibility="{Binding SaveProblem, Converter={StaticResource NotEmpty}, ConverterParameter=invert}"
+                 Text="Values are read live while DCS flies this profile's aircraft. Use them in Say text as {name}." />
+    </DockPanel>
+
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="230" />
+        <ColumnDefinition Width="16" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+
+      <!-- The profile's values -->
+      <Border Style="{StaticResource Card}">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Text="VALUES" Style="{StaticResource Heading}" />
+          <UniformGrid DockPanel.Dock="Bottom" Columns="2" Margin="0,8,0,0">
+            <Button Content="+ New" Command="{Binding NewCommand}" Margin="0,0,4,0" />
+            <Button Content="Rename" Command="{Binding RenameCommand}" Margin="4,0,0,0" />
+          </UniformGrid>
+          <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,8,0,0"
+                     Text="No values yet. + New makes one."
+                     Visibility="{Binding Items.Count, Converter={StaticResource NotEmpty}, ConverterParameter=invert}" />
+          <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}" BorderThickness="0" Background="Transparent">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <StackPanel Margin="2,3">
+                  <TextBlock Text="{Binding Label}" FontFamily="Cascadia Mono, Consolas" />
+                  <TextBlock Text="{Binding Detail}" Style="{StaticResource MutedText}" FontSize="11" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </Border>
+
+      <!-- The selected value -->
+      <DockPanel Grid.Column="2" Visibility="{Binding HasSelected, Converter={StaticResource Visible}}">
+        <Border DockPanel.Dock="Top" Style="{StaticResource Card}" Margin="0,0,0,8">
+          <DockPanel LastChildFill="False">
+            <StackPanel DockPanel.Dock="Left" Margin="0,0,16,0">
+              <TextBlock Text="NAME" Style="{StaticResource Heading}" />
+              <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource MonoBox}" Width="150"
+                       ToolTip="Used as {name} in Say text: letters, digits or _" />
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Left" Margin="0,0,16,0">
+              <TextBlock Text="SOURCE (DCS-BIOS OUTPUT)" Style="{StaticResource Heading}" />
+              <local:SearchBox Items="{Binding Outputs}" Text="{Binding Output, UpdateSourceTrigger=LostFocus}" Width="260"
+                               ToolTip="The control whose value is read. Type words to search." />
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Right">
+              <TextBlock Text="MODE" Style="{StaticResource Heading}" />
+              <StackPanel Orientation="Horizontal">
+                <ToggleButton Content="Slice" IsChecked="{Binding IsSlice}" Margin="0,0,6,0" MinWidth="70"
+                              ToolTip="Pick characters: 203422 → 20:34:22" />
+                <ToggleButton Content="Remap" IsChecked="{Binding IsRemap}" IsEnabled="{Binding CanRemap}" MinWidth="70"
+                              ToolTip="Scale a number: 0-65535 → 0-100" />
+              </StackPanel>
+            </StackPanel>
+          </DockPanel>
+        </Border>
+
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="2,0,0,8">
+          <TextBlock Text="{Binding UsageText}" Style="{StaticResource MutedText}" />
+          <TextBlock Text="{Binding ClashText}" Foreground="{StaticResource Accent}" Margin="12,0,0,0"
+                     Visibility="{Binding HasClash, Converter={StaticResource Visible}}" />
+        </StackPanel>
+
+        <!-- Preview -->
+        <Border DockPanel.Dock="Bottom" Style="{StaticResource Card}" Margin="0,8,0,0">
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Content="Play" Command="{Binding PlayCommand}" MinWidth="70"
+                    ToolTip="Speak the result with the voice from Settings" />
+            <TextBlock Text="PREVIEW" Style="{StaticResource Heading}" VerticalAlignment="Center" Margin="0,0,14,0" />
+            <TextBlock Text="{Binding Sample}" Style="{StaticResource Mono}" Foreground="{StaticResource Muted}" VerticalAlignment="Center" />
+            <TextBlock Text="  →  " Foreground="{StaticResource Muted}" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding Result}" Style="{StaticResource Mono}" FontSize="18" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding Error}" Foreground="{StaticResource Bad}" VerticalAlignment="Center" Margin="12,0,0,0"
+                       TextTrimming="CharacterEllipsis" Visibility="{Binding HasError, Converter={StaticResource Visible}}" />
+          </DockPanel>
+        </Border>
+
+        <Border Style="{StaticResource Card}">
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+              <!-- Sample: live, or typed without DCS -->
+              <StackPanel Orientation="Horizontal" Margin="0,0,0,12" Visibility="{Binding IsLive, Converter={StaticResource Visible}}">
+                <TextBlock Text="SAMPLE" Style="{StaticResource Heading}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                <Border Style="{StaticResource Pill}" Margin="0,0,10,0">
+                  <TextBlock Text="LIVE" Foreground="{StaticResource Good}" FontSize="11" FontWeight="Bold" />
+                </Border>
+                <TextBlock Text="{Binding Sample}" Style="{StaticResource Mono}" VerticalAlignment="Center" />
+              </StackPanel>
+              <StackPanel Margin="0,0,0,12" Visibility="{Binding IsOffline, Converter={StaticResource Visible}}">
+                <Border Background="#2c1d12" BorderBrush="#5a3a1c" BorderThickness="1" CornerRadius="4" Padding="10,6" Margin="0,0,0,8">
+                  <TextBlock Text="No live value from DCS. Type a sample value to set this up." Foreground="#f2c9a0" TextWrapping="Wrap" />
+                </Border>
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="SAMPLE" Style="{StaticResource Heading}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                  <TextBox Text="{Binding Sample, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource MonoBox}" Width="180"
+                           ToolTip="What the output shows, e.g. 203422 or 52428" />
+                </StackPanel>
+              </StackPanel>
+
+              <!-- Slice -->
+              <StackPanel Visibility="{Binding IsSlice, Converter={StaticResource Visible}}">
+                <DockPanel Margin="0,0,0,8">
+                  <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Visibility="{Binding ShowPad, Converter={StaticResource Visible}}">
+                    <TextBlock Text="Pad with zeros to" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <TextBox Text="{Binding Pad, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource MonoBox}" Width="50"
+                             ToolTip="509 padded to 6 is 000509, so the characters don't move. Empty: no padding." />
+                    <TextBlock Text="digits" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="6,0,0,0" />
+                  </StackPanel>
+                  <TextBlock Text="Click a character. Shift+click to widen. Then press Add." Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+                </DockPanel>
+                <ItemsControl ItemsSource="{Binding Cells}" HorizontalAlignment="Center" Margin="0,4,0,12">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <WrapPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <StackPanel Margin="3,0">
+                        <Button Style="{StaticResource Cell}" Content="{Binding Text}" Tag="{Binding Index}" Click="Cell_Click"
+                                ToolTip="Click to pick, Shift+click to widen" />
+                        <TextBlock Text="{Binding Index}" Style="{StaticResource MutedText}" FontSize="11" HorizontalAlignment="Center" Margin="0,3,0,0" />
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <DockPanel>
+                  <TextBlock DockPanel.Dock="Left" Text="TEMPLATE" Style="{StaticResource Heading}" VerticalAlignment="Center" Width="80" Margin="0" />
+                  <Button DockPanel.Dock="Right" Content="Clear" Command="{Binding ClearTemplateCommand}" Margin="8,0,0,0" />
+                  <Button DockPanel.Dock="Right" Content="{Binding AddPieceLabel}" Command="{Binding AddPieceCommand}" Margin="8,0,0,0" MinWidth="70" />
+                  <TextBox Text="{Binding Template, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource MonoBox}" />
+                </DockPanel>
+                <TextBlock Style="{StaticResource MutedText}" Margin="80,6,0,0" TextWrapping="Wrap"
+                           Text="{}{a-b} = characters a to b, {a} = one character. Anything else is kept as typed, like : or a space." />
+              </StackPanel>
+
+              <!-- Remap -->
+              <StackPanel Visibility="{Binding IsRemap, Converter={StaticResource Visible}}">
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="130" />
+                    <ColumnDefinition Width="140" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="140" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                  </Grid.RowDefinitions>
+                  <TextBlock Grid.Column="1" Text="FROM" Style="{StaticResource Heading}" />
+                  <TextBlock Grid.Column="3" Text="TO" Style="{StaticResource Heading}" />
+                  <TextBlock Grid.Row="1" Text="Cockpit value" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+                  <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding InMin, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource MonoBox}" Margin="0,0,0,8" />
+                  <TextBox Grid.Row="1" Grid.Column="3" Text="{Binding InMax, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource MonoBox}" Margin="0,0,0,8" />
+                  <TextBlock Grid.Row="2" Text="Spoken value" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+                  <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding OutMin, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource MonoBox}" Margin="0,0,0,8" />
+                  <TextBox Grid.Row="2" Grid.Column="3" Text="{Binding OutMax, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource MonoBox}" Margin="0,0,0,8" />
+                  <TextBlock Grid.Row="3" Text="Decimals" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+                  <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding DecimalChoices}" SelectedItem="{Binding Decimals}" Width="70" HorizontalAlignment="Left" />
+                </Grid>
+                <TextBlock Text="{Binding MaxValueText}" Style="{StaticResource MutedText}" Margin="0,10,0,0" TextWrapping="Wrap"
+                           Visibility="{Binding MaxValueText, Converter={StaticResource NotEmpty}}" />
+                <TextBlock Style="{StaticResource MutedText}" Margin="0,6,0,0" TextWrapping="Wrap"
+                           Text="Values outside the range are clamped, e.g. 0-65535 to 0-100 says 80 for 52428." />
+              </StackPanel>
+            </StackPanel>
+          </ScrollViewer>
+        </Border>
+      </DockPanel>
+    </Grid>
+  </DockPanel>
+</Window>

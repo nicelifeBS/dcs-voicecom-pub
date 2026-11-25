@@ -14,8 +14,9 @@ Actions run in order, top to bottom, when the command is recognised.
 - **+ Key.** Presses a key combination, such as `RCtrl+G`. DCS must have focus.
 - **+ Wait.** Waits a number of milliseconds.
 - **+ Say.** The app answers with a voice, such as "Gear up". Use `{slot}` for a spoken value, for example
-  `Radio set to {freq}`. **Play** previews it. It doesn't hold up the other steps, and does nothing when no Windows
-  voice is installed. See [Settings](10-settings.md).
+  `Radio set to {freq}`. **Insert value…** adds a live cockpit value, like `Time is {clock}`. See
+  [TTS values](13-tts-values.md). **Play** previews it. It doesn't hold up the other steps, and does nothing when no
+  Windows voice is installed. See [Settings](10-settings.md).
 - **+ Enter value.** Dials a spoken number into a radio. See [Enter value](06-enter-value.md).
 - **Edit as JSON.** For conditions and waits on cockpit state.
 
