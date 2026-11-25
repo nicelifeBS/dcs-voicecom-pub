@@ -50,12 +50,13 @@ if [[ "${1:-}" != "--no-build" ]]; then "$D" build; fi
 mkdir -p "$PREFIX/AppData/Local/DcsVoiceCom/profiles" "$PREFIX/Saved Games/DCS/Scripts/DCS-BIOS/doc/json"
 cp "$ROOT"/profiles/*.json "$PREFIX/AppData/Local/DcsVoiceCom/profiles/"
 cp "$ROOT"/tools/help-screenshots/sample-dcs-bios/*.json "$PREFIX/Saved Games/DCS/Scripts/DCS-BIOS/doc/json/"
-# Pin F-14, so typed tests match without DCS (the app writes settings.json on its first start).
+# Pin F-14, so typed tests match without DCS, and open the log (hidden by default).
+# The app writes settings.json on its first start.
 SETTINGS="$PREFIX/AppData/Local/DcsVoiceCom/settings.json"
 if [[ -f "$SETTINGS" ]]; then
-  python3 -c 'import json,sys; p=sys.argv[1]; s=json.load(open(p, encoding="utf-8-sig")); s["profileOverride"]="F-14"; json.dump(s, open(p,"w"), indent=2)' "$SETTINGS"
+  python3 -c 'import json,sys; p=sys.argv[1]; s=json.load(open(p, encoding="utf-8-sig")); s["profileOverride"]="F-14"; s["showLog"]=True; json.dump(s, open(p,"w"), indent=2)' "$SETTINGS"
 else
-  echo '{ "profileOverride": "F-14" }' > "$SETTINGS"
+  echo '{ "profileOverride": "F-14", "showLog": true }' > "$SETTINGS"
 fi
 
 setsid nohup "$D" launch > "$WORK/launch.log" 2>&1 < /dev/null &
